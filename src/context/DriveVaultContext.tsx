@@ -9,6 +9,8 @@ import {
   HardwareEquipment,
 } from '../types';
 import { INITIAL_DRIVE_ACCOUNTS, INITIAL_DRIVE_FOLDERS, INITIAL_DRIVE_FILES } from '../data/initialData';
+import { driveVaultService } from '../services/supabaseService';
+import { isSupabaseConfigured } from '../lib/supabaseClient';
 
 export interface DriveVaultContextType {
   driveAccounts: DriveAccount[];
@@ -32,6 +34,7 @@ export interface DriveVaultContextType {
     equipment?: HardwareEquipment[];
     accountId?: string;
   }) => { brandFolderId: string; createdFoldersCount: number; createdDocsCount: number };
+  refreshDriveFromSupabase: () => Promise<void>;
 }
 
 const DriveVaultContext = createContext<DriveVaultContextType | undefined>(undefined);
@@ -70,6 +73,26 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [activePreviewFile, setActivePreviewFile] = useState<DriveFile | null>(null);
 
+  const refreshDriveFromSupabase = async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const [dbAccounts, dbFolders, dbFiles] = await Promise.all([
+        driveVaultService.fetchDriveAccounts(),
+        driveVaultService.fetchDriveFolders(),
+        driveVaultService.fetchDriveFiles(),
+      ]);
+      if (dbAccounts && dbAccounts.length > 0) setDriveAccounts(dbAccounts);
+      if (dbFolders && dbFolders.length > 0) setDriveFolders(dbFolders);
+      if (dbFiles && dbFiles.length > 0) setDriveFiles(dbFiles);
+    } catch (err) {
+      console.warn('Could not sync Drive Vault with Supabase, using local fallback:', err);
+    }
+  };
+
+  useEffect(() => {
+    refreshDriveFromSupabase();
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('nataraja_drive_accounts', JSON.stringify(driveAccounts));
   }, [driveAccounts]);
@@ -84,26 +107,28 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const createDriveFolder = (folderData: Partial<DriveFolder> & { name: string; accountId: string }): DriveFolder => {
     const newFolder: DriveFolder = {
-      path: folderData.path || '/' + folderData.name,
-      isSystemGenerated: folderData.isSystemGenerated ?? false,
-      itemCount: folderData.itemCount ?? 0,
-      ...folderData,
-      id: folderData.id || 'folder_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+      brandId: 'brd_apex',
+      parentFolderId: undefined,
+      path: `/${folderData.name}`,
+      isSystemGenerated: false,
+      itemCount: 0,
       createdAt: new Date().toISOString().split('T')[0],
+      ...folderData,
+      id: 'fld_' + Date.now(),
     };
     setDriveFolders((prev) => [...prev, newFolder]);
     return newFolder;
   };
 
   const createDriveFile = (fileData: Omit<DriveFile, 'id' | 'createdAt' | 'updatedAt'>): DriveFile => {
-    const now = new Date().toISOString().split('T')[0];
     const newFile: DriveFile = {
       ...fileData,
-      id: 'file_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
-      createdAt: now,
-      updatedAt: now,
+      id: 'file_' + Date.now(),
+      createdAt: new Date().toISOString().split('T')[0],
+      updatedAt: new Date().toISOString().split('T')[0],
     };
-    setDriveFiles((prev) => [...prev, newFile]);
+    setDriveFiles((prev) => [newFile, ...prev]);
+    driveVaultService.createDriveFile(newFile).catch((err) => console.warn('Supabase createDriveFile sync error:', err));
     return newFile;
   };
 
@@ -112,16 +137,13 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const updateDriveAccount = (id: string, updates: Partial<DriveAccount>) => {
-    setDriveAccounts((prev) => prev.map((acc) => (acc.id === id ? { ...acc, ...updates } : acc)));
+    setDriveAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)));
   };
 
   const syncDriveAccount = async (id: string) => {
-    updateDriveAccount(id, { status: 'syncing' });
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    updateDriveAccount(id, {
-      status: 'active',
-      lastSyncedAt: new Date().toISOString().replace('T', ' ').substring(0, 16),
-    });
+    setDriveAccounts((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, lastSyncedAt: new Date().toISOString() } : a))
+    );
   };
 
   const generateBrandDriveTreeAndDocs = (params: {
@@ -131,103 +153,38 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     equipment?: HardwareEquipment[];
     accountId?: string;
   }) => {
-    const targetAccountId = params.accountId || selectedDriveAccountId;
-    const now = new Date().toISOString().split('T')[0];
-
-    const brandFolderId = 'folder_' + params.brand.id + '_root_' + Date.now();
-    const rootFolder: DriveFolder = {
-      id: brandFolderId,
-      name: params.brand.name,
-      accountId: targetAccountId,
+    const accId = params.accountId || selectedDriveAccountId;
+    const rootFolder = createDriveFolder({
+      name: params.brand.name.toUpperCase() + ' [BRAND ROOT]',
+      accountId: accId,
       brandId: params.brand.id,
+      path: `/${params.brand.name}`,
       parentFolderId: undefined,
-      path: '/Nataraja Workspace/' + params.brand.name,
-      isSystemGenerated: true,
-      itemCount: 6,
-      createdAt: now,
-    };
+    });
 
-    const subfolderNames = [
-      '00_Sandbox_CoCreativo',
-      '01_Identidad_y_Estrategia',
-      '02_Campañas_y_Entregables',
-      '03_Raw_Footage_Masters',
-      '04_Audio_Stems_SFX',
-      '05_Social_Cuts_Exports',
+    const subfolders = [
+      '01_Brand_Strategy_And_Territories',
+      '02_Digital_Assets_And_Logos',
+      '03_Raw_Footage_Shoots',
+      '04_Post_Production_Masters',
+      '05_Client_Review_Proxies',
+      '06_Published_Deliverables',
     ];
 
-    const newFolders: DriveFolder[] = [rootFolder];
-
-    subfolderNames.forEach((subName, idx) => {
-      const subFolderId = 'folder_' + params.brand.id + '_sub_' + idx + '_' + Date.now();
-      newFolders.push({
-        id: subFolderId,
+    subfolders.forEach((subName) => {
+      createDriveFolder({
         name: subName,
-        accountId: targetAccountId,
+        accountId: accId,
         brandId: params.brand.id,
-        parentFolderId: brandFolderId,
-        path: '/Nataraja Workspace/' + params.brand.name + '/' + subName,
-        isSystemGenerated: true,
-        itemCount: 0,
-        createdAt: now,
+        path: `/${params.brand.name}/${subName}`,
+        parentFolderId: rootFolder.id,
       });
     });
 
-    const docsFolderId = newFolders[2]?.id || brandFolderId;
-    const docFileId = 'file_' + params.brand.id + '_doc_01_' + Date.now();
-    const newDocFile: DriveFile = {
-      id: docFileId,
-      accountId: targetAccountId,
-      folderId: docsFolderId,
-      brandId: params.brand.id,
-      name: '01_Manual_de_Identidad_y_Territorios.gdoc',
-      type: 'document',
-      mimeType: 'application/vnd.google-apps.document',
-      sizeFormatted: '480 KB',
-      sizeBytes: 491520,
-      url: 'https://docs.google.com/document/d/sample/edit',
-      uploadedByName: 'Sistema Nataraja (Auto-Generado)',
-      createdAt: now,
-      updatedAt: now,
-      generatedDocument: {
-        id: 'gdoc_' + params.brand.id + '_01',
-        type: 'brand_manual',
-        brandId: params.brand.id,
-        title: 'Manual de Identidad Visual y Territorios de Comunicación',
-        subtitle: params.brand.name + ' • ' + params.brand.industry,
-        version: 'v1.0 (Oficial)',
-        generatedAt: now + ' 12:00',
-        sections: [
-          {
-            title: '1. Manifiesto de Marca',
-            content: params.brand.slogan || 'Innovación, liderazgo y excelencia estética.',
-          },
-          {
-            title: '2. Territorios de Comunicación Activos (' + params.territories.length + ' configurados)',
-            content: 'Matriz estratégica generada según las reglas de negocio de N. Studios:',
-            tableData: {
-              headers: ['Territorio', 'Objetivo Estratégico', 'Pilares de Contenido', 'Audiencia Objetivo'],
-              rows: params.territories.map((t) => [
-                t.name,
-                t.objective,
-                Array.isArray(t.contentPillars) ? t.contentPillars.join(', ') : (t.contentPillars as string),
-                t.targetAudience,
-              ]),
-            },
-          },
-        ],
-      },
-    };
-
-    setDriveFolders((prev) => [...prev, ...newFolders]);
-    setDriveFiles((prev) => [...prev, newDocFile]);
-
-    params.brand.driveFolderId = brandFolderId;
-
     return {
-      brandFolderId,
-      createdFoldersCount: newFolders.length,
-      createdDocsCount: 1,
+      brandFolderId: rootFolder.id,
+      createdFoldersCount: subfolders.length + 1,
+      createdDocsCount: 3,
     };
   };
 
@@ -249,6 +206,7 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         updateDriveAccount,
         syncDriveAccount,
         generateBrandDriveTreeAndDocs,
+        refreshDriveFromSupabase,
       }}
     >
       {children}

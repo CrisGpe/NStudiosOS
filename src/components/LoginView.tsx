@@ -3,299 +3,292 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import {
   Film,
-  Users,
-  Sparkles,
-  Search,
-  ArrowRight,
-  Building2,
   Lock,
+  Mail,
+  User,
+  ShieldCheck,
+  Sparkles,
+  ArrowRight,
+  AlertCircle,
+  KeyRound,
+  Building2,
+  Smartphone,
 } from 'lucide-react';
 import { UserRole } from '../types';
 
 export const LoginView: React.FC = () => {
-  const { users, brands, login } = useApp();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedRoleTab, setSelectedRoleTab] = useState<'all' | 'team' | 'clients'>(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      return 'clients';
-    }
-    return 'all';
-  });
+  const { users, brands, login, loginWithPassword, signUpWithPassword, isLoadingAuth } = useApp();
   const navigate = useNavigate();
 
-  const handleLogin = (id: string) => {
-    login(id);
-    const isMobileScreen = typeof window !== 'undefined' && window.innerWidth < 768;
-    if (isMobileScreen) {
-      navigate('/mobile');
-    } else {
-      const loggedUser = users.find((u) => u.id === id);
-      if (loggedUser?.role === 'cliente') {
-        navigate('/client/hub');
+  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [role, setRole] = useState<UserRole>('webadmin');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showDemoSelector, setShowDemoSelector] = useState(false);
+
+  const isMobileScreen = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage(null);
+
+    if (!email || !password) {
+      setErrorMessage('Por favor ingresa tu correo y contraseña.');
+      return;
+    }
+
+    try {
+      if (authMode === 'login') {
+        await loginWithPassword(email, password);
       } else {
-        navigate('/kanban');
+        if (!name) {
+          setErrorMessage('Por favor ingresa tu nombre completo.');
+          return;
+        }
+        await signUpWithPassword(email, password, name, role);
       }
+
+      if (isMobileScreen) {
+        navigate('/mobile');
+      } else {
+        navigate(role === 'cliente' ? '/client/hub' : '/kanban');
+      }
+    } catch (err: any) {
+      console.error('Auth error:', err);
+      setErrorMessage(
+        err.message === 'Invalid login credentials'
+          ? 'Credenciales incorrectas. Verifica tu correo y contraseña.'
+          : err.message || 'Error al autenticar en Supabase.'
+      );
     }
   };
 
-  const teamUsers = users.filter((u) => u.role !== 'cliente');
-  const clientUsers = users.filter((u) => u.role === 'cliente');
-
-  const filteredTeam = teamUsers.filter(
-    (u) =>
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.roleTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const filteredClients = clientUsers.filter((u) => {
-    const brand = brands.find((b) => b.id === u.assignedBrandIds?.[0]);
-    return (
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.roleTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (brand && brand.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
-  });
-
-  const getRoleBadge = (role: UserRole) => {
-    switch (role) {
-      case 'webadmin':
-        return { label: 'WebAdmin Global', color: 'bg-purple-50 text-purple-700 border-purple-200' };
-      case 'director':
-        return { label: 'Director de Proyecto', color: 'bg-amber-50 text-amber-700 border-amber-200' };
-      case 'colaborador':
-        return { label: 'Colaborador Técnico', color: 'bg-blue-50 text-blue-700 border-blue-200' };
-      case 'cliente':
-        return { label: 'Cliente de Marca', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+  const handleQuickDemoLogin = (userId: string) => {
+    login(userId);
+    const loggedUser = users.find((u) => u.id === userId);
+    if (isMobileScreen) {
+      navigate('/mobile');
+    } else {
+      navigate(loggedUser?.role === 'cliente' ? '/client/hub' : '/kanban');
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-between relative overflow-hidden font-sans">
-      {/* Subtle Background Decorative Glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+      {/* Subtle Background Glows */}
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-10 left-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
 
       {/* Top Header */}
-      <header className="px-6 py-4 border-b border-slate-200 bg-white/90 backdrop-blur-md relative z-10 shadow-2xs">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+      <header className="border-b border-slate-200 bg-white/95 backdrop-blur-md sticky top-0 z-20">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-sm shadow-indigo-600/20">
-              <Film className="w-5 h-5 text-white" />
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-500 flex items-center justify-center text-white shadow-sm shadow-indigo-600/20">
+              <Film className="w-4 h-4 text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-extrabold text-slate-900 tracking-tight">N. Studios</h1>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  NATARAJA AGENCY OS
+              <div className="flex items-center gap-1.5 leading-none">
+                <span className="font-extrabold text-sm tracking-tight text-slate-900">
+                  N. Studios
+                </span>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 uppercase tracking-wide">
+                  PROD v1.0
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium">
-                Plataforma RBAC Audiovisual • Ritmo y Creación de Marcas Vivas
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                Plataforma RBAC Audiovisual • Nataraja Agency
               </p>
             </div>
           </div>
 
-          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-600 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs">
-            <Lock className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Acceso 1-Tap Simulado • Demo Sandbox</span>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Supabase Auth Activo
+            </span>
           </div>
         </div>
       </header>
 
-      {/* Main Content: 1-Tap Role Selector */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 relative z-10 space-y-6">
-        
-        {/* Welcome Banner */}
-        <div className="text-center max-w-2xl mx-auto space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Selecciona tu Rol para Ingresar al Sistema</span>
+      {/* Main Content Area */}
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 my-auto z-10">
+        <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200 shadow-xl p-6 sm:p-8 space-y-6 animate-in fade-in zoom-in-95">
+          
+          {/* Card Title & Mode Toggle */}
+          <div className="text-center space-y-2">
+            <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-indigo-600 shadow-2xs">
+              <KeyRound className="w-6 h-6" />
+            </div>
+            <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
+              {authMode === 'login' ? 'Acceso al Estudio' : 'Crear Cuenta WebAdmin'}
+            </h2>
+            <p className="text-xs text-slate-500 max-w-xs mx-auto">
+              {authMode === 'login'
+                ? 'Ingresa tus credenciales de Supabase para acceder al sistema RBAC.'
+                : 'Registra tu cuenta de Administrador Global para configurar marcas y producción.'}
+            </p>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Control de Acceso Basado en Roles (RBAC)
-          </h2>
-          <p className="text-xs text-slate-600 leading-relaxed">
-            Experimenta el sistema desde la perspectiva del equipo de producción (WebAdmin, Dirección, DP/Edición) o como uno de los 6 clientes de marca con aislamiento de datos.
-          </p>
-        </div>
 
-        {/* Filter Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center gap-1.5">
+          {/* Mode Switcher Tabs */}
+          <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-2xl text-xs font-semibold">
             <button
-              onClick={() => setSelectedRoleTab('all')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                selectedRoleTab === 'all'
-                  ? 'bg-indigo-600 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200'
+              type="button"
+              onClick={() => {
+                setAuthMode('login');
+                setErrorMessage(null);
+              }}
+              className={`py-2 rounded-xl transition-all cursor-pointer ${
+                authMode === 'login' ? 'bg-white text-indigo-600 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              Todos los Usuarios ({users.length})
+              Iniciar Sesión
             </button>
             <button
-              onClick={() => setSelectedRoleTab('team')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                selectedRoleTab === 'team'
-                  ? 'bg-indigo-600 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200'
+              type="button"
+              onClick={() => {
+                setAuthMode('signup');
+                setErrorMessage(null);
+              }}
+              className={`py-2 rounded-xl transition-all cursor-pointer ${
+                authMode === 'signup' ? 'bg-white text-indigo-600 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              Equipo Nataraja ({teamUsers.length})
-            </button>
-            <button
-              onClick={() => setSelectedRoleTab('clients')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                selectedRoleTab === 'clients'
-                  ? 'bg-indigo-600 text-white shadow-xs font-bold'
-                  : 'bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200'
-              }`}
-            >
-              Clientes de Marca ({clientUsers.length})
+              Nuevo WebAdmin
             </button>
           </div>
 
-          <div className="relative w-full sm:w-64">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar usuario o marca..."
-              className="input-impeccable pl-8.5"
-            />
-          </div>
-        </div>
+          {/* Error Alert */}
+          {errorMessage && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0" />
+              <span>{errorMessage}</span>
+            </div>
+          )}
 
-        {/* SECTION 1: TEAM MEMBERS */}
-        {(selectedRoleTab === 'all' || selectedRoleTab === 'team') && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-indigo-600" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                Miembros del Equipo Interno (Agencia Nataraja)
-              </h3>
+          {/* Authentication Form */}
+          <form onSubmit={handleAuthSubmit} className="space-y-4 text-xs">
+            {authMode === 'signup' && (
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Nombre Completo *</label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Ej. Cristian García"
+                    required
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-hidden transition-all text-xs"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Correo Electrónico *</label>
+              <div className="relative">
+                <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="tu.correo@estudio.com"
+                  required
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-hidden transition-all text-xs"
+                />
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {filteredTeam.map((user) => {
-                const badge = getRoleBadge(user.role);
-                return (
-                  <div
-                    key={user.id}
-                    onClick={() => handleLogin(user.id)}
-                    className="group bg-white hover:bg-slate-50/80 border border-slate-200 hover:border-indigo-500 rounded-2xl p-4 transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-md hover:-translate-y-0.5 relative overflow-hidden"
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Contraseña *</label>
+              <div className="relative">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-hidden transition-all text-xs"
+                />
+              </div>
+            </div>
+
+            {authMode === 'signup' && (
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Rol en la Plataforma</label>
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value as UserRole)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-xs outline-hidden"
+                >
+                  <option value="webadmin">👑 WebAdmin Global (Control Total)</option>
+                  <option value="director">🎬 Director Creativo / Producer</option>
+                  <option value="colaborador">✂️ Colaborador Técnico / Editor</option>
+                  <option value="cliente">🏢 Cliente de Marca</option>
+                </select>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoadingAuth}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-3 rounded-2xl shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+            >
+              {isLoadingAuth ? (
+                <span>Conectando con Supabase...</span>
+              ) : (
+                <>
+                  <span>{authMode === 'login' ? 'Entrar a la Plataforma' : 'Crear Cuenta y Entrar'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Quick Demo Access Accordion (For easy testing / verification) */}
+          <div className="pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setShowDemoSelector(!showDemoSelector)}
+              className="w-full text-center text-[11px] text-slate-400 hover:text-indigo-600 font-semibold transition-colors cursor-pointer flex items-center justify-center gap-1"
+            >
+              <span>{showDemoSelector ? 'Ocultar Accesos de Prueba' : '⚡ O probar con accesos rápidos demo'}</span>
+            </button>
+
+            {showDemoSelector && (
+              <div className="mt-3 grid grid-cols-2 gap-2 animate-in fade-in">
+                {users.slice(0, 4).map((u) => (
+                  <button
+                    key={u.id}
+                    onClick={() => handleQuickDemoLogin(u.id)}
+                    className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-indigo-50 hover:border-indigo-200 text-left transition-all cursor-pointer text-[11px]"
                   >
-                    <div className="flex items-start gap-3">
-                      <img
-                        src={user.avatar}
-                        alt={user.name}
-                        className="w-11 h-11 rounded-full object-cover ring-2 ring-slate-100 group-hover:ring-indigo-500 transition-all shrink-0"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <h4 className="text-xs font-bold text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
-                          {user.name}
-                        </h4>
-                        <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                          {user.roleTitle}
-                        </p>
-                        <div className="mt-1">
-                          <span className={`inline-block text-[9px] font-bold px-2 py-0.5 rounded-full border ${badge.color}`}>
-                            {badge.label}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 text-[11px] text-slate-500 group-hover:text-indigo-600">
-                      <span className="font-mono text-[10px] text-slate-400 truncate">{user.email}</span>
-                      <div className="flex items-center gap-1 font-semibold shrink-0">
-                        <span>Entrar</span>
-                        <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                    <span className="font-bold text-slate-900 block truncate">{u.name}</span>
+                    <span className="text-[10px] text-indigo-600 font-mono block uppercase">{u.role}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        )}
 
-        {/* SECTION 2: BRAND CLIENTS */}
-        {(selectedRoleTab === 'all' || selectedRoleTab === 'clients') && (
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-emerald-600" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                Clientes de Marca (Acceso Restringido por Organización)
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {filteredClients.map((user) => {
-                const brand = brands.find((b) => b.id === user.assignedBrandIds?.[0]);
-                const badge = getRoleBadge(user.role);
-
-                return (
-                  <div
-                    key={user.id}
-                    onClick={() => handleLogin(user.id)}
-                    className="group bg-white hover:bg-slate-50/80 border border-slate-200 hover:border-emerald-500 rounded-2xl p-4 transition-all cursor-pointer flex flex-col justify-between space-y-3 shadow-2xs hover:shadow-md hover:-translate-y-0.5 relative overflow-hidden"
-                  >
-                    <div className="flex items-start gap-3">
-                      <img
-                        src={user.avatar}
-                        alt={user.name}
-                        className="w-11 h-11 rounded-full object-cover ring-2 ring-slate-100 group-hover:ring-emerald-500 transition-all shrink-0"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <h4 className="text-xs font-bold text-slate-900 truncate group-hover:text-emerald-700 transition-colors">
-                          {user.name}
-                        </h4>
-                        <p className="text-[11px] text-slate-500 truncate mt-0.5">
-                          {user.roleTitle}
-                        </p>
-
-                        {/* Brand pill */}
-                        {brand && (
-                          <div className="mt-1 flex items-center gap-1.5">
-                            <span
-                              className="w-2 h-2 rounded-full shrink-0"
-                              style={{ backgroundColor: brand.primaryColor }}
-                            />
-                            <span className="text-[10px] font-bold text-slate-700">
-                              {brand.name} ({brand.industry})
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 text-[11px] text-slate-500 group-hover:text-emerald-700">
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${badge.color}`}>
-                        {badge.label}
-                      </span>
-                      <div className="flex items-center gap-1 font-semibold shrink-0">
-                        <span>Entrar como Cliente</span>
-                        <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
+        </div>
       </main>
 
       {/* Footer */}
-      <footer className="px-6 py-4 border-t border-slate-200 bg-white text-center text-xs text-slate-500 relative z-10">
-        <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <span className="font-medium text-slate-700">N. Studios OS • Nataraja Creative Workflow Engine</span>
-          <span className="font-mono text-[11px] text-slate-500">
-            6 Marcas / 2 Cupos Colaborador • RBAC Multi-Tenant
-          </span>
+      <footer className="border-t border-slate-200 py-3 bg-white text-center text-xs text-slate-500 z-10">
+        <div className="max-w-6xl mx-auto px-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+            <span className="font-semibold text-slate-800">N. Studios OS</span>
+            <span className="text-slate-300">•</span>
+            <span>Producción Audiovisual & RBAC</span>
+          </div>
+          <div className="text-[11px] text-slate-400">
+            Backend PostgreSQL @ Supabase
+          </div>
         </div>
       </footer>
     </div>

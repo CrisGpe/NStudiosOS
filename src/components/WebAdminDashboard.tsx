@@ -11,7 +11,9 @@ import {
   HardDrive,
   Palmtree,
   CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
+import { seedDemoDataToSupabase } from '../services/supabaseService';
 
 export const WebAdminDashboard: React.FC = () => {
   const {
@@ -27,6 +29,8 @@ export const WebAdminDashboard: React.FC = () => {
   } = useApp();
 
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
+  const [seeding, setSeeding] = useState(false);
+  const [seedToast, setSeedToast] = useState<string | null>(null);
 
   const activeReservationsCount = equipment.filter((e) => e.status !== 'available').length;
   const hardwareUtilizationRate = Math.round((activeReservationsCount / equipment.length) * 100);
@@ -82,12 +86,35 @@ export const WebAdminDashboard: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono font-semibold shadow-2xs">
+          <button
+            onClick={async () => {
+              setSeeding(true);
+              const res = await seedDemoDataToSupabase();
+              setSeedToast(res.message);
+              setSeeding(false);
+              setTimeout(() => setSeedToast(null), 4000);
+            }}
+            disabled={seeding}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-xs font-semibold transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+            title="Importar marcas, territorios y entregables de prueba a Supabase"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+            <span>{seeding ? 'Importando a Supabase...' : 'Importar Datos Demo'}</span>
+          </button>
+
+          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono font-semibold shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Infraestructura Operativa</span>
+            <span>Supabase PostgreSQL</span>
           </span>
         </div>
       </div>
+
+      {seedToast && (
+        <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
+          <span>{seedToast}</span>
+        </div>
+      )}
 
       {/* 4 Health Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">

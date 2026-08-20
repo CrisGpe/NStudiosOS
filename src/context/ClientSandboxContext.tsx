@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { ClientIdeaSandboxItem, Deliverable } from '../types';
+import { ClientIdeaSandboxItem } from '../types';
 import { INITIAL_SANDBOX_IDEAS } from '../data/initialData';
+import { sandboxService } from '../services/supabaseService';
+import { isSupabaseConfigured } from '../lib/supabaseClient';
 
 export interface ClientSandboxContextType {
   sandboxIdeas: ClientIdeaSandboxItem[];
@@ -13,6 +15,7 @@ export interface ClientSandboxContextType {
   deleteSandboxIdea: (id: string) => void;
   convertSandboxIdeaToDeliverable: (ideaId: string, deliverableId?: string) => any;
   generateAIBriefForSandboxIdea: (ideaId: string) => Promise<string>;
+  refreshSandboxFromSupabase: () => Promise<void>;
 }
 
 const ClientSandboxContext = createContext<ClientSandboxContextType | undefined>(undefined);
@@ -26,6 +29,22 @@ export const ClientSandboxProvider: React.FC<{ children: React.ReactNode }> = ({
       return INITIAL_SANDBOX_IDEAS;
     }
   });
+
+  const refreshSandboxFromSupabase = async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const dbIdeas = await sandboxService.fetchSandboxIdeas();
+      if (dbIdeas && dbIdeas.length > 0) {
+        setSandboxIdeas(dbIdeas);
+      }
+    } catch (err) {
+      console.warn('Could not sync sandbox with Supabase, using local fallback:', err);
+    }
+  };
+
+  useEffect(() => {
+    refreshSandboxFromSupabase();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('nataraja_sandbox_ideas', JSON.stringify(sandboxIdeas));
@@ -44,6 +63,7 @@ export const ClientSandboxProvider: React.FC<{ children: React.ReactNode }> = ({
       updatedAt: new Date().toISOString().split('T')[0],
     };
     setSandboxIdeas((prev) => [newIdea, ...prev]);
+    sandboxService.createSandboxIdea(newIdea).catch((err) => console.warn('Supabase createSandboxIdea sync error:', err));
     return newIdea;
   };
 
@@ -55,6 +75,7 @@ export const ClientSandboxProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const deleteSandboxIdea = (id: string) => {
     setSandboxIdeas((prev) => prev.filter((i) => i.id !== id));
+    sandboxService.deleteSandboxIdea(id).catch((err) => console.warn('Supabase deleteSandboxIdea sync error:', err));
   };
 
   const convertSandboxIdeaToDeliverable = (ideaId: string, deliverableId?: string): any => {
@@ -131,6 +152,7 @@ export const ClientSandboxProvider: React.FC<{ children: React.ReactNode }> = ({
         deleteSandboxIdea,
         convertSandboxIdeaToDeliverable,
         generateAIBriefForSandboxIdea,
+        refreshSandboxFromSupabase,
       }}
     >
       {children}

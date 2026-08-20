@@ -56,11 +56,15 @@ export const useApp = () => {
   return {
     // Auth & User Profile
     isAuthenticated: auth.isAuthenticated,
+    isLoadingAuth: auth.isLoadingAuth,
     login: auth.login,
+    loginWithPassword: auth.loginWithPassword,
+    signUpWithPassword: auth.signUpWithPassword,
     logout: auth.logout,
     currentUser: auth.currentUser,
     setCurrentUser: auth.setCurrentUser,
     users: auth.users,
+    refreshProfiles: auth.refreshProfiles,
 
     // UI & Appearance
     theme: ui.theme,

@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Brand, CommunicationTerritory, DigitalAsset } from '../types';
 import { INITIAL_BRANDS, INITIAL_TERRITORIES, INITIAL_DIGITAL_ASSETS } from '../data/initialData';
+import { brandService } from '../services/supabaseService';
+import { isSupabaseConfigured } from '../lib/supabaseClient';
 
 export interface BrandsContextType {
   brands: Brand[];
@@ -23,6 +25,7 @@ export interface BrandsContextType {
   createDigitalAsset: (asset: Omit<DigitalAsset, 'id' | 'updatedAt'>) => void;
   updateDigitalAsset: (id: string, asset: Partial<DigitalAsset>) => void;
   deleteDigitalAsset: (id: string) => void;
+  refreshBrandsFromSupabase: () => Promise<void>;
 }
 
 const BrandsContext = createContext<BrandsContextType | undefined>(undefined);
@@ -56,6 +59,31 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return INITIAL_DIGITAL_ASSETS;
     }
   });
+
+  const refreshBrandsFromSupabase = async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const [dbBrands, dbTerritories] = await Promise.all([
+        brandService.fetchBrands(),
+        brandService.fetchTerritories(),
+      ]);
+      if (dbBrands && dbBrands.length > 0) {
+        setBrands(dbBrands);
+        if (!selectedBrandId || !dbBrands.some((b) => b.id === selectedBrandId)) {
+          setSelectedBrandId(dbBrands[0].id);
+        }
+      }
+      if (dbTerritories && dbTerritories.length > 0) {
+        setTerritories(dbTerritories);
+      }
+    } catch (err) {
+      console.warn('Could not sync brands with Supabase, using local state:', err);
+    }
+  };
+
+  useEffect(() => {
+    refreshBrandsFromSupabase();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('nataraja_brands', JSON.stringify(brands));
@@ -93,6 +121,7 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     setBrands((prev) => [newBrand, ...prev]);
+    brandService.createBrand(newBrand).catch((err) => console.warn('Supabase createBrand sync error:', err));
 
     if (initialTerritoriesData && initialTerritoriesData.length > 0) {
       const newTerritories: CommunicationTerritory[] = initialTerritoriesData.map((t, index) => ({
@@ -101,18 +130,29 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         brandId: newBrandId,
       }));
       setTerritories((prev) => [...newTerritories, ...prev]);
+      newTerritories.forEach((t) => {
+        brandService.createTerritory(t).catch((err) => console.warn('Supabase createTerritory sync error:', err));
+      });
     }
 
     return newBrand;
   };
 
   const updateBrand = (id: string, updates: Partial<Brand>) => {
-    setBrands((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)));
+    setBrands((prev) => {
+      const next = prev.map((b) => (b.id === id ? { ...b, ...updates } : b));
+      const updated = next.find((b) => b.id === id);
+      if (updated) {
+        brandService.updateBrand(updated).catch((err) => console.warn('Supabase updateBrand sync error:', err));
+      }
+      return next;
+    });
   };
 
   const deleteBrand = (id: string) => {
     setBrands((prev) => prev.filter((b) => b.id !== id));
     setTerritories((prev) => prev.filter((t) => t.brandId !== id));
+    brandService.deleteBrand(id).catch((err) => console.warn('Supabase deleteBrand sync error:', err));
   };
 
   const createTerritory = (territoryData: Omit<CommunicationTerritory, 'id'>) => {
@@ -121,6 +161,7 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       id: 'terr_' + Date.now(),
     };
     setTerritories((prev) => [newTerritory, ...prev]);
+    brandService.createTerritory(newTerritory).catch((err) => console.warn('Supabase createTerritory sync error:', err));
     return { success: true };
   };
 
@@ -181,6 +222,7 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         createDigitalAsset,
         updateDigitalAsset,
         deleteDigitalAsset,
+        refreshBrandsFromSupabase,
       }}
     >
       {children}

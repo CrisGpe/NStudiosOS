@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Deliverable, DeliverablePhase, ChangeRequest, TechnicalGuide, DeliverableType } from '../types';
 import { INITIAL_DELIVERABLES } from '../data/initialData';
+import { deliverableService } from '../services/supabaseService';
+import { isSupabaseConfigured } from '../lib/supabaseClient';
 
 export interface DeliverablesContextType {
   deliverables: Deliverable[];
@@ -17,6 +19,7 @@ export interface DeliverablesContextType {
   submitChangeRequest: (deliverableId: string, request: any) => void;
   respondToChangeRequest: (deliverableId: string, requestId: string, status: any, notes?: string) => void;
   createClientDeliverableProposal: (data: any) => Deliverable;
+  refreshDeliverablesFromSupabase: () => Promise<void>;
 }
 
 const DeliverablesContext = createContext<DeliverablesContextType | undefined>(undefined);
@@ -43,6 +46,22 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const [selectedDeliverable, setSelectedDeliverable] = useState<Deliverable | null>(null);
 
+  const refreshDeliverablesFromSupabase = async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const dbDel = await deliverableService.fetchDeliverables();
+      if (dbDel && dbDel.length > 0) {
+        setDeliverables(dbDel);
+      }
+    } catch (err) {
+      console.warn('Could not sync deliverables with Supabase, using local fallback:', err);
+    }
+  };
+
+  useEffect(() => {
+    refreshDeliverablesFromSupabase();
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('nataraja_deliverables', JSON.stringify(deliverables));
   }, [deliverables]);
@@ -54,7 +73,7 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const nextNum = deliverables.length + 1;
     const code = 'CF-DEL-' + String(nextNum).padStart(3, '0');
     const newDel: Deliverable = {
-      assigneeId: 'usr_director',
+      assigneeId: 'usr_director_1',
       phase: 'ideacion',
       priority: 'medium',
       format: '9:16 UHD',
@@ -83,23 +102,31 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
         shotlist: [],
       },
     };
+
     setDeliverables((prev) => [newDel, ...prev]);
+    deliverableService.createDeliverable(newDel).catch((err) => console.warn('Supabase createDeliverable sync error:', err));
     return newDel;
   };
 
   const updateDeliverable = (id: string, updates: Partial<Deliverable>) => {
-    setDeliverables((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, ...updates, updatedAt: new Date().toISOString().split('T')[0] } : d))
-    );
+    setDeliverables((prev) => {
+      const next = prev.map((d) => (d.id === id ? { ...d, ...updates, updatedAt: new Date().toISOString().split('T')[0] } : d));
+      const updated = next.find((d) => d.id === id);
+      if (updated) {
+        deliverableService.updateDeliverable(updated).catch((err) => console.warn('Supabase updateDeliverable sync error:', err));
+      }
+      return next;
+    });
   };
 
   const deleteDeliverable = (id: string) => {
     setDeliverables((prev) => prev.filter((d) => d.id !== id));
+    deliverableService.deleteDeliverable(id).catch((err) => console.warn('Supabase deleteDeliverable sync error:', err));
   };
 
   const moveDeliverablePhase = (id: string, directionOrPhase: 'advance' | 'retreat' | DeliverablePhase) => {
-    setDeliverables((prev) =>
-      prev.map((d) => {
+    setDeliverables((prev) => {
+      const next = prev.map((d) => {
         if (d.id !== id) return d;
         if (directionOrPhase !== 'advance' && directionOrPhase !== 'retreat') {
           return {
@@ -117,14 +144,25 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
           phase: PHASE_ORDER[newIndex],
           updatedAt: new Date().toISOString().split('T')[0],
         };
-      })
-    );
+      });
+
+      const updated = next.find((d) => d.id === id);
+      if (updated) {
+        deliverableService.updateDeliverable(updated).catch((err) => console.warn('Supabase updateDeliverable sync error:', err));
+      }
+      return next;
+    });
   };
 
   const updateTechnicalGuide = (deliverableId: string, guide: TechnicalGuide) => {
-    setDeliverables((prev) =>
-      prev.map((d) => (d.id === deliverableId ? { ...d, technicalGuide: guide, updatedAt: new Date().toISOString().split('T')[0] } : d))
-    );
+    setDeliverables((prev) => {
+      const next = prev.map((d) => (d.id === deliverableId ? { ...d, technicalGuide: guide, updatedAt: new Date().toISOString().split('T')[0] } : d));
+      const updated = next.find((d) => d.id === deliverableId);
+      if (updated) {
+        deliverableService.updateDeliverable(updated).catch((err) => console.warn('Supabase updateDeliverable sync error:', err));
+      }
+      return next;
+    });
   };
 
   const submitChangeRequest = (deliverableId: string, request: Omit<ChangeRequest, 'id' | 'requestedAt' | 'status'> & { reason?: string }) => {
@@ -135,8 +173,8 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
       requestedAt: new Date().toISOString().split('T')[0],
       status: 'submitted',
     };
-    setDeliverables((prev) =>
-      prev.map((d) =>
+    setDeliverables((prev) => {
+      const next = prev.map((d) =>
         d.id === deliverableId
           ? {
               ...d,
@@ -144,8 +182,13 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
               updatedAt: new Date().toISOString().split('T')[0],
             }
           : d
-      )
-    );
+      );
+      const updated = next.find((d) => d.id === deliverableId);
+      if (updated) {
+        deliverableService.updateDeliverable(updated).catch((err) => console.warn('Supabase submitChangeRequest sync error:', err));
+      }
+      return next;
+    });
   };
 
   const respondToChangeRequest = (
@@ -154,8 +197,8 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
     status: 'approved' | 'rejected' | 'director_override',
     notes?: string
   ) => {
-    setDeliverables((prev) =>
-      prev.map((d) => {
+    setDeliverables((prev) => {
+      const next = prev.map((d) => {
         if (d.id !== deliverableId) return d;
         return {
           ...d,
@@ -164,8 +207,13 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
           ),
           updatedAt: new Date().toISOString().split('T')[0],
         };
-      })
-    );
+      });
+      const updated = next.find((d) => d.id === deliverableId);
+      if (updated) {
+        deliverableService.updateDeliverable(updated).catch((err) => console.warn('Supabase respondChangeRequest sync error:', err));
+      }
+      return next;
+    });
   };
 
   const createClientDeliverableProposal = (data: {
@@ -188,9 +236,9 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
       id: 'del_' + Date.now(),
       code,
       title: data.title,
-      brandId: data.brandId || 'brand_lumina',
-      territoryId: data.territoryId || 'terr_lumina_01',
-      assigneeId: 'usr_director',
+      brandId: data.brandId || 'brd_apex',
+      territoryId: data.territoryId || 'ter_apx_01',
+      assigneeId: 'usr_director_1',
       phase: 'ideacion',
       priority: 'medium',
       productionStartDate: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
@@ -219,6 +267,7 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
       },
     };
     setDeliverables((prev) => [newProposal, ...prev]);
+    deliverableService.createDeliverable(newProposal).catch((err) => console.warn('Supabase createClientProposal sync error:', err));
     return newProposal;
   };
 
@@ -236,6 +285,7 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
         submitChangeRequest,
         respondToChangeRequest,
         createClientDeliverableProposal,
+        refreshDeliverablesFromSupabase,
       }}
     >
       {children}
