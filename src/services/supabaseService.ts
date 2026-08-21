@@ -188,7 +188,7 @@ export const brandService = {
 
   async createBrand(brand: Brand): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('brands').insert({
+    const { error } = await supabase.from('brands').insert({
       id: brand.id,
       name: brand.name,
       tagline: brand.slogan,
@@ -197,11 +197,15 @@ export const brandService = {
       industry: brand.industry,
       folder_id: brand.driveFolderId,
     });
+    if (error) {
+      console.error('Supabase createBrand error:', error);
+      throw error;
+    }
   },
 
   async updateBrand(brand: Brand): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('brands').update({
+    const { error } = await supabase.from('brands').update({
       name: brand.name,
       tagline: brand.slogan,
       primary_color: brand.primaryColor,
@@ -210,11 +214,19 @@ export const brandService = {
       folder_id: brand.driveFolderId,
       updated_at: new Date().toISOString(),
     }).eq('id', brand.id);
+    if (error) {
+      console.error('Supabase updateBrand error:', error);
+      throw error;
+    }
   },
 
   async deleteBrand(id: string): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('brands').delete().eq('id', id);
+    const { error } = await supabase.from('brands').delete().eq('id', id);
+    if (error) {
+      console.error('Supabase deleteBrand error:', error);
+      throw error;
+    }
   },
 
   async fetchTerritories(): Promise<CommunicationTerritory[]> {
@@ -236,7 +248,7 @@ export const brandService = {
 
   async createTerritory(territory: CommunicationTerritory): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('communication_territories').insert({
+    const { error } = await supabase.from('communication_territories').insert({
       id: territory.id,
       brand_id: territory.brandId,
       name: territory.name,
@@ -244,6 +256,10 @@ export const brandService = {
       color: territory.colorTag,
       active: territory.active,
     });
+    if (error) {
+      console.error('Supabase createTerritory error:', error);
+      throw error;
+    }
   },
 };
 
@@ -295,7 +311,7 @@ export const deliverableService = {
 
   async createDeliverable(del: Deliverable): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('deliverables').insert({
+    const { error } = await supabase.from('deliverables').insert({
       id: del.id,
       code: del.code,
       brand_id: del.brandId,
@@ -313,11 +329,15 @@ export const deliverableService = {
       tech_guide: del.technicalGuide,
       change_requests: del.changeRequests,
     });
+    if (error) {
+      console.error('Supabase createDeliverable error:', error);
+      throw error;
+    }
   },
 
   async updateDeliverable(del: Deliverable): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('deliverables').update({
+    const { error } = await supabase.from('deliverables').update({
       title: del.title,
       brief: del.description,
       format: del.format,
@@ -332,11 +352,19 @@ export const deliverableService = {
       change_requests: del.changeRequests,
       updated_at: new Date().toISOString(),
     }).eq('id', del.id);
+    if (error) {
+      console.error('Supabase updateDeliverable error:', error);
+      throw error;
+    }
   },
 
   async deleteDeliverable(id: string): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('deliverables').delete().eq('id', id);
+    const { error } = await supabase.from('deliverables').delete().eq('id', id);
+    if (error) {
+      console.error('Supabase deleteDeliverable error:', error);
+      throw error;
+    }
   },
 };
 
@@ -371,7 +399,7 @@ export const sandboxService = {
 
   async createSandboxIdea(idea: ClientIdeaSandboxItem): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('client_sandbox_ideas').insert({
+    const { error } = await supabase.from('client_sandbox_ideas').insert({
       id: idea.id,
       brand_id: idea.brandId,
       title: idea.title,
@@ -386,11 +414,19 @@ export const sandboxService = {
       status: idea.status,
       ai_generated_brief: idea.aiGeneratedBrief,
     });
+    if (error) {
+      console.error('Supabase createSandboxIdea error:', error);
+      throw error;
+    }
   },
 
   async deleteSandboxIdea(id: string): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('client_sandbox_ideas').delete().eq('id', id);
+    const { error } = await supabase.from('client_sandbox_ideas').delete().eq('id', id);
+    if (error) {
+      console.error('Supabase deleteSandboxIdea error:', error);
+      throw error;
+    }
   },
 };
 
@@ -462,7 +498,7 @@ export const driveVaultService = {
 
   async createDriveFile(file: DriveFile): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('drive_files').insert({
+    const { error } = await supabase.from('drive_files').insert({
       id: file.id,
       account_id: file.accountId,
       folder_id: file.folderId,
@@ -480,6 +516,10 @@ export const driveVaultService = {
       is_original_master: file.isOriginalMaster,
       uploaded_by_name: file.uploadedByName,
     });
+    if (error) {
+      console.error('Supabase createDriveFile error:', error);
+      throw error;
+    }
   },
 };
 
@@ -507,7 +547,7 @@ export const equipmentService = {
 
   async createEquipment(eq: HardwareEquipment): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('hardware_equipment').insert({
+    const { error } = await supabase.from('hardware_equipment').insert({
       id: eq.id,
       name: eq.name,
       category: eq.category,
@@ -515,6 +555,10 @@ export const equipmentService = {
       serial_number: eq.serialNumber,
       daily_rate_cents: Math.round(eq.dailyRateUSD * 100),
     });
+    if (error) {
+      console.error('Supabase createEquipment error:', error);
+      throw error;
+    }
   },
 
   async fetchReservations(): Promise<EquipmentReservation[]> {
@@ -568,7 +612,7 @@ export const campaignService = {
 
   async createCampaign(camp: Campaign): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('campaigns').insert({
+    const { error } = await supabase.from('campaigns').insert({
       id: camp.id,
       brand_id: camp.brandId,
       name: camp.name,
@@ -580,6 +624,10 @@ export const campaignService = {
       spent_cents: Math.round((camp.spentUSD || 0) * 100),
       kpis: camp.kpis,
     });
+    if (error) {
+      console.error('Supabase createCampaign error:', error);
+      throw error;
+    }
   },
 };
 
@@ -607,13 +655,16 @@ export const auditService = {
 
   async addAuditLog(log: AuditLog): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('audit_logs').insert({
+    const { error } = await supabase.from('audit_logs').insert({
       id: log.id,
       user_id: log.userId,
       action: log.action,
       resource: log.entityType,
       details: { details: log.details, userName: log.userName, userRole: log.userRole, entityId: log.entityId },
     });
+    if (error) {
+      console.error('Supabase addAuditLog error:', error);
+    }
   },
 };
 

@@ -11,7 +11,7 @@ export interface BrandsContextType {
   createBrand: (
     brand: Omit<Brand, 'id' | 'createdAt'>,
     initialTerritories?: Omit<CommunicationTerritory, 'id' | 'brandId'>[]
-  ) => Brand;
+  ) => Promise<Brand>;
   updateBrand: (id: string, brand: Partial<Brand>) => void;
   deleteBrand?: (id: string) => void;
 
@@ -112,10 +112,10 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   };
 
-  const createBrand = (
+  const createBrand = async (
     brandData: Omit<Brand, 'id' | 'createdAt'>,
     initialTerritoriesData?: Omit<CommunicationTerritory, 'id' | 'brandId'>[]
-  ): Brand => {
+  ): Promise<Brand> => {
     const newBrandId = 'brand_' + Date.now();
     const newBrand: Brand = {
       ...brandData,
@@ -124,7 +124,12 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     setBrands((prev) => [newBrand, ...prev]);
-    brandService.createBrand(newBrand).catch((err) => console.warn('Supabase createBrand sync error:', err));
+
+    try {
+      await brandService.createBrand(newBrand);
+    } catch (err) {
+      console.warn('Supabase createBrand sync error:', err);
+    }
 
     if (initialTerritoriesData && initialTerritoriesData.length > 0) {
       const newTerritories: CommunicationTerritory[] = initialTerritoriesData.map((t, index) => ({
@@ -133,9 +138,13 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         brandId: newBrandId,
       }));
       setTerritories((prev) => [...newTerritories, ...prev]);
-      newTerritories.forEach((t) => {
-        brandService.createTerritory(t).catch((err) => console.warn('Supabase createTerritory sync error:', err));
-      });
+      for (const t of newTerritories) {
+        try {
+          await brandService.createTerritory(t);
+        } catch (err) {
+          console.warn('Supabase createTerritory sync error:', err);
+        }
+      }
     }
 
     return newBrand;
