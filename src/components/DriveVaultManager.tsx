@@ -19,7 +19,7 @@ import {
   FileCode,
   X,
 } from 'lucide-react';
-import { DriveFileType } from '../types';
+import { DriveFileType, DriveAccount } from '../types';
 
 export const DriveVaultManager: React.FC = () => {
   const {
@@ -52,8 +52,21 @@ export const DriveVaultManager: React.FC = () => {
   const [uploadFileSize, setUploadFileSize] = useState('250 MB');
   const [uploadFileUrl, setUploadFileUrl] = useState('');
 
+  const fallbackAccount: DriveAccount = {
+    id: 'acc_default',
+    name: 'Google Drive Vault Principal',
+    type: 'corporate_workspace',
+    email: 'drive.vault@nstudios.com',
+    rootFolderId: 'root',
+    quotaTotalGB: 2000,
+    quotaUsedGB: 0,
+    isConnected: true,
+    status: 'active',
+    lastSyncedAt: new Date().toISOString(),
+  };
+
   const currentAccount =
-    driveAccounts.find((a) => a.id === selectedDriveAccountId) || driveAccounts[0];
+    driveAccounts.find((a) => a.id === selectedDriveAccountId) || driveAccounts[0] || fallbackAccount;
 
   // Brand Filtering (Enforce Client isolation)
   const activeBrandFilter =
@@ -248,11 +261,11 @@ export const DriveVaultManager: React.FC = () => {
             <div>
               <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Espacio Utilizado</span>
               <div className="font-mono font-bold text-slate-900 text-xs mt-0.5">
-                {currentAccount.quotaUsedGB} GB / {currentAccount.quotaTotalGB} GB
+                {currentAccount?.quotaUsedGB ?? 0} GB / {currentAccount?.quotaTotalGB ?? 2000} GB
               </div>
             </div>
             <span className="text-xs font-mono font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
-              {Math.round((currentAccount.quotaUsedGB / currentAccount.quotaTotalGB) * 100)}% ocupado
+              {currentAccount?.quotaTotalGB ? Math.round(((currentAccount.quotaUsedGB || 0) / currentAccount.quotaTotalGB) * 100) : 0}% ocupado
             </span>
           </div>
 
@@ -272,7 +285,7 @@ export const DriveVaultManager: React.FC = () => {
             <div>
               <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Cuenta Conectada</span>
               <div className="font-mono text-slate-800 text-xs truncate mt-0.5">
-                {currentAccount.email}
+                {currentAccount?.email || 'drive.vault@nstudios.com'}
               </div>
             </div>
             <span className="text-xs text-emerald-700 font-semibold flex items-center gap-1.5 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
