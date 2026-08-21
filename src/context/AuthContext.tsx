@@ -21,6 +21,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<UserProfile[]>(() => {
+    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_users');
       return saved ? JSON.parse(saved) : INITIAL_USERS;
@@ -30,21 +31,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [currentUser, setCurrentUserState] = useState<UserProfile>(() => {
+    if (isSupabaseConfigured) {
+      return {
+        id: '',
+        name: 'Cargando...',
+        email: '',
+        role: 'webadmin',
+        roleTitle: 'WebAdmin Global',
+        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
+        assignedBrandIds: [],
+      };
+    }
     try {
       const saved = localStorage.getItem('nataraja_current_user');
-      return saved ? JSON.parse(saved) : users[0] || INITIAL_USERS[0];
+      return saved ? JSON.parse(saved) : INITIAL_USERS[0];
     } catch {
-      return users[0] || INITIAL_USERS[0];
+      return INITIAL_USERS[0];
     }
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem('nataraja_is_auth');
-      return saved ? JSON.parse(saved) : true;
-    } catch {
-      return true;
+    if (isSupabaseConfigured) {
+      try {
+        const saved = localStorage.getItem('nataraja_is_auth');
+        return saved === 'true';
+      } catch {
+        return false;
+      }
     }
+    return true;
   });
 
   const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(false);
@@ -54,16 +69,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!isSupabaseConfigured) return;
     try {
       const dbProfiles = await authService.fetchAllProfiles();
+      setUsers(dbProfiles || []);
       if (dbProfiles && dbProfiles.length > 0) {
-        setUsers(dbProfiles);
-        // If current user is in DB, update
         const matchingCurrent = dbProfiles.find((u) => u.id === currentUser.id || u.email === currentUser.email);
         if (matchingCurrent) {
           setCurrentUserState(matchingCurrent);
+        } else if (!currentUser.id) {
+          setCurrentUserState(dbProfiles[0]);
         }
       }
     } catch (err) {
-      console.warn('Could not fetch Supabase profiles, using local fallback:', err);
+      console.warn('Could not fetch Supabase profiles:', err);
     }
   };
 

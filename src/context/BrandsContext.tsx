@@ -32,6 +32,7 @@ const BrandsContext = createContext<BrandsContextType | undefined>(undefined);
 
 export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [brands, setBrands] = useState<Brand[]>(() => {
+    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_brands');
       return saved ? JSON.parse(saved) : INITIAL_BRANDS;
@@ -40,9 +41,10 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   });
 
-  const [selectedBrandId, setSelectedBrandId] = useState<string>(() => brands[0]?.id || '');
+  const [selectedBrandId, setSelectedBrandId] = useState<string>('');
 
   const [territories, setTerritories] = useState<CommunicationTerritory[]>(() => {
+    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_territories');
       return saved ? JSON.parse(saved) : INITIAL_TERRITORIES;
@@ -52,6 +54,7 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   });
 
   const [digitalAssets, setDigitalAssets] = useState<DigitalAsset[]>(() => {
+    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_digital_assets');
       return saved ? JSON.parse(saved) : INITIAL_DIGITAL_ASSETS;
@@ -67,17 +70,17 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         brandService.fetchBrands(),
         brandService.fetchTerritories(),
       ]);
+      setBrands(dbBrands || []);
       if (dbBrands && dbBrands.length > 0) {
-        setBrands(dbBrands);
         if (!selectedBrandId || !dbBrands.some((b) => b.id === selectedBrandId)) {
           setSelectedBrandId(dbBrands[0].id);
         }
+      } else {
+        setSelectedBrandId('');
       }
-      if (dbTerritories && dbTerritories.length > 0) {
-        setTerritories(dbTerritories);
-      }
+      setTerritories(dbTerritories || []);
     } catch (err) {
-      console.warn('Could not sync brands with Supabase, using local state:', err);
+      console.warn('Could not sync brands with Supabase:', err);
     }
   };
 

@@ -41,6 +41,7 @@ const DriveVaultContext = createContext<DriveVaultContextType | undefined>(undef
 
 export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [driveAccounts, setDriveAccounts] = useState<DriveAccount[]>(() => {
+    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_drive_accounts');
       return saved ? JSON.parse(saved) : INITIAL_DRIVE_ACCOUNTS;
@@ -50,6 +51,7 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   });
 
   const [driveFolders, setDriveFolders] = useState<DriveFolder[]>(() => {
+    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_drive_folders');
       return saved ? JSON.parse(saved) : INITIAL_DRIVE_FOLDERS;
@@ -59,6 +61,7 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   });
 
   const [driveFiles, setDriveFiles] = useState<DriveFile[]>(() => {
+    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_drive_files');
       return saved ? JSON.parse(saved) : INITIAL_DRIVE_FILES;
@@ -67,9 +70,7 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   });
 
-  const [selectedDriveAccountId, setSelectedDriveAccountId] = useState<string>(
-    () => driveAccounts[0]?.id || 'acc_workspace_corp'
-  );
+  const [selectedDriveAccountId, setSelectedDriveAccountId] = useState<string>('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [activePreviewFile, setActivePreviewFile] = useState<DriveFile | null>(null);
 
@@ -81,11 +82,14 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         driveVaultService.fetchDriveFolders(),
         driveVaultService.fetchDriveFiles(),
       ]);
-      if (dbAccounts && dbAccounts.length > 0) setDriveAccounts(dbAccounts);
-      if (dbFolders && dbFolders.length > 0) setDriveFolders(dbFolders);
-      if (dbFiles && dbFiles.length > 0) setDriveFiles(dbFiles);
+      setDriveAccounts(dbAccounts || []);
+      setDriveFolders(dbFolders || []);
+      setDriveFiles(dbFiles || []);
+      if (dbAccounts && dbAccounts.length > 0) {
+        setSelectedDriveAccountId(dbAccounts[0].id);
+      }
     } catch (err) {
-      console.warn('Could not sync Drive Vault with Supabase, using local fallback:', err);
+      console.warn('Could not sync Drive Vault with Supabase:', err);
     }
   };
 

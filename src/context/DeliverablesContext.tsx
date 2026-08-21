@@ -36,6 +36,7 @@ const PHASE_ORDER: DeliverablePhase[] = [
 
 export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [deliverables, setDeliverables] = useState<Deliverable[]>(() => {
+    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_deliverables');
       return saved ? JSON.parse(saved) : INITIAL_DELIVERABLES;
@@ -50,11 +51,9 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (!isSupabaseConfigured) return;
     try {
       const dbDel = await deliverableService.fetchDeliverables();
-      if (dbDel && dbDel.length > 0) {
-        setDeliverables(dbDel);
-      }
+      setDeliverables(dbDel || []);
     } catch (err) {
-      console.warn('Could not sync deliverables with Supabase, using local fallback:', err);
+      console.warn('Could not sync deliverables with Supabase:', err);
     }
   };
 

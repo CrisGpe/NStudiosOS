@@ -22,6 +22,7 @@ const ClientSandboxContext = createContext<ClientSandboxContextType | undefined>
 
 export const ClientSandboxProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sandboxIdeas, setSandboxIdeas] = useState<ClientIdeaSandboxItem[]>(() => {
+    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_sandbox_ideas');
       return saved ? JSON.parse(saved) : INITIAL_SANDBOX_IDEAS;
@@ -34,11 +35,9 @@ export const ClientSandboxProvider: React.FC<{ children: React.ReactNode }> = ({
     if (!isSupabaseConfigured) return;
     try {
       const dbIdeas = await sandboxService.fetchSandboxIdeas();
-      if (dbIdeas && dbIdeas.length > 0) {
-        setSandboxIdeas(dbIdeas);
-      }
+      setSandboxIdeas(dbIdeas || []);
     } catch (err) {
-      console.warn('Could not sync sandbox with Supabase, using local fallback:', err);
+      console.warn('Could not sync sandbox with Supabase:', err);
     }
   };
 
