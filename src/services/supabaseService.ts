@@ -561,6 +561,17 @@ export const driveVaultService = {
     }
   },
 
+  async deleteDriveAccount(id: string): Promise<void> {
+    if (!isSupabaseConfigured) return;
+    try {
+      const { error } = await supabase.from('drive_accounts').delete().eq('id', id);
+      if (error) throw error;
+    } catch (err: any) {
+      console.warn('Supabase deleteDriveAccount exception:', err);
+      throw err;
+    }
+  },
+
   async fetchDriveFolders(): Promise<DriveFolder[]> {
     if (!isSupabaseConfigured) return [];
     const { data, error } = await supabase.from('drive_folders').select('*');

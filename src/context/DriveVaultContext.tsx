@@ -23,6 +23,7 @@ export interface DriveVaultContextType {
   activePreviewFile: DriveFile | null;
   setActivePreviewFile: (file: DriveFile | null) => void;
   createDriveAccount: (accountData: Omit<DriveAccount, 'id' | 'lastSyncedAt'>) => Promise<DriveAccount>;
+  deleteDriveAccount: (id: string) => Promise<void>;
   createDriveFolder: (folder: Partial<DriveFolder> & { name: string; accountId: string }) => DriveFolder;
   createDriveFile: (file: Omit<DriveFile, 'id' | 'createdAt' | 'updatedAt'>) => DriveFile;
   deleteDriveFile: (id: string) => void;
@@ -126,6 +127,17 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return newAccount;
   };
 
+  const deleteDriveAccount = async (id: string): Promise<void> => {
+    setDriveAccounts((prev) => prev.filter((a) => a.id !== id));
+    if (selectedDriveAccountId === id) {
+      const remaining = driveAccounts.filter((a) => a.id !== id);
+      setSelectedDriveAccountId(remaining[0]?.id || '');
+    }
+    if (isSupabaseConfigured) {
+      await driveVaultService.deleteDriveAccount(id);
+    }
+  };
+
   const createDriveFolder = (folderData: Partial<DriveFolder> & { name: string; accountId: string }): DriveFolder => {
     const newFolder: DriveFolder = {
       brandId: 'brd_apex',
@@ -222,6 +234,7 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         activePreviewFile,
         setActivePreviewFile,
         createDriveAccount,
+        deleteDriveAccount,
         createDriveFolder,
         createDriveFile,
         deleteDriveFile,

@@ -26,6 +26,7 @@ import {
   ExternalLink,
   Eye,
   EyeOff,
+  Trash2,
 } from 'lucide-react';
 import { UserRole, DriveAccount } from '../types';
 import { supabaseService, brandService } from '../services/supabaseService';
@@ -42,6 +43,7 @@ export const WebAdminDashboard: React.FC = () => {
     currentUser,
     driveAccounts,
     createDriveAccount,
+    deleteDriveAccount,
   } = useApp();
 
   const [searchUserQuery, setSearchUserQuery] = useState('');
@@ -269,6 +271,26 @@ export const WebAdminDashboard: React.FC = () => {
       alert('Error al registrar cuenta de Drive: ' + err.message);
     } finally {
       setIsSavingDrive(false);
+    }
+  };
+
+  // DELETE DRIVE ACCOUNT
+  const handleDeleteDriveAccount = async (id: string, name: string) => {
+    if (!window.confirm(`¿Estás seguro de que deseas desconectar y eliminar la bóveda "${name}"?`)) return;
+    try {
+      await deleteDriveAccount(id);
+      addAuditLog(
+        'BOVEDA_DRIVE_ELIMINADA',
+        `Bóveda "${name}" desconectada y eliminada del sistema`,
+        currentUser.id,
+        'drive',
+        id,
+        currentUser.name,
+        currentUser.role
+      );
+      showToast(`Bóveda "${name}" eliminada exitosamente.`);
+    } catch (err: any) {
+      alert('Error al eliminar bóveda: ' + err.message);
     }
   };
 
@@ -872,10 +894,20 @@ export const WebAdminDashboard: React.FC = () => {
 
                 <div className="flex items-center justify-between text-[10.5px] text-slate-500 pt-1.5 border-t border-slate-200 font-mono">
                   <span>Último sync: {account.lastSyncedAt}</span>
-                  <span className="text-emerald-700 font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Sincronizado</span>
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-emerald-700 font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Sincronizado</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteDriveAccount(account.id, account.name)}
+                      className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                      title="Eliminar / Desconectar Bóveda"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

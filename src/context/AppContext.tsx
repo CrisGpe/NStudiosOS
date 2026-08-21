@@ -155,6 +155,7 @@ export const useApp = () => {
     selectedFolderId: drive.selectedFolderId,
     setSelectedFolderId: drive.setSelectedFolderId,
     createDriveAccount: drive.createDriveAccount,
+    deleteDriveAccount: drive.deleteDriveAccount,
     createDriveFolder: drive.createDriveFolder,
     createDriveFile: drive.createDriveFile,
     deleteDriveFile: drive.deleteDriveFile,

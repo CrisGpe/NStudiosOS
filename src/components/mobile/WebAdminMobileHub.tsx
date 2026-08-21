@@ -21,6 +21,7 @@ import {
   UserPlus,
   Plus,
   Sparkles,
+  Trash2,
 } from 'lucide-react';
 import { UserRole } from '../../types';
 import { supabaseService } from '../../services/supabaseService';
@@ -33,6 +34,7 @@ export const WebAdminMobileHub: React.FC = () => {
     brands,
     driveAccounts,
     createDriveAccount,
+    deleteDriveAccount,
     auditLogs,
     addAuditLog,
     refreshAuditLogs,
@@ -194,6 +196,25 @@ export const WebAdminMobileHub: React.FC = () => {
       alert('Error: ' + err.message);
     } finally {
       setIsSavingDrive(false);
+    }
+  };
+
+  const handleDeleteDriveAccountMobile = async (id: string, name: string) => {
+    if (!window.confirm(`¿Deseas desconectar y eliminar la bóveda "${name}"?`)) return;
+    try {
+      await deleteDriveAccount(id);
+      addAuditLog(
+        'BOVEDA_DRIVE_ELIMINADA',
+        `Bóveda "${name}" eliminada desde móvil`,
+        currentUser.id,
+        'drive',
+        id,
+        currentUser.name,
+        currentUser.role
+      );
+      showToast('Bóveda eliminada.');
+    } catch (err: any) {
+      alert('Error: ' + err.message);
     }
   };
 
@@ -589,10 +610,20 @@ export const WebAdminMobileHub: React.FC = () => {
 
                         <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1.5 border-t border-slate-100 font-mono">
                           <span>Sync: {acc.lastSyncedAt}</span>
-                          <span className="text-emerald-700 font-bold flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                            <span>Listo</span>
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-emerald-700 font-bold flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              <span>Listo</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteDriveAccountMobile(acc.id, acc.name)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                              title="Eliminar Bóveda"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     );
