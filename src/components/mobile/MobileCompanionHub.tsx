@@ -21,6 +21,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { MobileFlashCaptureModal } from './MobileFlashCaptureModal';
+import { WebAdminMobileHub } from './WebAdminMobileHub';
 import { MobileCaptureType, Brand } from '../../types';
 
 type FeedFilterType = 'all' | 'social' | 'media' | 'notes';
@@ -42,6 +43,11 @@ export const MobileCompanionHub: React.FC = () => {
     login,
     logout,
   } = useApp();
+
+  // If user is WebAdmin, render the dedicated WebAdmin Mobile Governance Hub
+  if (currentUser.role === 'webadmin') {
+    return <WebAdminMobileHub />;
+  }
 
   const { driveFiles, createDriveFile, setActivePreviewFile } = useDriveVaultContext();
 
