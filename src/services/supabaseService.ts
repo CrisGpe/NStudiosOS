@@ -519,6 +519,23 @@ export const driveVaultService = {
     }));
   },
 
+  async createDriveAccount(account: DriveAccount): Promise<void> {
+    if (!isSupabaseConfigured) return;
+    const { error } = await supabase.from('drive_accounts').upsert({
+      id: account.id,
+      name: account.name,
+      type: account.type,
+      email: account.email,
+      root_folder_id: account.rootFolderId,
+      quota_total_gb: account.quotaTotalGB,
+      quota_used_gb: account.quotaUsedGB,
+      is_connected: account.isConnected,
+      status: account.status,
+      last_sync_at: new Date().toISOString(),
+    });
+    if (error) throw error;
+  },
+
   async fetchDriveFolders(): Promise<DriveFolder[]> {
     if (!isSupabaseConfigured) return [];
     const { data, error } = await supabase.from('drive_folders').select('*');
@@ -704,32 +721,48 @@ export const campaignService = {
 export const auditService = {
   async fetchAuditLogs(): Promise<AuditLog[]> {
     if (!isSupabaseConfigured) return [];
-    const { data, error } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
-    if (error || !data) return [];
-    return data.map((a) => ({
-      id: a.id,
-      timestamp: a.created_at || new Date().toISOString(),
-      userId: a.user_id || 'usr_system',
-      userName: a.user_name || 'Sistema',
-      userRole: a.user_role || 'webadmin',
-      action: a.action,
-      entityType: a.entity_type || 'system',
-      entityId: a.entity_id || 'sys_root',
-      details: typeof a.details === 'string' ? a.details : JSON.stringify(a.details || {}),
-    }));
+    try {
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(100);
+      if (error || !data) return [];
+      return data.map((a) => ({
+        id: a.id,
+        timestamp: a.timestamp ? new Date(a.timestamp).toLocaleString('es-ES') : new Date().toLocaleString('es-ES'),
+        userId: a.user_id || 'usr_system',
+        userName: a.user_name || 'Sistema',
+        userRole: (a.details?.role || 'webadmin') as UserRole,
+        action: a.action,
+        entityType: a.entity_type || 'system',
+        entityId: a.entity_id || 'sys_root',
+        details: typeof a.details === 'string' ? a.details : JSON.stringify(a.details || {}),
+      }));
+    } catch (err) {
+      console.warn('Could not fetch audit logs from Supabase:', err);
+      return [];
+    }
   },
 
   async addAuditLog(log: AuditLog): Promise<void> {
     if (!isSupabaseConfigured) return;
-    const { error } = await supabase.from('audit_logs').insert({
-      id: log.id,
-      user_id: log.userId,
-      action: log.action,
-      resource: log.entityType,
-      details: { details: log.details, userName: log.userName, userRole: log.userRole, entityId: log.entityId },
-    });
-    if (error) {
-      console.error('Supabase addAuditLog error:', error);
+    try {
+      const { error } = await supabase.from('audit_logs').insert({
+        id: log.id,
+        timestamp: new Date().toISOString(),
+        user_id: log.userId,
+        user_name: log.userName,
+        action: log.action,
+        entity_type: log.entityType,
+        entity_id: log.entityId,
+        details: typeof log.details === 'object' ? log.details : { message: log.details, role: log.userRole },
+      });
+      if (error) {
+        console.warn('Supabase addAuditLog warning:', error.message);
+      }
+    } catch (err) {
+      console.warn('Supabase addAuditLog exception:', err);
     }
   },
 };

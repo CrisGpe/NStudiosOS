@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AuditLog, UserRole } from '../types';
 import { INITIAL_AUDIT_LOGS } from '../data/initialData';
+import { auditService } from '../services/supabaseService';
+import { isSupabaseConfigured } from '../lib/supabaseClient';
 
 export interface AuditContextType {
   auditLogs: AuditLog[];
@@ -13,6 +15,7 @@ export interface AuditContextType {
     userName?: string,
     userRole?: UserRole
   ) => void;
+  refreshAuditLogs: () => Promise<void>;
   resetSystemData: () => void;
 }
 
@@ -27,6 +30,23 @@ export const AuditProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return INITIAL_AUDIT_LOGS;
     }
   });
+
+  const refreshAuditLogs = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const remoteLogs = await auditService.fetchAuditLogs();
+      if (remoteLogs && remoteLogs.length > 0) {
+        setAuditLogs(remoteLogs);
+        localStorage.setItem('nataraja_audit_logs', JSON.stringify(remoteLogs));
+      }
+    } catch (err) {
+      console.warn('Failed to refresh audit logs:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshAuditLogs();
+  }, [refreshAuditLogs]);
 
   useEffect(() => {
     localStorage.setItem('nataraja_audit_logs', JSON.stringify(auditLogs));
@@ -52,7 +72,13 @@ export const AuditProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       entityType,
       entityId,
     };
+
     setAuditLogs((prev) => [newLog, ...prev]);
+
+    // Async persist to Supabase
+    if (isSupabaseConfigured) {
+      auditService.addAuditLog(newLog);
+    }
   };
 
   const resetSystemData = () => {
@@ -65,6 +91,7 @@ export const AuditProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       value={{
         auditLogs,
         addAuditLog,
+        refreshAuditLogs,
         resetSystemData,
       }}
     >

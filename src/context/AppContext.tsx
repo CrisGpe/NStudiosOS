@@ -154,6 +154,7 @@ export const useApp = () => {
     setSelectedDriveAccountId: drive.setSelectedDriveAccountId,
     selectedFolderId: drive.selectedFolderId,
     setSelectedFolderId: drive.setSelectedFolderId,
+    createDriveAccount: drive.createDriveAccount,
     createDriveFolder: drive.createDriveFolder,
     createDriveFile: drive.createDriveFile,
     deleteDriveFile: drive.deleteDriveFile,
@@ -185,6 +186,7 @@ export const useApp = () => {
     // Audit
     auditLogs: audit.auditLogs,
     addAuditLog: audit.addAuditLog,
+    refreshAuditLogs: audit.refreshAuditLogs,
     resetSystemData: audit.resetSystemData,
   };
 };

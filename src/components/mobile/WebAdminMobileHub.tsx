@@ -18,9 +18,13 @@ import {
   Building2,
   RefreshCw,
   Lock,
+  UserPlus,
+  Plus,
+  Sparkles,
 } from 'lucide-react';
 import { UserRole } from '../../types';
 import { supabaseService } from '../../services/supabaseService';
+import { isSupabaseConfigured } from '../../lib/supabaseClient';
 
 export const WebAdminMobileHub: React.FC = () => {
   const {
@@ -28,7 +32,10 @@ export const WebAdminMobileHub: React.FC = () => {
     users,
     brands,
     driveAccounts,
+    createDriveAccount,
     auditLogs,
+    addAuditLog,
+    refreshAuditLogs,
     logout,
   } = useApp();
 
@@ -44,6 +51,23 @@ export const WebAdminMobileHub: React.FC = () => {
   const [editingBrands, setEditingBrands] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isRefreshingLogs, setIsRefreshingLogs] = useState(false);
+
+  // Create User state
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('Nataraja2026!');
+  const [newUserRole, setNewUserRole] = useState<UserRole>('director');
+  const [newUserRoleTitle, setNewUserRoleTitle] = useState('Director Creativo & Executive Producer');
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+
+  // Connect Drive state
+  const [showDriveModal, setShowDriveModal] = useState(false);
+  const [driveName, setDriveName] = useState('Shared Drive Agencia');
+  const [driveEmail, setDriveEmail] = useState('drive@cineflow.studio');
+  const [driveQuotaGB, setDriveQuotaGB] = useState(2000);
+  const [isSavingDrive, setIsSavingDrive] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -85,6 +109,17 @@ export const WebAdminMobileHub: React.FC = () => {
         role: editingRole,
         assigned_brand_ids: editingBrands,
       });
+
+      addAuditLog(
+        'PERMISOS_USUARIO_ACTUALIZADOS',
+        `Permisos de usuario actualizados a ${editingRole}`,
+        currentUser.id,
+        'system',
+        editingUserId,
+        currentUser.name,
+        currentUser.role
+      );
+
       showToast('Permisos guardados en Supabase');
       setEditingUserId(null);
     } catch (err: any) {
@@ -93,6 +128,82 @@ export const WebAdminMobileHub: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleCreateUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserName || !newUserEmail || !newUserPassword) {
+      alert('Completa los campos requeridos.');
+      return;
+    }
+    setIsCreatingUser(true);
+    try {
+      if (isSupabaseConfigured) {
+        await supabaseService.signUp(newUserEmail, newUserPassword, newUserName, newUserRole);
+      }
+
+      addAuditLog(
+        'USUARIO_CREADO_POR_ADMIN',
+        `Usuario ${newUserName} (${newUserRole}) creado desde móvil`,
+        currentUser.id,
+        'system',
+        newUserEmail,
+        currentUser.name,
+        currentUser.role
+      );
+
+      showToast(`Usuario ${newUserName} creado.`);
+      setShowCreateUserModal(false);
+      setNewUserName('');
+      setNewUserEmail('');
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsCreatingUser(false);
+    }
+  };
+
+  const handleCreateDriveSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingDrive(true);
+    try {
+      await createDriveAccount({
+        name: driveName,
+        email: driveEmail,
+        type: 'corporate_workspace',
+        quotaTotalGB: Number(driveQuotaGB),
+        quotaUsedGB: 0,
+        rootFolderId: 'root_mobile',
+        isConnected: true,
+        status: 'active',
+      });
+
+      addAuditLog(
+        'BOVEDA_DRIVE_CONECTADA',
+        `Bóveda conectada desde móvil: ${driveName}`,
+        currentUser.id,
+        'drive',
+        'root_mobile',
+        currentUser.name,
+        currentUser.role
+      );
+
+      showToast('Bóveda conectada con éxito.');
+      setShowDriveModal(false);
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsSavingDrive(false);
+    }
+  };
+
+  const handleRefreshLogsMobile = async () => {
+    setIsRefreshingLogs(true);
+    await refreshAuditLogs();
+    setTimeout(() => {
+      setIsRefreshingLogs(false);
+      showToast('Logs actualizados de Supabase');
+    }, 500);
   };
 
   return (
@@ -166,6 +277,16 @@ export const WebAdminMobileHub: React.FC = () => {
           {/* TAB 1: GESTIÓN DE USUARIOS & ROLES */}
           {activeTab === 'users' && (
             <div className="space-y-3 animate-in fade-in">
+              
+              {/* Create User Button */}
+              <button
+                onClick={() => setShowCreateUserModal(true)}
+                className="w-full py-2.5 px-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-indigo-600/20 cursor-pointer"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>+ Invitar / Crear Miembro del Equipo</span>
+              </button>
+
               <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
@@ -337,7 +458,7 @@ export const WebAdminMobileHub: React.FC = () => {
                     <h4 className="font-bold text-xs text-slate-900">Google Drive API v3</h4>
                   </div>
                   <span className="text-[9.5px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                    🟢 Drive Sync
+                    {driveAccounts.length > 0 ? '🟢 Drive Sync' : 'Sin Bóvedas'}
                   </span>
                 </div>
                 <div className="text-[11px] font-mono text-slate-600 bg-slate-50 p-2.5 rounded-xl space-y-1 border border-slate-100">
@@ -411,55 +532,73 @@ export const WebAdminMobileHub: React.FC = () => {
                   <HardDrive className="w-4 h-4 text-cyan-600" />
                   <span>Bóvedas Google Drive ({driveAccounts.length})</span>
                 </h3>
-                <span className="text-emerald-800 font-mono text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200">
-                  Multi-Cuenta
-                </span>
+                <button
+                  onClick={() => setShowDriveModal(true)}
+                  className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-xl border border-indigo-200 flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Conectar</span>
+                </button>
               </div>
 
-              <div className="space-y-2.5">
-                {driveAccounts.map((acc) => {
-                  const usedPct = Math.round((acc.quotaUsedGB / acc.quotaTotalGB) * 100);
-                  return (
-                    <div
-                      key={acc.id}
-                      className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-2"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-bold text-xs text-slate-900">{acc.name}</h4>
-                          <span className="text-[11px] text-slate-500 font-mono block">
-                            {acc.email}
+              {driveAccounts.length === 0 ? (
+                <div className="bg-white p-6 rounded-2xl border border-dashed border-slate-300 text-center space-y-2">
+                  <p className="text-xs text-slate-500 font-semibold">
+                    No hay bóvedas conectadas.
+                  </p>
+                  <button
+                    onClick={() => setShowDriveModal(true)}
+                    className="px-3 py-1.5 bg-indigo-600 text-white rounded-xl text-xs font-bold"
+                  >
+                    + Conectar Bóveda Drive
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {driveAccounts.map((acc) => {
+                    const usedPct = Math.round((acc.quotaUsedGB / acc.quotaTotalGB) * 100);
+                    return (
+                      <div
+                        key={acc.id}
+                        className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-2"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-bold text-xs text-slate-900">{acc.name}</h4>
+                            <span className="text-[11px] text-slate-500 font-mono block">
+                              {acc.email}
+                            </span>
+                          </div>
+                          <span className="text-[9.5px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
+                            {acc.type === 'corporate_workspace' ? 'Shared Drive' : 'Personal'}
                           </span>
                         </div>
-                        <span className="text-[9.5px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
-                          {acc.type === 'corporate_workspace' ? 'Shared Drive' : 'Personal'}
-                        </span>
-                      </div>
 
-                      <div className="space-y-1 pt-1">
-                        <div className="flex justify-between text-[10.5px] font-mono text-slate-600">
-                          <span>{acc.quotaUsedGB} GB / {acc.quotaTotalGB} GB</span>
-                          <span className="font-bold text-slate-900">{usedPct}%</span>
+                        <div className="space-y-1 pt-1">
+                          <div className="flex justify-between text-[10.5px] font-mono text-slate-600">
+                            <span>{acc.quotaUsedGB} GB / {acc.quotaTotalGB} GB</span>
+                            <span className="font-bold text-slate-900">{usedPct}%</span>
+                          </div>
+                          <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full"
+                              style={{ width: `${usedPct}%` }}
+                            />
+                          </div>
                         </div>
-                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full"
-                            style={{ width: `${usedPct}%` }}
-                          />
-                        </div>
-                      </div>
 
-                      <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1.5 border-t border-slate-100 font-mono">
-                        <span>Sync: {acc.lastSyncedAt}</span>
-                        <span className="text-emerald-700 font-bold flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                          <span>Listo</span>
-                        </span>
+                        <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1.5 border-t border-slate-100 font-mono">
+                          <span>Sync: {acc.lastSyncedAt}</span>
+                          <span className="text-emerald-700 font-bold flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>Listo</span>
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -471,7 +610,13 @@ export const WebAdminMobileHub: React.FC = () => {
                   <Activity className="w-4 h-4 text-emerald-600" />
                   <span>Registro de Auditoría ({auditLogs.length})</span>
                 </h3>
-                <span className="text-[10px] font-mono text-slate-500">En Vivo</span>
+                <button
+                  onClick={handleRefreshLogsMobile}
+                  disabled={isRefreshingLogs}
+                  className="p-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingLogs ? 'animate-spin' : ''}`} />
+                </button>
               </div>
 
               <div className="space-y-2 max-h-[65vh] overflow-y-auto custom-scrollbar">
@@ -504,7 +649,7 @@ export const WebAdminMobileHub: React.FC = () => {
         </main>
 
         {/* ========================================================
-            MODAL / DRAWER: EDIT USER RBAC
+            MODAL 1: EDIT USER RBAC
             ======================================================== */}
         {editingUserId && (
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-2 animate-in fade-in">
@@ -537,7 +682,7 @@ export const WebAdminMobileHub: React.FC = () => {
                 </select>
               </div>
 
-              {/* Brand Assignment (If Client or Staff) */}
+              {/* Brand Assignment */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold text-slate-700 block">
                   Marcas Autorizadas ({editingBrands.length})
@@ -580,6 +725,163 @@ export const WebAdminMobileHub: React.FC = () => {
                   {isSaving ? 'Guardando...' : 'Guardar Cambios'}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            MODAL 2: CREATE USER ON MOBILE
+            ======================================================== */}
+        {showCreateUserModal && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-2 animate-in fade-in">
+            <div className="w-full max-w-sm bg-white rounded-3xl p-5 space-y-3 border border-slate-200 shadow-2xl animate-in slide-in-from-bottom-6 text-xs">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="w-4 h-4 text-indigo-600" />
+                  <h3 className="font-extrabold text-xs text-slate-900">Crear Miembro del Equipo</h3>
+                </div>
+                <button onClick={() => setShowCreateUserModal(false)} className="p-1 text-slate-400">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateUserSubmit} className="space-y-2.5">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Nombre Completo *</label>
+                  <input
+                    type="text"
+                    value={newUserName}
+                    onChange={(e) => setNewUserName(e.target.value)}
+                    placeholder="Ej. Valeria Benítez"
+                    required
+                    className="w-full p-2 border rounded-xl bg-slate-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Correo Electrónico *</label>
+                  <input
+                    type="email"
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                    placeholder="valeria@cineflow.studio"
+                    required
+                    className="w-full p-2 border rounded-xl bg-slate-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Contraseña Inicial *</label>
+                  <input
+                    type="text"
+                    value={newUserPassword}
+                    onChange={(e) => setNewUserPassword(e.target.value)}
+                    required
+                    className="w-full p-2 border rounded-xl bg-slate-50 font-mono"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Rol *</label>
+                  <select
+                    value={newUserRole}
+                    onChange={(e) => setNewUserRole(e.target.value as UserRole)}
+                    className="w-full p-2 border rounded-xl bg-slate-50 font-semibold"
+                  >
+                    <option value="director">🎬 Director Creativo</option>
+                    <option value="colaborador">✂️ Colaborador Técnico</option>
+                    <option value="webadmin">👑 WebAdmin Global</option>
+                    <option value="cliente">🏢 Cliente de Marca</option>
+                  </select>
+                </div>
+
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowCreateUserModal(false)}
+                    className="px-3 py-1.5 rounded-xl text-slate-600"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isCreatingUser}
+                    className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white font-bold"
+                  >
+                    {isCreatingUser ? 'Creando...' : 'Crear Usuario'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================
+            MODAL 3: CONNECT DRIVE ACCOUNT ON MOBILE
+            ======================================================== */}
+        {showDriveModal && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-2 animate-in fade-in">
+            <div className="w-full max-w-sm bg-white rounded-3xl p-5 space-y-3 border border-slate-200 shadow-2xl animate-in slide-in-from-bottom-6 text-xs">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <HardDrive className="w-4 h-4 text-cyan-600" />
+                  <h3 className="font-extrabold text-xs text-slate-900">Conectar Bóveda Drive</h3>
+                </div>
+                <button onClick={() => setShowDriveModal(false)} className="p-1 text-slate-400">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateDriveSubmit} className="space-y-2.5">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Nombre de la Bóveda *</label>
+                  <input
+                    type="text"
+                    value={driveName}
+                    onChange={(e) => setDriveName(e.target.value)}
+                    required
+                    className="w-full p-2 border rounded-xl bg-slate-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Correo de la Cuenta *</label>
+                  <input
+                    type="email"
+                    value={driveEmail}
+                    onChange={(e) => setDriveEmail(e.target.value)}
+                    required
+                    className="w-full p-2 border rounded-xl bg-slate-50"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Cuota (GB)</label>
+                  <input
+                    type="number"
+                    value={driveQuotaGB}
+                    onChange={(e) => setDriveQuotaGB(Number(e.target.value))}
+                    className="w-full p-2 border rounded-xl bg-slate-50"
+                  />
+                </div>
+
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowDriveModal(false)}
+                    className="px-3 py-1.5 rounded-xl text-slate-600"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingDrive}
+                    className="px-3 py-1.5 rounded-xl bg-cyan-600 text-white font-bold"
+                  >
+                    {isSavingDrive ? 'Guardando...' : 'Conectar Bóveda'}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

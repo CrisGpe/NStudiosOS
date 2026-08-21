@@ -22,6 +22,7 @@ export interface DriveVaultContextType {
   setSelectedFolderId: (id: string | null) => void;
   activePreviewFile: DriveFile | null;
   setActivePreviewFile: (file: DriveFile | null) => void;
+  createDriveAccount: (accountData: Omit<DriveAccount, 'id' | 'lastSyncedAt'>) => Promise<DriveAccount>;
   createDriveFolder: (folder: Partial<DriveFolder> & { name: string; accountId: string }) => DriveFolder;
   createDriveFile: (file: Omit<DriveFile, 'id' | 'createdAt' | 'updatedAt'>) => DriveFile;
   deleteDriveFile: (id: string) => void;
@@ -108,6 +109,22 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     localStorage.setItem('nataraja_drive_files', JSON.stringify(driveFiles));
   }, [driveFiles]);
+
+  const createDriveAccount = async (accountData: Omit<DriveAccount, 'id' | 'lastSyncedAt'>): Promise<DriveAccount> => {
+    const newAccount: DriveAccount = {
+      ...accountData,
+      id: 'acc_drive_' + Date.now(),
+      lastSyncedAt: new Date().toISOString(),
+    };
+    setDriveAccounts((prev) => [...prev, newAccount]);
+    if (!selectedDriveAccountId) {
+      setSelectedDriveAccountId(newAccount.id);
+    }
+    if (isSupabaseConfigured) {
+      await driveVaultService.createDriveAccount(newAccount);
+    }
+    return newAccount;
+  };
 
   const createDriveFolder = (folderData: Partial<DriveFolder> & { name: string; accountId: string }): DriveFolder => {
     const newFolder: DriveFolder = {
@@ -204,6 +221,7 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setSelectedFolderId,
         activePreviewFile,
         setActivePreviewFile,
+        createDriveAccount,
         createDriveFolder,
         createDriveFile,
         deleteDriveFile,
