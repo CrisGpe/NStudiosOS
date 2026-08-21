@@ -17,6 +17,7 @@ import {
   ChevronRight,
   UploadCloud,
   FileCode,
+  X,
 } from 'lucide-react';
 import { DriveFileType } from '../types';
 
@@ -555,37 +556,46 @@ export const DriveVaultManager: React.FC = () => {
       {isNewFolderModalOpen && (
         <div
           onClick={() => setIsNewFolderModalOpen(false)}
-          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in-scale"
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 border border-slate-200 shadow-xl"
+            className="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 border border-slate-200 shadow-2xl text-slate-800 animate-in zoom-in-95 my-auto"
           >
-            <h3 className="text-sm font-bold text-slate-900">Nueva Carpeta en Drive</h3>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900">Nueva Carpeta en Drive</h3>
+              <button
+                type="button"
+                onClick={() => setIsNewFolderModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer active:scale-95"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
             <form onSubmit={handleCreateFolder} className="space-y-3.5 text-xs">
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Nombre de la Carpeta</label>
+                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Nombre de la Carpeta *</label>
                 <input
                   type="text"
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
                   placeholder="Ej: 04_Audio_Masters"
                   required
-                  className="input-impeccable"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                 />
               </div>
 
-              <div className="flex justify-end gap-2.5 pt-2">
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsNewFolderModalOpen(false)}
-                  className="btn-secondary"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer active:scale-98"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="btn-primary"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 transition-all cursor-pointer active:scale-98"
                 >
                   Crear Carpeta
                 </button>
@@ -599,33 +609,42 @@ export const DriveVaultManager: React.FC = () => {
       {isUploadModalOpen && (
         <div
           onClick={() => setIsUploadModalOpen(false)}
-          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in-scale"
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl max-w-lg w-full p-5 space-y-4 border border-slate-200 shadow-xl"
+            className="bg-white rounded-2xl max-w-lg w-full p-5 space-y-4 border border-slate-200 shadow-2xl text-slate-800 animate-in zoom-in-95 my-auto"
           >
-            <h3 className="text-sm font-bold text-slate-900">Subir Asset al Drive Vault</h3>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900">Subir Asset al Drive Vault</h3>
+              <button
+                type="button"
+                onClick={() => setIsUploadModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer active:scale-95"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
             <form onSubmit={handleUploadSubmit} className="space-y-3.5 text-xs">
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Nombre del Archivo *</label>
+                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Nombre del Archivo *</label>
                 <input
                   type="text"
                   value={uploadFileName}
                   onChange={(e) => setUploadFileName(e.target.value)}
                   placeholder="Ej: CF-APX-001_Final_Master_Rec709.mov"
                   required
-                  className="input-impeccable"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Tipo de Archivo</label>
+                  <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Tipo de Archivo</label>
                   <select
                     value={uploadFileType}
                     onChange={(e) => setUploadFileType(e.target.value as DriveFileType)}
-                    className="input-impeccable cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all cursor-pointer"
                   >
                     <option value="video">Video Master / Proxy</option>
                     <option value="audio">Audio Stem / Track</option>
@@ -635,41 +654,41 @@ export const DriveVaultManager: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Tamaño Estimado</label>
+                  <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Tamaño Estimado</label>
                   <input
                     type="text"
                     value={uploadFileSize}
                     onChange={(e) => setUploadFileSize(e.target.value)}
                     placeholder="Ej: 1.85 GB"
-                    className="input-impeccable font-mono"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">URL de Google Drive (opcional)</label>
+                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">URL de Google Drive (opcional)</label>
                 <input
                   type="url"
                   value={uploadFileUrl}
                   onChange={(e) => setUploadFileUrl(e.target.value)}
                   placeholder="https://drive.google.com/file/d/..."
-                  className="input-impeccable font-mono"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                 />
               </div>
 
-              <div className="flex justify-end gap-2.5 pt-2">
+              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsUploadModalOpen(false)}
-                  className="btn-secondary"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer active:scale-98"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="btn-primary"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 transition-all cursor-pointer active:scale-98"
                 >
-                  Registrar en Drive
+                  Subir Asset
                 </button>
               </div>
             </form>
@@ -680,3 +699,4 @@ export const DriveVaultManager: React.FC = () => {
     </div>
   );
 };
+

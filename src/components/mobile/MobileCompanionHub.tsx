@@ -47,11 +47,20 @@ export const MobileCompanionHub: React.FC = () => {
   const isClient = currentUser.role === 'cliente';
 
   // Strictly isolated brand for client
-  const activeBrandId = isClient
-    ? (currentUser.assignedBrandIds?.[0] || 'brd_apex')
-    : (currentUser.assignedBrandIds?.[0] || brands[0]?.id || 'brd_apex');
+  const fallbackBrand: Brand = {
+    id: 'brd_default',
+    name: 'Estudio General',
+    industry: 'Producción & Publicidad',
+    primaryColor: '#4f46e5',
+    logo: '',
+    status: 'active',
+  };
 
-  const brand = brands.find((b) => b.id === activeBrandId) || brands[0];
+  const activeBrandId = isClient
+    ? (currentUser.assignedBrandIds?.[0] || 'brd_default')
+    : (currentUser.assignedBrandIds?.[0] || brands[0]?.id || 'brd_default');
+
+  const brand = brands.find((b) => b.id === activeBrandId) || brands[0] || fallbackBrand;
   const brandTerritories = territories.filter((t) => t.brandId === brand.id && t.active);
   const brandIdeas = sandboxIdeas.filter((i) => i.brandId === brand.id);
   const brandDeliverables = deliverables.filter((d) => d.brandId === brand.id);

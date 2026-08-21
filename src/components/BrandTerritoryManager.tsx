@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   XCircle,
   Sparkles,
+  X,
 } from 'lucide-react';
 import {
   Brand,
@@ -531,57 +532,57 @@ export const BrandTerritoryManager: React.FC = () => {
 
       {/* Modal: Crear / Editar Territorio */}
       {isTerritoryModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-xl max-w-lg w-full p-5 shadow-2xl space-y-3.5 animate-in fade-in zoom-in-95 text-slate-800">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-3.5 animate-in zoom-in-95 text-slate-800 my-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-900">
                 {editingTerritory ? 'Editar Territorio de Comunicación' : 'Nuevo Territorio de Comunicación'}
               </h3>
               <button
                 onClick={() => setIsTerritoryModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 text-sm font-bold p-1 cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer active:scale-95"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleTerritorySubmit} className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Nombre del Territorio *</label>
+                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Nombre del Territorio *</label>
                 <input
                   type="text"
                   value={terrName}
                   onChange={(e) => setTerrName(e.target.value)}
                   placeholder="Ej: Rendimiento Extremo & Atletas Pro"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1.5 text-slate-800 text-xs focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Descripción del Territorio</label>
+                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Descripción del Territorio</label>
                 <textarea
                   value={terrDescription}
                   onChange={(e) => setTerrDescription(e.target.value)}
                   rows={2}
                   placeholder="Describe la temática general, arquetipo de marca y narrativa..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1.5 text-slate-800 text-xs focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Objetivo Estratégico</label>
+                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Objetivo Estratégico</label>
                 <input
                   type="text"
                   value={terrObjective}
                   onChange={(e) => setTerrObjective(e.target.value)}
                   placeholder="Ej: Posicionar la marca en segmento premium y generar conversión"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1.5 text-slate-800 text-xs focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">
+                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">
                   Pilares de Contenido (Separados por coma)
                 </label>
                 <input
@@ -589,18 +590,18 @@ export const BrandTerritoryManager: React.FC = () => {
                   value={terrPillars}
                   onChange={(e) => setTerrPillars(e.target.value)}
                   placeholder="Ej: Rutinas Pro, Biometría y Fisiología, Entrevistas a Embajadores"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1.5 text-slate-800 text-xs focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Audiencia Objetivo (Buyer Persona)</label>
+                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Audiencia Objetivo (Buyer Persona)</label>
                 <input
                   type="text"
                   value={terrAudience}
                   onChange={(e) => setTerrAudience(e.target.value)}
                   placeholder="Ej: Maratónicos, deportistas y jóvenes profesionales de 25-40 años"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1.5 text-slate-800 text-xs focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                 />
               </div>
 
@@ -610,24 +611,24 @@ export const BrandTerritoryManager: React.FC = () => {
                   id="terrActiveCheck"
                   checked={terrActive}
                   onChange={(e) => setTerrActive(e.target.checked)}
-                  className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                 />
                 <label htmlFor="terrActiveCheck" className="text-slate-700 font-medium cursor-pointer text-xs">
                   Territorio Activo (Aporta al cumplimiento del mínimo de 3)
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-2.5 pt-3.5 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsTerritoryModalOpen(false)}
-                  className="px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer active:scale-98"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 transition-all cursor-pointer active:scale-98"
                 >
                   {editingTerritory ? 'Guardar Cambios' : 'Crear Territorio'}
                 </button>
@@ -639,39 +640,39 @@ export const BrandTerritoryManager: React.FC = () => {
 
       {/* Modal: Crear / Editar Activo Digital */}
       {isAssetModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-xl max-w-md w-full p-5 shadow-2xl space-y-3.5 animate-in fade-in zoom-in-95 text-slate-800">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-3.5 animate-in zoom-in-95 text-slate-800 my-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-900">
                 {editingAsset ? 'Editar Activo Digital' : 'Registrar Activo Digital'}
               </h3>
               <button
                 onClick={() => setIsAssetModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 text-sm font-bold p-1 cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer active:scale-95"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleAssetSubmit} className="space-y-3 text-xs">
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Nombre del Activo *</label>
+                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Nombre del Activo *</label>
                 <input
                   type="text"
                   value={assetName}
                   onChange={(e) => setAssetName(e.target.value)}
                   placeholder="Ej: Portal Web Oficial & E-commerce"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1.5 text-slate-800 text-xs focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Tipo de Activo *</label>
+                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Tipo de Activo *</label>
                 <select
                   value={assetType}
                   onChange={(e) => setAssetType(e.target.value as AssetType)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1.5 text-slate-800 text-xs focus:ring-1 focus:ring-blue-500 focus:bg-white cursor-pointer"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none cursor-pointer"
                 >
                   <option value="website">Sitio Web / E-Commerce</option>
                   <option value="mobile_app">Aplicación Móvil (iOS / Android)</option>
@@ -683,39 +684,39 @@ export const BrandTerritoryManager: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">URL / Enlace del Activo *</label>
+                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">URL / Enlace del Activo *</label>
                 <input
                   type="url"
                   value={assetUrl}
                   onChange={(e) => setAssetUrl(e.target.value)}
                   placeholder="https://ejemplo.com/recurso"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1.5 text-slate-800 text-xs focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Notas Técnicas / Credenciales</label>
+                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Notas Técnicas / Credenciales</label>
                 <textarea
                   value={assetNotes}
                   onChange={(e) => setAssetNotes(e.target.value)}
                   rows={2}
                   placeholder="Detalles sobre tecnología, accesos o lineamientos..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1.5 text-slate-800 text-xs focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white outline-none transition-all"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-2.5 pt-3.5 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsAssetModalOpen(false)}
-                  className="px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer active:scale-98"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 transition-all cursor-pointer active:scale-98"
                 >
                   {editingAsset ? 'Actualizar Activo' : 'Registrar Activo'}
                 </button>
@@ -728,3 +729,4 @@ export const BrandTerritoryManager: React.FC = () => {
     </div>
   );
 };
+

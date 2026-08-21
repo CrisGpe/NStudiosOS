@@ -289,7 +289,7 @@ export const MobileFlashCaptureModal: React.FC<MobileFlashCaptureModalProps> = (
                     }}
                     placeholder="https://www.tiktok.com/@... o https://instagram.com/reel/..."
                     required
-                    className="input-impeccable pr-10 text-xs font-mono"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 pr-10 text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                   />
                   {url && (
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm">
@@ -335,7 +335,7 @@ export const MobileFlashCaptureModal: React.FC<MobileFlashCaptureModalProps> = (
                       <h4 className="text-xs font-bold text-slate-800">Tomar Foto o Subir desde Galería</h4>
                       <p className="text-[11px] text-slate-500">Imágenes PNG, JPG o clips de video cortos</p>
                     </div>
-                    <label className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold cursor-pointer shadow-2xs">
+                    <label className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-semibold cursor-pointer shadow-2xs active:scale-95 transition-all">
                       <Upload className="w-3.5 h-3.5" />
                       <span>Abrir Cámara / Galería</span>
                       <input
@@ -412,7 +412,7 @@ export const MobileFlashCaptureModal: React.FC<MobileFlashCaptureModalProps> = (
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Ej: POV en set con luces de neón"
                 required
-                className="input-impeccable text-xs"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
               />
             </div>
 
@@ -425,7 +425,7 @@ export const MobileFlashCaptureModal: React.FC<MobileFlashCaptureModalProps> = (
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Describe la atmósfera, producto, llamado a la acción o música..."
                 rows={2}
-                className="input-impeccable text-xs"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
               />
             </div>
 
@@ -437,7 +437,7 @@ export const MobileFlashCaptureModal: React.FC<MobileFlashCaptureModalProps> = (
                 <select
                   value={territoryId}
                   onChange={(e) => setTerritoryId(e.target.value)}
-                  className="input-impeccable text-xs cursor-pointer"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all cursor-pointer"
                 >
                   {territories.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -455,7 +455,7 @@ export const MobileFlashCaptureModal: React.FC<MobileFlashCaptureModalProps> = (
                   type="text"
                   value={format}
                   onChange={(e) => setFormat(e.target.value)}
-                  className="input-impeccable text-xs font-mono"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                 />
               </div>
             </div>
@@ -465,7 +465,7 @@ export const MobileFlashCaptureModal: React.FC<MobileFlashCaptureModalProps> = (
           <div className="pt-2">
             <button
               type="submit"
-              className="w-full btn-primary py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 shadow-md cursor-pointer"
+              className="w-full py-3 rounded-2xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-98"
             >
               <Send className="w-4 h-4" />
               <span>Enviar Referencia a N. Studios OS</span>

@@ -4,14 +4,13 @@ import {
   X,
   Target,
   Plus,
-  DollarSign,
   Trash2,
   BarChart3,
-  Megaphone,
   ShoppingBag,
   Users,
+  Megaphone,
 } from 'lucide-react';
-import { CampaignStatus, CampaignKPI, CampaignType } from '../types';
+import { CampaignKPI, CampaignType, CampaignStatus } from '../types';
 
 export const CreateCampaignModal: React.FC = () => {
   const {
@@ -24,47 +23,36 @@ export const CreateCampaignModal: React.FC = () => {
     currentUser,
   } = useApp();
 
-  const initialBrand = currentUser.role === 'cliente' && currentUser.assignedBrandIds?.[0]
-    ? currentUser.assignedBrandIds[0]
-    : selectedBrandId !== 'all'
-    ? selectedBrandId
-    : brands[0]?.id || '';
-
-  const [brandId, setBrandId] = useState(initialBrand);
-  const [campaignType, setCampaignType] = useState<CampaignType>('performance_paid_ads');
   const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [objective, setObjective] = useState('');
-  const [startDate, setStartDate] = useState(new Date().toISOString().substring(0, 10));
-  const [endDate, setEndDate] = useState(
-    new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10)
+  const [brandId, setBrandId] = useState(
+    currentUser.role === 'cliente'
+      ? currentUser.assignedBrandIds[0] || brands[0]?.id || ''
+      : selectedBrandId || brands[0]?.id || ''
   );
-  const [productionBudgetUSD, setProductionBudgetUSD] = useState<number>(10000);
-  const [adSpendUSD, setAdSpendUSD] = useState<number>(15000);
-  const [targetROAS, setTargetROAS] = useState<number>(4.0);
-  const [targetCPAUSD, setTargetCPAUSD] = useState<number>(12.5);
-  const [status, setStatus] = useState<CampaignStatus>('active');
+  const [objective, setObjective] = useState('');
+  const [campaignType, setCampaignType] = useState<CampaignType>('performance_paid_ads');
+  const [startDate, setStartDate] = useState('2026-09-01');
+  const [endDate, setEndDate] = useState('2026-09-30');
+  const [productionBudgetUSD, setProductionBudgetUSD] = useState<number>(3500);
+  const [adSpendUSD, setAdSpendUSD] = useState<number>(5000);
+  const [targetROAS, setTargetROAS] = useState<number>(4.2);
+  const [targetCPAUSD, setTargetCPAUSD] = useState<number>(14.5);
+  const [status, setStatus] = useState<CampaignStatus>('planning');
   const [selectedChannels, setSelectedChannels] = useState<string[]>([
-    'Meta Ads (Instagram)',
+    'Meta Ads (Reels)',
     'TikTok Ads',
   ]);
   const [selectedDeliverableIds, setSelectedDeliverableIds] = useState<string[]>([]);
-  
+
   const [kpis, setKpis] = useState<Omit<CampaignKPI, 'id'>[]>([
-    { metric: 'Entregables Producidos', targetValue: 3, currentValue: 0, unit: 'spots' },
-    { metric: 'Alcance Estimado', targetValue: 300000, currentValue: 0, unit: 'vistas' },
-    { metric: 'Tasa de Interacción (CTR)', targetValue: 4.0, currentValue: 0, unit: '%' },
+    { metric: 'Retorno de Inversión (ROAS)', targetValue: 4.2, currentValue: 0, unit: 'x' },
+    { metric: 'Costo por Adquisición (CPA)', targetValue: 14.5, currentValue: 0, unit: 'USD' },
+    { metric: 'Visualizaciones 3s Retención', targetValue: 120000, currentValue: 0, unit: 'vistas' },
   ]);
 
   if (!isCreateCampaignModalOpen) return null;
 
   const brandDeliverables = deliverables.filter((d) => d.brandId === brandId);
-
-  const toggleDeliverable = (delId: string) => {
-    setSelectedDeliverableIds((prev) =>
-      prev.includes(delId) ? prev.filter((id) => id !== delId) : [...prev, delId]
-    );
-  };
 
   const toggleChannel = (channel: string) => {
     setSelectedChannels((prev) =>
@@ -72,10 +60,16 @@ export const CreateCampaignModal: React.FC = () => {
     );
   };
 
+  const toggleDeliverable = (id: string) => {
+    setSelectedDeliverableIds((prev) =>
+      prev.includes(id) ? prev.filter((delId) => delId !== id) : [...prev, id]
+    );
+  };
+
   const handleAddKpi = () => {
     setKpis((prev) => [
       ...prev,
-      { metric: 'Nueva Métrica', targetValue: 100, currentValue: 0, unit: 'unidades' },
+      { metric: 'Nuevo KPI', targetValue: 100, currentValue: 0, unit: 'unidades' },
     ]);
   };
 
@@ -106,7 +100,7 @@ export const CreateCampaignModal: React.FC = () => {
     createCampaign({
       brandId,
       name: name.trim(),
-      description: description.trim() || objective.trim(),
+      description: objective.trim(),
       objective: objective.trim(),
       campaignType,
       startDate,
@@ -138,22 +132,21 @@ export const CreateCampaignModal: React.FC = () => {
   return (
     <div
       onClick={() => setIsCreateCampaignModalOpen(false)}
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in-scale"
+      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="glass-panel-elevated rounded-2xl max-w-3xl w-full shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col border border-white/15 text-slate-100"
+        className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col border border-slate-200 text-slate-800 animate-in zoom-in-95"
       >
-        
         {/* Header */}
-        <div className="p-4 border-b border-white/10 bg-slate-950/80 flex items-center justify-between shrink-0">
+        <div className="p-4 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300">
-              <Target className="w-4 h-4" />
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-2xs">
+              <Target className="w-4.5 h-4.5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Crear Nueva Campaña Comercial Digital</h3>
-              <p className="text-[11px] text-slate-400">
+              <h3 className="text-sm font-bold text-slate-900">Crear Nueva Campaña Comercial Digital</h3>
+              <p className="text-[11px] text-slate-500">
                 Configuración de pauta publicitaria (Paid Ads), entregables vinculados y métricas ROAS
               </p>
             </div>
@@ -161,7 +154,7 @@ export const CreateCampaignModal: React.FC = () => {
 
           <button
             onClick={() => setIsCreateCampaignModalOpen(false)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 cursor-pointer transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer active:scale-95"
           >
             <X className="w-4 h-4" />
           </button>
@@ -169,10 +162,9 @@ export const CreateCampaignModal: React.FC = () => {
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 overflow-y-auto flex-1 space-y-4 text-xs">
-          
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                 Nombre de la Campaña *
               </label>
               <input
@@ -181,12 +173,12 @@ export const CreateCampaignModal: React.FC = () => {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Ej: Lanzamiento Kinetic Aero Q3 2026"
                 required
-                className="input-impeccable"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                 Marca / Cliente *
               </label>
               <select
@@ -196,20 +188,24 @@ export const CreateCampaignModal: React.FC = () => {
                   setSelectedDeliverableIds([]);
                 }}
                 disabled={currentUser.role === 'cliente'}
-                className="input-impeccable cursor-pointer"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all cursor-pointer disabled:opacity-50"
               >
-                {brands.map((b) => (
-                  <option key={b.id} value={b.id} className="bg-slate-900 text-white">
-                    {b.name}
-                  </option>
-                ))}
+                {brands.length === 0 ? (
+                  <option value="">Sin marcas disponibles</option>
+                ) : (
+                  brands.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           </div>
 
           {/* Campaign Type Selector */}
           <div>
-            <label className="block text-[11px] font-semibold text-slate-300 mb-1.5">
+            <label className="block text-[11px] font-semibold text-slate-700 mb-1.5">
               Tipo de Campaña Comercial *
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -225,13 +221,13 @@ export const CreateCampaignModal: React.FC = () => {
                   <div
                     key={t.id}
                     onClick={() => setCampaignType(t.id as CampaignType)}
-                    className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 cursor-pointer text-center transition-all ${
+                    className={`p-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 cursor-pointer text-center transition-all active:scale-95 ${
                       isSelected
-                        ? 'bg-indigo-600/30 border-indigo-500 text-white font-bold shadow-md shadow-indigo-500/20'
-                        : 'bg-slate-950/60 border-white/10 text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                        ? 'bg-indigo-50 border-indigo-500 text-indigo-900 font-bold shadow-2xs'
+                        : 'bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                     }`}
                   >
-                    <Icon className="w-4 h-4 text-indigo-400" />
+                    <Icon className={`w-4 h-4 ${isSelected ? 'text-indigo-600' : 'text-slate-400'}`} />
                     <span className="text-[10.5px] leading-tight">{t.label}</span>
                   </div>
                 );
@@ -240,7 +236,7 @@ export const CreateCampaignModal: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+            <label className="block text-[11px] font-semibold text-slate-700 mb-1">
               Objetivo Estratégico & Comercial *
             </label>
             <textarea
@@ -249,13 +245,13 @@ export const CreateCampaignModal: React.FC = () => {
               rows={2}
               placeholder="Ej: Generar 15k conversiones de compra directa y mantener ROAS > 4.0x..."
               required
-              className="input-impeccable"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                 Fecha de Inicio *
               </label>
               <input
@@ -263,12 +259,12 @@ export const CreateCampaignModal: React.FC = () => {
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 required
-                className="input-impeccable"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all cursor-pointer"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                 Fecha de Cierre *
               </label>
               <input
@@ -276,38 +272,38 @@ export const CreateCampaignModal: React.FC = () => {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 required
-                className="input-impeccable"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all cursor-pointer"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                 Presupuesto Producción (USD)
               </label>
               <input
                 type="number"
                 value={productionBudgetUSD}
                 onChange={(e) => setProductionBudgetUSD(Number(e.target.value))}
-                className="input-impeccable font-mono"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                 Pauta Publicitaria (USD)
               </label>
               <input
                 type="number"
                 value={adSpendUSD}
                 onChange={(e) => setAdSpendUSD(Number(e.target.value))}
-                className="input-impeccable font-mono text-rose-400 font-bold"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-rose-700 font-bold font-mono focus:bg-white focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none transition-all"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                 ROAS Objetivo (Retorno x)
               </label>
               <input
@@ -316,12 +312,12 @@ export const CreateCampaignModal: React.FC = () => {
                 value={targetROAS}
                 onChange={(e) => setTargetROAS(Number(e.target.value))}
                 placeholder="4.0"
-                className="input-impeccable font-mono text-emerald-400 font-bold"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-emerald-700 font-bold font-mono focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                 CPA Máximo Permitido (USD)
               </label>
               <input
@@ -330,30 +326,30 @@ export const CreateCampaignModal: React.FC = () => {
                 value={targetCPAUSD}
                 onChange={(e) => setTargetCPAUSD(Number(e.target.value))}
                 placeholder="12.5"
-                className="input-impeccable font-mono text-indigo-400 font-bold"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-indigo-700 font-bold font-mono focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                 Estado Inicial
               </label>
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as CampaignStatus)}
-                className="input-impeccable cursor-pointer"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all cursor-pointer"
               >
-                <option value="planning" className="bg-slate-900 text-white">🟡 En Planificación</option>
-                <option value="active" className="bg-slate-900 text-white">🟢 Activa en Circulación</option>
-                <option value="completed" className="bg-slate-900 text-white">🔵 Finalizada</option>
-                <option value="paused" className="bg-slate-900 text-white">⚪ Pausada</option>
+                <option value="planning">🟡 En Planificación</option>
+                <option value="active">🟢 Activa en Circulación</option>
+                <option value="completed">🔵 Finalizada</option>
+                <option value="paused">⚪ Pausada</option>
               </select>
             </div>
           </div>
 
           {/* Ad Channels Selector */}
           <div className="space-y-1.5 pt-1">
-            <label className="block text-[11px] font-semibold text-slate-300">
+            <label className="block text-[11px] font-semibold text-slate-700">
               Canales de Distribución & Paid Media:
             </label>
             <div className="flex flex-wrap gap-2">
@@ -364,10 +360,10 @@ export const CreateCampaignModal: React.FC = () => {
                     type="button"
                     key={chan}
                     onClick={() => toggleChannel(chan)}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                    className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer active:scale-95 ${
                       isSelected
-                        ? 'bg-indigo-600 text-white shadow-xs border border-indigo-400/40'
-                        : 'bg-slate-950/70 border border-white/10 text-slate-400 hover:text-white hover:bg-white/5'
+                        ? 'bg-indigo-600 text-white shadow-2xs border border-indigo-600'
+                        : 'bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                     }`}
                   >
                     {chan}
@@ -378,39 +374,39 @@ export const CreateCampaignModal: React.FC = () => {
           </div>
 
           {/* Linked Deliverables Multi-Check */}
-          <div className="space-y-1.5 pt-2 border-t border-white/10">
-            <label className="block text-[11px] font-semibold text-slate-300">
+          <div className="space-y-1.5 pt-2 border-t border-slate-100">
+            <label className="block text-[11px] font-semibold text-slate-700">
               Vincular Entregables del Pipeline ({brandDeliverables.length} disponibles):
             </label>
             {brandDeliverables.length === 0 ? (
-              <p className="text-slate-400 text-xs italic">
+              <p className="text-slate-400 text-xs italic bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
                 No hay entregables registrados para esta marca aún.
               </p>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto custom-scrollbar p-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-36 overflow-y-auto p-1">
                 {brandDeliverables.map((del) => {
                   const isChecked = selectedDeliverableIds.includes(del.id);
                   return (
                     <div
                       key={del.id}
                       onClick={() => toggleDeliverable(del.id)}
-                      className={`p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                      className={`p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all active:scale-98 ${
                         isChecked
-                          ? 'bg-indigo-950/50 border-indigo-500/60 text-indigo-200 shadow-xs'
-                          : 'bg-slate-950/60 border-white/10 text-slate-400 hover:bg-white/5'
+                          ? 'bg-indigo-50/80 border-indigo-300 text-indigo-900 shadow-2xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                       }`}
                     >
                       <div className="min-w-0 pr-2">
-                        <span className="font-mono font-bold text-[10px] text-indigo-400 block truncate">
+                        <span className="font-mono font-bold text-[10px] text-indigo-600 block truncate">
                           {del.code}
                         </span>
-                        <span className="text-xs truncate block text-slate-200">{del.title}</span>
+                        <span className="text-xs truncate block text-slate-800 font-medium">{del.title}</span>
                       </div>
                       <input
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => {}}
-                        className="rounded border-white/20 text-indigo-600 focus:ring-indigo-500"
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                       />
                     </div>
                   );
@@ -420,17 +416,17 @@ export const CreateCampaignModal: React.FC = () => {
           </div>
 
           {/* Dynamic KPIs Setup */}
-          <div className="space-y-2 pt-2 border-t border-white/10">
+          <div className="space-y-2 pt-2 border-t border-slate-100">
             <div className="flex items-center justify-between">
-              <label className="block text-[11px] font-semibold text-slate-300">
+              <label className="block text-[11px] font-semibold text-slate-700">
                 Métricas Clave de Rendimiento (KPIs Objetivos)
               </label>
               <button
                 type="button"
                 onClick={handleAddKpi}
-                className="flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold cursor-pointer"
+                className="flex items-center gap-1 text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer active:scale-95"
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="w-3.5 h-3.5" />
                 <span>Agregar KPI</span>
               </button>
             </div>
@@ -439,7 +435,7 @@ export const CreateCampaignModal: React.FC = () => {
               {kpis.map((kpi, idx) => (
                 <div
                   key={idx}
-                  className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-slate-950/60 p-2 rounded-xl border border-white/10"
+                  className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-slate-50/70 p-2.5 rounded-xl border border-slate-200"
                 >
                   <div className="sm:col-span-5">
                     <input
@@ -447,7 +443,7 @@ export const CreateCampaignModal: React.FC = () => {
                       value={kpi.metric}
                       onChange={(e) => handleUpdateKpi(idx, 'metric', e.target.value)}
                       placeholder="Nombre de la Métrica"
-                      className="input-impeccable py-1"
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
                     />
                   </div>
                   <div className="sm:col-span-3">
@@ -456,7 +452,7 @@ export const CreateCampaignModal: React.FC = () => {
                       value={kpi.targetValue}
                       onChange={(e) => handleUpdateKpi(idx, 'targetValue', Number(e.target.value))}
                       placeholder="Meta"
-                      className="input-impeccable py-1 font-mono"
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 font-mono focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
                     />
                   </div>
                   <div className="sm:col-span-3">
@@ -465,14 +461,14 @@ export const CreateCampaignModal: React.FC = () => {
                       value={kpi.unit}
                       onChange={(e) => handleUpdateKpi(idx, 'unit', e.target.value)}
                       placeholder="Unidad (vistas, %)"
-                      className="input-impeccable py-1"
+                      className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none"
                     />
                   </div>
                   <div className="sm:col-span-1 flex justify-center">
                     <button
                       type="button"
                       onClick={() => handleRemoveKpi(idx)}
-                      className="p-1 rounded-md text-slate-400 hover:text-red-400 cursor-pointer"
+                      className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer active:scale-95"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -482,19 +478,20 @@ export const CreateCampaignModal: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/10">
+          <div className="flex items-center justify-end gap-2.5 pt-3.5 border-t border-slate-100">
             <button
               type="button"
               onClick={() => setIsCreateCampaignModalOpen(false)}
-              className="btn-secondary"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer active:scale-98"
             >
               Cancelar
             </button>
             <button
               type="submit"
-              className="btn-primary"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 transition-all cursor-pointer active:scale-98 flex items-center gap-1.5"
             >
-              Crear Campaña Comercial
+              <Target className="w-3.5 h-3.5" />
+              <span>Crear Campaña Comercial</span>
             </button>
           </div>
         </form>

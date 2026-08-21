@@ -13,6 +13,7 @@ import {
   Layers,
   XCircle,
   Video,
+  X,
 } from 'lucide-react';
 import {
   HardwareEquipment,
@@ -360,45 +361,45 @@ export const EquipmentManager: React.FC = () => {
 
       {/* Modal: Reserva de Hardware con Detección de Colisiones */}
       {isBookModalOpen && targetEquipment && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-xl max-w-lg w-full p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 text-slate-800">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 text-slate-800 my-auto">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Reserva de Hardware Audiovisual</h3>
                 <p className="text-[11px] text-slate-500">Verificación automática de colisiones en tiempo real.</p>
               </div>
               <button
+                type="button"
                 onClick={() => setIsBookModalOpen(false)}
-                className="text-slate-400 hover:text-slate-700 text-sm font-bold p-1 cursor-pointer"
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer active:scale-95"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleBookingSubmit} className="space-y-3 text-xs">
-              
+            <form onSubmit={handleBookingSubmit} className="space-y-3.5 text-xs">
               {/* Equipment Summary Banner */}
-              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 flex items-center gap-2.5">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center gap-3">
                 <img
                   src={targetEquipment.image}
                   alt={targetEquipment.name}
-                  className="w-10 h-10 rounded-md object-cover ring-1 ring-slate-200"
+                  className="w-11 h-11 rounded-xl object-cover ring-1 ring-slate-200 shrink-0"
                 />
                 <div>
-                  <h4 className="font-bold text-slate-900">{targetEquipment.name}</h4>
+                  <h4 className="font-bold text-slate-900 text-xs">{targetEquipment.name}</h4>
                   <p className="text-[10px] text-slate-500 font-mono">{targetEquipment.model}</p>
-                  <span className="text-[10px] text-amber-700 font-bold font-mono">
+                  <span className="text-[10.5px] text-amber-700 font-bold font-mono">
                     ${targetEquipment.dailyRateUSD} USD / día de rodaje
                   </span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Entregable Asociado al Rodaje *</label>
+                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Entregable Asociado al Rodaje *</label>
                 <select
                   value={selectedDeliverableId}
                   onChange={(e) => setSelectedDeliverableId(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1.5 text-slate-800 text-xs focus:ring-1 focus:ring-blue-500 focus:bg-white cursor-pointer"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white outline-none transition-all cursor-pointer"
                 >
                   {deliverables.map((del) => {
                     const brand = brands.find((b) => b.id === del.brandId);
@@ -411,25 +412,25 @@ export const EquipmentManager: React.FC = () => {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Fecha Inicio de Rodaje *</label>
+                  <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Fecha Inicio de Rodaje *</label>
                   <input
                     type="date"
                     value={bookStartDate}
                     onChange={(e) => handleDateChange(e.target.value, bookEndDate)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1.5 text-slate-800 text-xs focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white outline-none transition-all cursor-pointer"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Fecha Fin de Rodaje *</label>
+                  <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Fecha Fin de Rodaje *</label>
                   <input
                     type="date"
                     value={bookEndDate}
                     onChange={(e) => handleDateChange(bookStartDate, e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1.5 text-slate-800 text-xs focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white outline-none transition-all cursor-pointer"
                     required
                   />
                 </div>
@@ -437,48 +438,48 @@ export const EquipmentManager: React.FC = () => {
 
               {/* Collision Alert Banner */}
               {collisionWarning ? (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-2.5 text-red-900 flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-rose-900 flex items-start gap-2.5 animate-in fade-in">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                   <div>
                     <span className="font-bold block text-xs">COLISIÓN DE RESERVA DETECTADA</span>
-                    <span className="text-[11px] leading-tight block mt-0.5">{collisionWarning}</span>
+                    <span className="text-[11px] leading-tight block mt-0.5 text-rose-700">{collisionWarning}</span>
                   </div>
                 </div>
               ) : (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2 text-emerald-900 flex items-center gap-2">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-emerald-900 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span className="text-[11px] font-medium">
+                  <span className="text-[11px] font-medium text-emerald-800">
                     Hardware disponible sin colisiones para el rango seleccionado.
                   </span>
                 </div>
               )}
 
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">Notas de Producción & Locación</label>
+                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Notas de Producción & Locación</label>
                 <textarea
                   value={bookNotes}
                   onChange={(e) => setBookNotes(e.target.value)}
                   rows={2}
                   placeholder="Ej: Rodaje en exteriores de pista atlética en horario matutino..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-md px-2.5 py-1.5 text-slate-800 text-xs focus:ring-1 focus:ring-blue-500 focus:bg-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 text-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white outline-none transition-all"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-2.5 pt-3.5 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsBookModalOpen(false)}
-                  className="px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer active:scale-98"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={!!collisionWarning}
-                  className={`px-4 py-1.5 rounded-md text-white font-semibold shadow-xs cursor-pointer ${
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold text-white shadow-md transition-all cursor-pointer active:scale-98 ${
                     collisionWarning
                       ? 'bg-slate-400 cursor-not-allowed opacity-50'
-                      : 'bg-amber-600 hover:bg-amber-700'
+                      : 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/20'
                   }`}
                 >
                   Confirmar Reserva de Hardware

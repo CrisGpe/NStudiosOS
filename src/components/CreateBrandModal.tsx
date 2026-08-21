@@ -101,19 +101,19 @@ export const CreateBrandModal: React.FC = () => {
       objective: t.objective.trim(),
       contentPillars: t.contentPillars.split(',').map((p) => p.trim()).filter(Boolean),
       targetAudience: t.targetAudience.trim() || 'Audiencia General',
-      active: true,
       colorTag: t.colorTag,
+      active: true,
     }));
 
     const createdBrand = createBrand(
       {
         name: name.trim(),
         industry: industry.trim(),
-        slogan: slogan.trim() || `Innovación y Liderazgo en ${industry.trim()}`,
+        slogan: slogan.trim() || `Impulsando la visión de ${name.trim()}`,
         primaryColor,
         contactPerson: contactPerson.trim(),
         contactEmail: contactEmail.trim(),
-        logo: `https://ui-avatars.com/api/?name=${encodeURIComponent(name.trim())}&background=${primaryColor.replace('#', '')}&color=fff&bold=true`,
+        logo: `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(name.trim())}`,
       },
       initialTerrs
     );
@@ -125,22 +125,21 @@ export const CreateBrandModal: React.FC = () => {
   return (
     <div
       onClick={() => setIsCreateBrandModalOpen(false)}
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in-scale"
+      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-in fade-in"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="glass-panel-elevated rounded-2xl max-w-3xl w-full shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col border border-white/15 text-slate-100"
+        className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col border border-slate-200 text-slate-800 animate-in zoom-in-95"
       >
-        
         {/* Header */}
-        <div className="p-4 border-b border-white/10 bg-slate-950/80 flex items-center justify-between shrink-0">
+        <div className="p-4 border-b border-slate-100 bg-slate-50/80 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400">
-              <Building2 className="w-4 h-4" />
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-2xs">
+              <Building2 className="w-4.5 h-4.5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Registrar Nueva Marca / Cliente</h3>
-              <p className="text-[11px] text-slate-400">
+              <h3 className="text-sm font-bold text-slate-900">Registrar Nueva Marca / Cliente</h3>
+              <p className="text-[11px] text-slate-500">
                 Alta de cliente con validación obligatoria de ≥ 3 territorios de comunicación
               </p>
             </div>
@@ -148,7 +147,7 @@ export const CreateBrandModal: React.FC = () => {
 
           <button
             onClick={() => setIsCreateBrandModalOpen(false)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 cursor-pointer transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer active:scale-95"
           >
             <X className="w-4 h-4" />
           </button>
@@ -156,66 +155,65 @@ export const CreateBrandModal: React.FC = () => {
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-5 overflow-y-auto flex-1 space-y-4 text-xs">
-          
           {formError && (
-            <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 flex items-start gap-2 animate-in-scale">
-              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-2 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
               <span className="text-xs font-semibold">{formError}</span>
             </div>
           )}
 
           {/* SECTION 1: Brand Info */}
           <div className="space-y-3">
-            <h4 className="font-bold text-white text-xs uppercase tracking-wider">
+            <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
               1. Identidad de la Marca
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                   Nombre de la Marca *
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Ej: Hyperion Dynamics"
+                  placeholder="Ej: Apex Athletics"
                   required
-                  className="input-impeccable"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                   Industria / Sector *
                 </label>
                 <input
                   type="text"
                   value={industry}
                   onChange={(e) => setIndustry(e.target.value)}
-                  placeholder="Ej: Robotics & Automotriz"
+                  placeholder="Ej: Ropa & Calzado Deportivo"
                   required
-                  className="input-impeccable"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2">
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                   Slogan o Manifiesto de Marca
                 </label>
                 <input
                   type="text"
                   value={slogan}
                   onChange={(e) => setSlogan(e.target.value)}
-                  placeholder="Ej: Redefiniendo el movimiento autónomo"
-                  className="input-impeccable"
+                  placeholder="Ej: Rendimiento sin límites para atletas urbanos"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                   Color Primario
                 </label>
                 <div className="flex items-center gap-2">
@@ -223,13 +221,13 @@ export const CreateBrandModal: React.FC = () => {
                     type="color"
                     value={primaryColor}
                     onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="w-8 h-8 rounded-lg border border-white/20 cursor-pointer p-0.5 bg-slate-900"
+                    className="w-8 h-8 rounded-lg border border-slate-300 cursor-pointer p-0.5 bg-slate-50 shrink-0"
                   />
                   <input
                     type="text"
                     value={primaryColor}
                     onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="input-impeccable font-mono uppercase flex-1"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono uppercase focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -237,50 +235,52 @@ export const CreateBrandModal: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                   Persona de Contacto *
                 </label>
                 <input
                   type="text"
                   value={contactPerson}
                   onChange={(e) => setContactPerson(e.target.value)}
-                  placeholder="Ej: Valeria Ramos"
+                  placeholder="Ej: Mariana Valdés"
                   required
-                  className="input-impeccable"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                   Email de Contacto *
                 </label>
                 <input
                   type="email"
                   value={contactEmail}
                   onChange={(e) => setContactEmail(e.target.value)}
-                  placeholder="contacto@hyperion.com"
+                  placeholder="contacto@marca.com"
                   required
-                  className="input-impeccable font-mono"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                 />
               </div>
             </div>
           </div>
 
           {/* SECTION 2: 3 Active Communication Territories Builder */}
-          <div className="space-y-3 pt-3 border-t border-white/10">
+          <div className="space-y-3 pt-3 border-t border-slate-100">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-bold text-white text-xs uppercase tracking-wider flex items-center gap-1.5">
+                <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider flex items-center gap-1.5">
                   <span>2. Territorios de Comunicación</span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                    territoriesList.length >= 3
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                      : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                  }`}>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      territoriesList.length >= 3
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-rose-50 text-rose-700 border border-rose-200'
+                    }`}
+                  >
                     {territoriesList.length} / 3 Mínimo
                   </span>
                 </h4>
-                <p className="text-[10.5px] text-slate-400">
+                <p className="text-[10.5px] text-slate-500">
                   Regla de negocio: Toda marca en N. Studios debe nacer con al menos 3 pilares activos.
                 </p>
               </div>
@@ -288,7 +288,7 @@ export const CreateBrandModal: React.FC = () => {
               <button
                 type="button"
                 onClick={handleAddTerritory}
-                className="btn-secondary py-1 px-2.5 text-[11px]"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold transition-all cursor-pointer active:scale-95"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Agregar Territorio</span>
@@ -299,11 +299,11 @@ export const CreateBrandModal: React.FC = () => {
               {territoriesList.map((terr, idx) => (
                 <div
                   key={idx}
-                  className="p-3.5 rounded-xl border border-white/10 bg-slate-950/70 space-y-2.5 relative shadow-2xs"
+                  className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2.5 relative shadow-2xs"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-1">
-                      <span className="w-5 h-5 rounded-full flex items-center justify-center bg-indigo-600 text-white font-mono text-[10px] font-bold">
+                      <span className="w-5 h-5 rounded-full flex items-center justify-center bg-indigo-600 text-white font-mono text-[10px] font-bold shrink-0">
                         {idx + 1}
                       </span>
                       <input
@@ -311,7 +311,7 @@ export const CreateBrandModal: React.FC = () => {
                         value={terr.name}
                         onChange={(e) => handleUpdateTerritory(idx, 'name', e.target.value)}
                         placeholder="Nombre del territorio"
-                        className="input-impeccable font-bold text-xs py-1"
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-900 font-bold focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                       />
                     </div>
 
@@ -320,14 +320,14 @@ export const CreateBrandModal: React.FC = () => {
                         type="color"
                         value={terr.colorTag}
                         onChange={(e) => handleUpdateTerritory(idx, 'colorTag', e.target.value)}
-                        className="w-7 h-7 rounded-lg cursor-pointer p-0.5 border border-white/20 bg-slate-900"
+                        className="w-7 h-7 rounded-lg cursor-pointer p-0.5 border border-slate-300 bg-white shrink-0"
                         title="Color distintivo del territorio"
                       />
                       {territoriesList.length > 3 && (
                         <button
                           type="button"
                           onClick={() => handleRemoveTerritory(idx)}
-                          className="p-1 rounded-md text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
+                          className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer active:scale-95"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -337,23 +337,23 @@ export const CreateBrandModal: React.FC = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                     <div>
-                      <label className="text-[10px] text-slate-400 block mb-0.5">Objetivo Estratégico</label>
+                      <label className="text-[10px] text-slate-500 font-medium block mb-0.5">Objetivo Estratégico</label>
                       <input
                         type="text"
                         value={terr.objective}
                         onChange={(e) => handleUpdateTerritory(idx, 'objective', e.target.value)}
                         placeholder="Objetivo principal..."
-                        className="input-impeccable text-xs py-1"
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-slate-400 block mb-0.5">Pilares de Contenido (separados por coma)</label>
+                      <label className="text-[10px] text-slate-500 font-medium block mb-0.5">Pilares de Contenido (separados por coma)</label>
                       <input
                         type="text"
                         value={terr.contentPillars}
                         onChange={(e) => handleUpdateTerritory(idx, 'contentPillars', e.target.value)}
                         placeholder="Innovación, Calidad, Estilo"
-                        className="input-impeccable text-xs py-1"
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-800 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                       />
                     </div>
                   </div>
@@ -363,9 +363,9 @@ export const CreateBrandModal: React.FC = () => {
           </div>
 
           {/* Submit Buttons */}
-          <div className="pt-4 border-t border-white/10 flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-semibold">
-              <CheckCircle2 className="w-4 h-4" />
+          <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5 text-[11px] text-emerald-700 font-semibold">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               <span>Validación de regla estricta: {territoriesList.length} territorios configurados</span>
             </div>
 
@@ -373,22 +373,20 @@ export const CreateBrandModal: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsCreateBrandModalOpen(false)}
-                className="btn-secondary"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer active:scale-98"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="btn-primary"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 transition-all cursor-pointer active:scale-98 flex items-center gap-1.5"
               >
                 <Building2 className="w-3.5 h-3.5" />
                 <span>Crear Marca & Activar</span>
               </button>
             </div>
           </div>
-
         </form>
-
       </div>
     </div>
   );

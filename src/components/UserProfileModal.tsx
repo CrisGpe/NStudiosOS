@@ -532,7 +532,7 @@ export const UserProfileModal: React.FC = () => {
           <button
             type="button"
             onClick={logout}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all font-semibold cursor-pointer text-xs"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all font-semibold cursor-pointer text-xs active:scale-95"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Cerrar Sesión</span>
@@ -541,7 +541,7 @@ export const UserProfileModal: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsProfileModalOpen(false)}
-            className="btn-secondary"
+            className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer active:scale-98"
           >
             Cerrar
           </button>
