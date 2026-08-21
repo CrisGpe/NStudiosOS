@@ -32,6 +32,8 @@ export const MobileCompanionHub: React.FC = () => {
     currentUser,
     users,
     brands,
+    selectedBrandId,
+    setSelectedBrandId,
     territories,
     deliverables,
     sandboxIdeas,
@@ -39,7 +41,6 @@ export const MobileCompanionHub: React.FC = () => {
     deleteSandboxIdea,
     convertSandboxIdeaToDeliverable,
     moveDeliverablePhase,
-    setSelectedBrandId,
     login,
     logout,
   } = useApp();
@@ -53,24 +54,29 @@ export const MobileCompanionHub: React.FC = () => {
 
   const isClient = currentUser.role === 'cliente';
 
-  // Strictly isolated brand for client
   const fallbackBrand: Brand = {
     id: 'brd_default',
-    name: 'Estudio General',
-    industry: 'Producción & Publicidad',
-    logo: '',
+    name: 'Estudio Nataraja',
+    industry: 'Producción Audiovisual & Media Agency',
+    logo: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=150&auto=format&fit=crop&q=80',
     primaryColor: '#4f46e5',
-    slogan: 'Creatividad & Producción',
-    contactPerson: 'Director de Estudio',
+    secondaryColor: '#1e1b4b',
+    slogan: 'Producción Audiovisual & Media Agency',
+    contactPerson: 'Cristian Gonzales',
     contactEmail: 'contacto@estudio.com',
     createdAt: new Date().toISOString(),
   };
 
-  const activeBrandId = isClient
-    ? (currentUser.assignedBrandIds?.[0] || 'brd_default')
-    : (currentUser.assignedBrandIds?.[0] || brands[0]?.id || 'brd_default');
+  const allowedBrands = isClient && currentUser.assignedBrandIds && currentUser.assignedBrandIds.length > 0
+    ? brands.filter((b) => currentUser.assignedBrandIds?.includes(b.id))
+    : brands;
 
-  const brand = brands.find((b) => b.id === activeBrandId) || brands[0] || fallbackBrand;
+  const activeBrandId =
+    selectedBrandId !== 'all' && allowedBrands.some((b) => b.id === selectedBrandId)
+      ? selectedBrandId
+      : (allowedBrands[0]?.id || brands[0]?.id || 'brd_apex');
+
+  const brand = brands.find((b) => b.id === activeBrandId) || allowedBrands[0] || fallbackBrand;
   const brandTerritories = territories.filter((t) => t.brandId === brand.id && t.active);
   const brandIdeas = sandboxIdeas.filter((i) => i.brandId === brand.id);
   const brandDeliverables = deliverables.filter((d) => d.brandId === brand.id);

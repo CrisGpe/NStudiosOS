@@ -19,6 +19,8 @@ export const ClientBrandHub: React.FC = () => {
   const {
     currentUser,
     brands,
+    selectedBrandId,
+    setSelectedBrandId,
     territories,
     deliverables,
     campaigns,
@@ -33,15 +35,25 @@ export const ClientBrandHub: React.FC = () => {
     setActiveTab,
   } = useApp();
 
-  // Active Brand for Client (strictly isolated)
-  const clientBrandId = currentUser.assignedBrandIds?.[0] || 'brd_apex';
-  const brand = brands.find((b) => b.id === clientBrandId) || brands[0];
-  const brandTerritories = territories.filter((t) => t.brandId === brand.id && t.active);
-  const brandIdeas = sandboxIdeas.filter((i) => i.brandId === brand.id);
-  const brandDeliverables = deliverables.filter((d) => d.brandId === brand.id);
-  const brandCampaigns = campaigns.filter((c) => c.brandId === brand.id);
-  const brandDocs = driveFiles.filter((f) => f.brandId === brand.id && f.type === 'document');
-  const brandAssets = digitalAssets.filter((a) => a.brandId === brand.id);
+  // Allowed Brands based on RBAC & assignments
+  const isClient = currentUser.role === 'cliente';
+  const allowedBrands = isClient && currentUser.assignedBrandIds && currentUser.assignedBrandIds.length > 0
+    ? brands.filter((b) => currentUser.assignedBrandIds?.includes(b.id))
+    : brands;
+
+  // Active Brand Resolution
+  const activeBrandId =
+    selectedBrandId !== 'all' && allowedBrands.some((b) => b.id === selectedBrandId)
+      ? selectedBrandId
+      : (allowedBrands[0]?.id || brands[0]?.id || 'brd_apex');
+
+  const brand = brands.find((b) => b.id === activeBrandId) || allowedBrands[0] || brands[0];
+  const brandTerritories = territories.filter((t) => t.brandId === brand?.id && t.active);
+  const brandIdeas = sandboxIdeas.filter((i) => i.brandId === brand?.id);
+  const brandDeliverables = deliverables.filter((d) => d.brandId === brand?.id);
+  const brandCampaigns = campaigns.filter((c) => c.brandId === brand?.id);
+  const brandDocs = driveFiles.filter((f) => f.brandId === brand?.id && f.type === 'document');
+  const brandAssets = digitalAssets.filter((a) => a.brandId === brand?.id);
 
   const [activeSubTab, setActiveSubTab] = useState<'sandbox' | 'identity' | 'drive'>('sandbox');
   const [isAddingIdea, setIsAddingIdea] = useState(false);
@@ -54,7 +66,7 @@ export const ClientBrandHub: React.FC = () => {
 
   const handleCreateIdea = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || !newNotes.trim()) return;
+    if (!newTitle.trim() || !newNotes.trim() || !brand) return;
 
     const urls = newUrls
       .split('\n')
@@ -86,6 +98,14 @@ export const ClientBrandHub: React.FC = () => {
     convertSandboxIdeaToDeliverable(ideaId);
   };
 
+  if (!brand) {
+    return (
+      <div className="p-8 bg-white border border-slate-200 rounded-2xl text-center text-slate-500">
+        No se encontró información de marca disponible.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 text-slate-800">
       
@@ -98,7 +118,7 @@ export const ClientBrandHub: React.FC = () => {
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span
-                className="w-3 h-3 rounded-full"
+                className="w-3 h-3 rounded-full shadow-xs"
                 style={{ backgroundColor: brand.primaryColor }}
               />
               <span className="text-[11px] font-mono uppercase font-bold tracking-wider text-slate-500">
@@ -106,9 +126,32 @@ export const ClientBrandHub: React.FC = () => {
               </span>
             </div>
 
-            <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">
-              {brand.name}
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">
+                {brand.name}
+              </h1>
+
+              {/* Brand Switcher Selector */}
+              {allowedBrands.length > 1 && (
+                <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200 shadow-2xs">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Cambiar Marca:
+                  </span>
+                  <select
+                    value={brand.id}
+                    onChange={(e) => setSelectedBrandId(e.target.value)}
+                    className="bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 py-0.5 px-2 focus:outline-hidden cursor-pointer"
+                  >
+                    {allowedBrands.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
             <p className="text-xs text-slate-600 italic">
               "{brand.slogan || 'Innovación y excelencia en producción de contenido'}"
             </p>
