@@ -47,13 +47,13 @@ export const LoginView: React.FC = () => {
           setErrorMessage('Por favor ingresa tu nombre completo.');
           return;
         }
-        await signUpWithPassword(email, password, name, role);
+        await signUpWithPassword(email, password, name, 'cliente');
       }
 
       if (isMobileScreen) {
         navigate('/mobile');
       } else {
-        navigate(role === 'cliente' ? '/client/hub' : '/kanban');
+        navigate(authMode === 'signup' ? '/client/hub' : '/kanban');
       }
     } catch (err: any) {
       console.error('Auth error:', err);
@@ -119,15 +119,15 @@ export const LoginView: React.FC = () => {
           {/* Card Title & Mode Toggle */}
           <div className="text-center space-y-2">
             <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center mx-auto text-indigo-600 shadow-2xs">
-              <KeyRound className="w-6 h-6" />
+              {authMode === 'login' ? <KeyRound className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
             </div>
             <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
-              {authMode === 'login' ? 'Acceso al Estudio' : 'Crear Cuenta WebAdmin'}
+              {authMode === 'login' ? 'Acceso al Estudio' : 'Crear Cuenta de Cliente'}
             </h2>
             <p className="text-xs text-slate-500 max-w-xs mx-auto">
               {authMode === 'login'
                 ? 'Ingresa tus credenciales de Supabase para acceder al sistema RBAC.'
-                : 'Registra tu cuenta de Administrador Global para configurar marcas y producción.'}
+                : 'Regístrate como cliente para revisar entregables, co-crear ideas y aprobar piezas.'}
             </p>
           </div>
 
@@ -155,7 +155,7 @@ export const LoginView: React.FC = () => {
                 authMode === 'signup' ? 'bg-white text-indigo-600 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              Registrarse
+              Registro Cliente
             </button>
           </div>
 
@@ -178,7 +178,7 @@ export const LoginView: React.FC = () => {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Ej. Cristian García"
+                    placeholder="Ej. Sofía Chen"
                     required
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-hidden transition-all text-xs"
                   />
@@ -194,7 +194,7 @@ export const LoginView: React.FC = () => {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="tu.correo@estudio.com"
+                  placeholder="tu.correo@empresa.com"
                   required
                   className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-hidden transition-all text-xs"
                 />
@@ -217,20 +217,12 @@ export const LoginView: React.FC = () => {
             </div>
 
             {authMode === 'signup' && (
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Tipo de Cuenta / Rol</label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as UserRole)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-xs outline-hidden"
-                >
-                  <option value="director">🎬 Director Creativo / Producer</option>
-                  <option value="colaborador">✂️ Colaborador Técnico / Editor</option>
-                  <option value="cliente">🏢 Cliente de Marca</option>
-                </select>
-                <p className="text-[10px] text-slate-400 mt-1">
-                  Nota: El rol WebAdmin Global se gestiona de forma interna desde el panel de control.
-                </p>
+              <div className="p-3 rounded-xl bg-indigo-50/80 border border-indigo-100 flex items-center gap-2.5 text-indigo-950">
+                <Building2 className="w-4 h-4 text-indigo-600 shrink-0" />
+                <div className="text-[11px] leading-tight">
+                  <span className="font-bold block">Cuenta de Cliente de Marca</span>
+                  <span className="text-slate-500">Acceso exclusivo a tu portal de marca y co-creación.</span>
+                </div>
               </div>
             )}
 
@@ -243,7 +235,7 @@ export const LoginView: React.FC = () => {
                 <span>Conectando con Supabase...</span>
               ) : (
                 <>
-                  <span>{authMode === 'login' ? 'Entrar a la Plataforma' : 'Crear Cuenta y Entrar'}</span>
+                  <span>{authMode === 'login' ? 'Entrar a la Plataforma' : 'Crear Cuenta de Cliente'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
