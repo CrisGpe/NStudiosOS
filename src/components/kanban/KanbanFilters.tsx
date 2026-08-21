@@ -41,23 +41,17 @@ export const KanbanFilters: React.FC<KanbanFiltersProps> = ({
           <span>Filtros:</span>
         </div>
 
-        {!isClient && (
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl px-3 py-1.5 transition-all shadow-2xs">
+        {selectedBrandId !== 'all' && (
+          <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-xl shadow-2xs">
             <Building2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-            <select
-              value={selectedBrandId}
-              onChange={(e) => setSelectedBrandId(e.target.value)}
-              className="bg-transparent text-xs text-slate-800 font-medium focus:outline-none cursor-pointer pr-1"
+            <span>Marca: {brands.find((b) => b.id === selectedBrandId)?.name || 'Seleccionada'}</span>
+            <button
+              onClick={() => setSelectedBrandId('all')}
+              title="Ver todas las marcas"
+              className="ml-1 text-emerald-600 hover:text-emerald-900 cursor-pointer font-bold"
             >
-              <option value="all">
-                🏢 Todos los Clientes ({brands.length})
-              </option>
-              {brands.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
+              ×
+            </button>
           </div>
         )}
 
