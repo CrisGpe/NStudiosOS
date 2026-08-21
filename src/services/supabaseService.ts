@@ -503,37 +503,62 @@ export const sandboxService = {
 export const driveVaultService = {
   async fetchDriveAccounts(): Promise<DriveAccount[]> {
     if (!isSupabaseConfigured) return [];
-    const { data, error } = await supabase.from('drive_accounts').select('*');
-    if (error || !data) return [];
-    return data.map((a) => ({
-      id: a.id,
-      name: a.name,
-      type: (a.type as any) || 'corporate_workspace',
-      email: a.email,
-      rootFolderId: a.root_folder_id || 'root',
-      quotaTotalGB: a.quota_total_gb || 2000,
-      quotaUsedGB: a.quota_used_gb || 450,
-      isConnected: a.is_connected ?? true,
-      status: (a.status as any) || 'active',
-      lastSyncedAt: a.last_sync_at || new Date().toISOString(),
-    }));
+    try {
+      const { data, error } = await supabase.from('drive_accounts').select('*');
+      if (error || !data) return [];
+      return data.map((a) => {
+        const totalGB = a.quota_total_gb ?? (a.storage_quota_bytes ? Math.round(Number(a.storage_quota_bytes) / (1024 * 1024 * 1024)) : 2000);
+        const usedGB = a.quota_used_gb ?? (a.storage_used_bytes ? Math.round(Number(a.storage_used_bytes) / (1024 * 1024 * 1024)) : 0);
+        const isConn = a.is_connected ?? a.service_account_connected ?? true;
+
+        return {
+          id: a.id,
+          name: a.name,
+          type: (a.type as any) || 'corporate_workspace',
+          email: a.email,
+          rootFolderId: a.root_folder_id || 'root',
+          quotaTotalGB: Number(totalGB),
+          quotaUsedGB: Number(usedGB),
+          isConnected: Boolean(isConn),
+          status: (a.status as any) || 'active',
+          lastSyncedAt: a.last_sync_at ? new Date(a.last_sync_at).toLocaleString('es-ES') : new Date().toLocaleString('es-ES'),
+        };
+      });
+    } catch (err) {
+      console.warn('Could not fetch drive accounts from Supabase:', err);
+      return [];
+    }
   },
 
   async createDriveAccount(account: DriveAccount): Promise<void> {
     if (!isSupabaseConfigured) return;
-    const { error } = await supabase.from('drive_accounts').upsert({
-      id: account.id,
-      name: account.name,
-      type: account.type,
-      email: account.email,
-      root_folder_id: account.rootFolderId,
-      quota_total_gb: account.quotaTotalGB,
-      quota_used_gb: account.quotaUsedGB,
-      is_connected: account.isConnected,
-      status: account.status,
-      last_sync_at: new Date().toISOString(),
-    });
-    if (error) throw error;
+    try {
+      // 1. Try standard Supabase schema with storage_quota_bytes & service_account_connected
+      const payload = {
+        id: account.id,
+        name: account.name,
+        email: account.email,
+        storage_quota_bytes: Number(account.quotaTotalGB || 2000) * 1024 * 1024 * 1024,
+        storage_used_bytes: Number(account.quotaUsedGB || 0) * 1024 * 1024 * 1024,
+        status: 'connected',
+        service_account_connected: true,
+        last_sync_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase.from('drive_accounts').upsert(payload);
+      if (error) {
+        // 2. Fallback to basic columns (id, name, email) if other columns differ
+        const { error: basicErr } = await supabase.from('drive_accounts').upsert({
+          id: account.id,
+          name: account.name,
+          email: account.email,
+        });
+        if (basicErr) throw basicErr;
+      }
+    } catch (err: any) {
+      console.warn('Supabase createDriveAccount exception:', err);
+      throw err;
+    }
   },
 
   async fetchDriveFolders(): Promise<DriveFolder[]> {
