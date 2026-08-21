@@ -24,7 +24,7 @@ export const LoginView: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState<UserRole>('webadmin');
+  const [role, setRole] = useState<UserRole>('director');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showDemoSelector, setShowDemoSelector] = useState(false);
 
@@ -155,7 +155,7 @@ export const LoginView: React.FC = () => {
                 authMode === 'signup' ? 'bg-white text-indigo-600 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              Nuevo WebAdmin
+              Registrarse
             </button>
           </div>
 
@@ -218,17 +218,19 @@ export const LoginView: React.FC = () => {
 
             {authMode === 'signup' && (
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Rol en la Plataforma</label>
+                <label className="block font-semibold text-slate-700 mb-1">Tipo de Cuenta / Rol</label>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value as UserRole)}
                   className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 text-xs outline-hidden"
                 >
-                  <option value="webadmin">👑 WebAdmin Global (Control Total)</option>
                   <option value="director">🎬 Director Creativo / Producer</option>
                   <option value="colaborador">✂️ Colaborador Técnico / Editor</option>
                   <option value="cliente">🏢 Cliente de Marca</option>
                 </select>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Nota: El rol WebAdmin Global se gestiona de forma interna desde el panel de control.
+                </p>
               </div>
             )}
 
@@ -247,32 +249,6 @@ export const LoginView: React.FC = () => {
               )}
             </button>
           </form>
-
-          {/* Quick Demo Access Accordion (For easy testing / verification) */}
-          <div className="pt-3 border-t border-slate-100">
-            <button
-              type="button"
-              onClick={() => setShowDemoSelector(!showDemoSelector)}
-              className="w-full text-center text-[11px] text-slate-400 hover:text-indigo-600 font-semibold transition-colors cursor-pointer flex items-center justify-center gap-1"
-            >
-              <span>{showDemoSelector ? 'Ocultar Accesos de Prueba' : '⚡ O probar con accesos rápidos demo'}</span>
-            </button>
-
-            {showDemoSelector && (
-              <div className="mt-3 grid grid-cols-2 gap-2 animate-in fade-in">
-                {users.slice(0, 4).map((u) => (
-                  <button
-                    key={u.id}
-                    onClick={() => handleQuickDemoLogin(u.id)}
-                    className="p-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-indigo-50 hover:border-indigo-200 text-left transition-all cursor-pointer text-[11px]"
-                  >
-                    <span className="font-bold text-slate-900 block truncate">{u.name}</span>
-                    <span className="text-[10px] text-indigo-600 font-mono block uppercase">{u.role}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
 
         </div>
       </main>

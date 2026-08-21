@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Film,
   Smartphone,
+  Compass,
 } from 'lucide-react';
 import { UserRole } from '../types';
 
@@ -112,6 +113,12 @@ export const Navbar: React.FC = () => {
       label: 'System Specs & ERD',
       icon: <FileCode className="w-3.5 h-3.5 text-emerald-600" />,
       roles: ['webadmin', 'director'],
+    },
+    {
+      id: 'operations',
+      label: 'Dirección & Operaciones',
+      icon: <Compass className="w-3.5 h-3.5 text-indigo-600" />,
+      roles: ['director', 'webadmin'],
     },
     {
       id: 'admin',

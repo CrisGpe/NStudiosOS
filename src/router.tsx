@@ -14,6 +14,7 @@ const BrandTerritoryManager = React.lazy(() => import('./components/BrandTerrito
 const EquipmentManager = React.lazy(() => import('./components/EquipmentManager').then((m) => ({ default: m.EquipmentManager })));
 const DualCalendar = React.lazy(() => import('./components/DualCalendar').then((m) => ({ default: m.DualCalendar })));
 const WebAdminDashboard = React.lazy(() => import('./components/WebAdminDashboard').then((m) => ({ default: m.WebAdminDashboard })));
+const DirectorOperationsDashboard = React.lazy(() => import('./components/DirectorOperationsDashboard').then((m) => ({ default: m.DirectorOperationsDashboard })));
 const ClientBrandHub = React.lazy(() => import('./components/ClientBrandHub').then((m) => ({ default: m.ClientBrandHub })));
 const SystemSpecsHub = React.lazy(() => import('./components/SystemSpecsHub').then((m) => ({ default: m.SystemSpecsHub })));
 const MobileCompanionHub = React.lazy(() => import('./components/mobile/MobileCompanionHub').then((m) => ({ default: m.MobileCompanionHub })));
@@ -152,6 +153,20 @@ export const router = createBrowserRouter([
                 <DualCalendar />
               </React.Suspense>
             ),
+          },
+          {
+            path: 'operations',
+            element: <ProtectedRoute allowedRoles={['director', 'webadmin']} />,
+            children: [
+              {
+                index: true,
+                element: (
+                  <React.Suspense fallback={<div className="p-8 text-center text-slate-500 text-xs font-medium">Cargando Panel de Dirección & Operaciones...</div>}>
+                    <DirectorOperationsDashboard />
+                  </React.Suspense>
+                ),
+              },
+            ],
           },
           {
             path: 'admin',

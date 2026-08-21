@@ -16,6 +16,7 @@ import {
   Target,
   Search,
   HardDrive,
+  Compass,
 } from 'lucide-react';
 import { UserRole } from '../types';
 
@@ -95,6 +96,12 @@ export const SidebarNav: React.FC = () => {
       label: 'System Specs Hub',
       icon: <FileCode className="w-4 h-4 text-emerald-600" />,
       roles: ['webadmin', 'director'],
+    },
+    {
+      id: 'operations',
+      label: 'Dirección & Operaciones',
+      icon: <Compass className="w-4 h-4 text-indigo-600" />,
+      roles: ['director', 'webadmin'],
     },
     {
       id: 'admin',

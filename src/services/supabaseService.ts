@@ -147,7 +147,7 @@ export const authService = {
 
   async upsertProfile(profile: UserProfile): Promise<void> {
     if (!isSupabaseConfigured) return;
-    await supabase.from('users_profiles').upsert({
+    const { error } = await supabase.from('users_profiles').upsert({
       id: profile.id,
       email: profile.email,
       name: profile.name,
@@ -159,7 +159,36 @@ export const authService = {
       preferences: profile.preferences,
       updated_at: new Date().toISOString(),
     });
+    if (error) throw error;
   },
+
+  async updateUserProfile(
+    userId: string,
+    updates: {
+      role?: UserRole;
+      role_title?: string;
+      assigned_brand_ids?: string[];
+      schedule?: any;
+      preferences?: any;
+    }
+  ): Promise<void> {
+    if (!isSupabaseConfigured) return;
+    const { error } = await supabase
+      .from('users_profiles')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+    if (error) throw error;
+  },
+};
+
+export const userProfileService = authService;
+
+export const supabaseService = {
+  ...authService,
+  updateUserProfile: authService.updateUserProfile,
 };
 
 // ==============================================================================

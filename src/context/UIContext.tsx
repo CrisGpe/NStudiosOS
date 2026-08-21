@@ -10,6 +10,7 @@ export type AppTab =
   | 'brands'
   | 'equipment'
   | 'specs'
+  | 'operations'
   | 'admin';
 
 export interface UIContextType {

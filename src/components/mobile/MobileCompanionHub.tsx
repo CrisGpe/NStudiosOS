@@ -38,6 +38,7 @@ export const MobileCompanionHub: React.FC = () => {
     deleteSandboxIdea,
     convertSandboxIdeaToDeliverable,
     moveDeliverablePhase,
+    setSelectedBrandId,
     login,
     logout,
   } = useApp();
@@ -170,18 +171,35 @@ export const MobileCompanionHub: React.FC = () => {
             <div className="flex items-center gap-2.5">
               <div
                 className="w-9 h-9 rounded-2xl flex items-center justify-center text-white shadow-2xs font-extrabold text-xs"
-                style={{ backgroundColor: brand.primaryColor }}
+                style={{ backgroundColor: isClient ? brand.primaryColor : '#4f46e5' }}
               >
-                {brand.name.substring(0, 2).toUpperCase()}
+                {isClient ? brand.name.substring(0, 2).toUpperCase() : 'NS'}
               </div>
 
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h2 className="text-xs font-extrabold text-slate-900 truncate max-w-[130px]">
-                    {brand.name}
-                  </h2>
+                  {isClient ? (
+                    <h2 className="text-xs font-extrabold text-slate-900 truncate max-w-[140px]">
+                      {brand.name}
+                    </h2>
+                  ) : (
+                    <select
+                      value={brand.id}
+                      onChange={(e) => {
+                        const b = brands.find((x) => x.id === e.target.value);
+                        if (b) setSelectedBrandId(b.id);
+                      }}
+                      className="text-xs font-extrabold text-slate-900 bg-transparent outline-none cursor-pointer pr-1 truncate max-w-[150px]"
+                    >
+                      {brands.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          🏢 {b.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    Drive Sync
+                    {isClient ? 'Drive Sync' : 'Bóveda'}
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-500 truncate max-w-[170px]">
@@ -545,8 +563,12 @@ export const MobileCompanionHub: React.FC = () => {
                     <strong className="text-slate-800 font-mono text-[11px]">{currentUser.email}</strong>
                   </div>
                   <div className="flex justify-between py-1 border-b border-slate-50">
-                    <span className="text-slate-500">Marca Oficial:</span>
-                    <strong className="text-slate-800">{brand.name} ({brand.industry})</strong>
+                    <span className="text-slate-500">{isClient ? 'Marca Oficial:' : 'Alcance del Sistema:'}</span>
+                    <strong className="text-slate-800">
+                      {isClient
+                        ? `${brand.name} (${brand.industry})`
+                        : 'Acceso Multimarca Global (Todas)'}
+                    </strong>
                   </div>
                   {isClient && (
                     <div className="flex justify-between py-1 border-b border-slate-50">
@@ -575,29 +597,6 @@ export const MobileCompanionHub: React.FC = () => {
                   </div>
                 </div>
               ) : null}
-
-              {/* Switch User Quick Demo */}
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
-                <h4 className="font-bold text-xs text-slate-900">
-                  {isClient ? 'Cambiar de Cliente Demo' : 'Cambiar de Usuario (Demo)'}
-                </h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {(isClient ? users.filter((u) => u.role === 'cliente') : users.slice(0, 4)).map((u) => (
-                    <button
-                      key={u.id}
-                      onClick={() => login(u.id)}
-                      className={`p-2 rounded-xl border text-left text-xs transition-all cursor-pointer ${
-                        currentUser.id === u.id
-                          ? 'border-indigo-600 bg-indigo-50 text-indigo-900 font-bold'
-                          : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
-                      }`}
-                    >
-                      <span className="truncate block font-semibold">{u.name.split(' ')[0]}</span>
-                      <span className="text-[10px] text-slate-500 block truncate">{u.roleTitle}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               {/* Full Desktop Link */}
               <button

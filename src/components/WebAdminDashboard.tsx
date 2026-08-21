@@ -4,66 +4,94 @@ import {
   ShieldCheck,
   Users,
   Building2,
-  Camera,
   Activity,
-  Layers,
-  Clock,
   HardDrive,
-  Palmtree,
   CheckCircle2,
-  Sparkles,
+  KeyRound,
+  Database,
+  Cpu,
+  RefreshCw,
+  Search,
+  Lock,
+  Radio,
+  Sliders,
 } from 'lucide-react';
-import { seedDemoDataToSupabase } from '../services/supabaseService';
+import { UserRole } from '../types';
+import { supabaseService } from '../services/supabaseService';
 
 export const WebAdminDashboard: React.FC = () => {
   const {
     users,
     brands,
-    equipment,
-    deliverables,
     auditLogs,
     currentUser,
     driveAccounts,
-    updateCollaboratorSchedule,
-    checkCollaboratorAvailability,
   } = useApp();
 
-  const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
-  const [seeding, setSeeding] = useState(false);
-  const [seedToast, setSeedToast] = useState<string | null>(null);
+  const [searchUserQuery, setSearchUserQuery] = useState('');
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('all');
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [updatingUserRole, setUpdatingUserRole] = useState<Record<string, UserRole>>({});
+  const [updatingUserBrands, setUpdatingUserBrands] = useState<Record<string, string[]>>({});
+  const [isSavingUser, setIsSavingUser] = useState(false);
+  const [saveSuccessToast, setSaveSuccessToast] = useState<string | null>(null);
 
-  const activeReservationsCount = equipment.filter((e) => e.status !== 'available').length;
-  const hardwareUtilizationRate = equipment.length > 0 ? Math.round((activeReservationsCount / equipment.length) * 100) : 0;
+  // Filtered users list
+  const filteredUsers = users.filter((u) => {
+    if (selectedRoleFilter !== 'all' && u.role !== selectedRoleFilter) return false;
+    if (searchUserQuery.trim()) {
+      const q = searchUserQuery.toLowerCase();
+      return (
+        u.name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.roleTitle.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
 
-  const teamCollaborators = users.filter(
-    (u) => u.role === 'colaborador' || u.role === 'director' || u.role === 'webadmin'
-  );
+  const handleStartEditUser = (userId: string) => {
+    const targetUser = users.find((u) => u.id === userId);
+    if (!targetUser) return;
+    setEditingUserId(userId);
+    setUpdatingUserRole((prev) => ({ ...prev, [userId]: targetUser.role }));
+    setUpdatingUserBrands((prev) => ({ ...prev, [userId]: targetUser.assignedBrandIds || [] }));
+  };
 
-  const handleToggleVacation = (userId: string) => {
-    const user = users.find((u) => u.id === userId);
-    if (!user) return;
-    const currentSched = user.schedule || {
-      workDays: [1, 2, 3, 4, 5],
-      startHour: '09:00',
-      endHour: '19:00',
-      isOnVacation: false,
-      alertsEnabled: true,
-      vacationNotes: '',
-    };
-
-    updateCollaboratorSchedule(userId, {
-      ...currentSched,
-      isOnVacation: !currentSched.isOnVacation,
-      vacationNotes: !currentSched.isOnVacation ? 'Vacaciones autorizadas por Dirección General' : '',
+  const handleToggleUserBrand = (userId: string, brandId: string) => {
+    setUpdatingUserBrands((prev) => {
+      const current = prev[userId] || [];
+      const updated = current.includes(brandId)
+        ? current.filter((id) => id !== brandId)
+        : [...current, brandId];
+      return { ...prev, [userId]: updated };
     });
+  };
 
-    setTogglingUserId(userId);
-    setTimeout(() => setTogglingUserId(null), 1500);
+  const handleSaveUserRBAC = async (userId: string) => {
+    setIsSavingUser(true);
+    const newRole = updatingUserRole[userId];
+    const newBrandIds = updatingUserBrands[userId] || [];
+
+    try {
+      await supabaseService.updateUserProfile(userId, {
+        role: newRole,
+        assigned_brand_ids: newBrandIds,
+      });
+
+      setSaveSuccessToast('Permisos RBAC y marcas del usuario actualizados exitosamente en Supabase.');
+      setEditingUserId(null);
+      setTimeout(() => setSaveSuccessToast(null), 3500);
+    } catch (err: any) {
+      console.error('Error al actualizar permisos de usuario:', err);
+      alert('Error al guardar en Supabase: ' + (err.message || 'Error desconocido'));
+    } finally {
+      setIsSavingUser(false);
+    }
   };
 
   return (
     <div className="space-y-4 text-slate-800">
-      
       {/* Header - High Density */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -73,219 +101,321 @@ export const WebAdminDashboard: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-bold text-slate-900">
-                Panel de Gobernanza, Horarios & WebAdmin
+                Panel de Gobernanza del Sistema & WebAdmin Global
               </h2>
               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
                 Control Global RBAC
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Monitoreo de infraestructura, matriz de permisos, horarios de trabajo, vacaciones y registro de auditoría.
+              Gestión de roles y permisos de usuarios, conexión de API Keys, auditoría de eventos e infraestructura de almacenamiento.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={async () => {
-              setSeeding(true);
-              const res = await seedDemoDataToSupabase();
-              setSeedToast(res.message);
-              setSeeding(false);
-              setTimeout(() => setSeedToast(null), 4000);
-            }}
-            disabled={seeding}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-xs font-semibold transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
-            title="Importar marcas, territorios y entregables de prueba a Supabase"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-            <span>{seeding ? 'Importando a Supabase...' : 'Importar Datos Demo'}</span>
-          </button>
-
           <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-mono font-semibold shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Supabase PostgreSQL</span>
+            <span>Supabase Database & Auth Conectado</span>
           </span>
         </div>
       </div>
 
-      {seedToast && (
-        <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs font-bold flex items-center gap-2 animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
-          <span>{seedToast}</span>
+      {saveSuccessToast && (
+        <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{saveSuccessToast}</span>
         </div>
       )}
 
-      {/* 4 Health Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        
-        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-1 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
-            <span>Marcas Activas</span>
-            <Building2 className="w-4 h-4 text-pink-600" />
-          </div>
-          <div className="text-2xl font-extrabold text-slate-900 font-mono">{brands.length}</div>
-          <div className="text-[11px] text-slate-500 font-medium">
-            {brands.length} marca(s) registradas
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-1 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
-            <span>Cupos de Equipo</span>
-            <Users className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-extrabold text-slate-900 font-mono">{teamCollaborators.length} Asignados</div>
-          <div className="text-[11px] text-slate-500 font-medium truncate">
-            {teamCollaborators.map((c) => c.name.split(' ')[0]).join(', ') || 'Sin equipo registrado'}
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-1 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
-            <span>Utilización de Hardware</span>
-            <Camera className="w-4 h-4 text-amber-600" />
-          </div>
-          <div className="text-2xl font-extrabold text-slate-900 font-mono">{hardwareUtilizationRate}%</div>
-          <div className="text-[11px] text-amber-700 font-medium">
-            {activeReservationsCount} de {equipment.length} equipos en rodaje
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-1 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
-            <span>Entregables en Pipeline</span>
-            <Layers className="w-4 h-4 text-indigo-600" />
-          </div>
-          <div className="text-2xl font-extrabold text-slate-900 font-mono">{deliverables.length}</div>
-          <div className="text-[11px] text-indigo-700 font-medium">
-            {deliverables.length} entregable(s) en ciclo de vida
-          </div>
-        </div>
-
-      </div>
-
-      {/* Team Working Hours & Vacation Governance Section */}
+      {/* SECTION 1: GESTIÓN DE USUARIOS Y ROLES (RBAC) */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4.5 space-y-3.5 shadow-2xs">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-indigo-600" />
-              <span>Gobernanza de Horarios Laborales & Modo Vacaciones (Dirección General)</span>
+              <Users className="w-4 h-4 text-indigo-600" />
+              <span>Gestión Global de Usuarios & Asignación de Roles RBAC</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Reglas de alertas asíncronas: Fuera de jornada laboral o durante vacaciones autorizadas, las notificaciones se silencian automáticamente.
+              Administra privilegios de acceso al sistema y vinculación de marcas para clientes y directores.
             </p>
           </div>
 
-          <span className="text-[10px] font-mono text-indigo-700 font-bold px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-200">
-            Motor de Disponibilidad Asíncrona Activo
-          </span>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchUserQuery}
+                onChange={(e) => setSearchUserQuery(e.target.value)}
+                placeholder="Buscar usuario..."
+                className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-800 focus:bg-white focus:border-indigo-500 focus:outline-none transition-all"
+              />
+            </div>
+
+            <select
+              value={selectedRoleFilter}
+              onChange={(e) => setSelectedRoleFilter(e.target.value)}
+              className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-800 focus:outline-none"
+            >
+              <option value="all">Todos los Roles ({users.length})</option>
+              <option value="webadmin">👑 WebAdmins</option>
+              <option value="director">🎬 Directores</option>
+              <option value="colaborador">✂️ Colaboradores</option>
+              <option value="cliente">🏢 Clientes</option>
+            </select>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {teamCollaborators.length === 0 ? (
-            <div className="col-span-full bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-8 text-center space-y-2">
-              <Users className="w-8 h-8 text-slate-300 mx-auto" />
-              <h4 className="font-bold text-xs text-slate-800">Sin colaboradores registrados</h4>
-              <p className="text-[11px] text-slate-500">
-                Registra miembros del equipo desde la pantalla de login para gestionar sus horarios y disponibilidad.
-              </p>
-            </div>
-          ) : (
-            teamCollaborators.map((member) => {
-            const sched = member.schedule || {
-              workDays: [1, 2, 3, 4, 5],
-              startHour: '09:00',
-              endHour: '19:00',
-              isOnVacation: false,
-              alertsEnabled: true,
-              vacationNotes: '',
-            };
-            const avail = checkCollaboratorAvailability(member.id);
+        {/* Users Table */}
+        <div className="border border-slate-200 rounded-xl overflow-hidden overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+              <tr>
+                <th className="py-2.5 px-3">Usuario</th>
+                <th className="py-2.5 px-3">Rol RBAC</th>
+                <th className="py-2.5 px-3">Marcas Asignadas</th>
+                <th className="py-2.5 px-3">Estado</th>
+                <th className="py-2.5 px-3 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white">
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-6 text-center text-slate-400">
+                    No se encontraron usuarios con los filtros especificados.
+                  </td>
+                </tr>
+              ) : (
+                filteredUsers.map((u) => {
+                  const isEditing = editingUserId === u.id;
+                  const currentAssigned = isEditing
+                    ? updatingUserBrands[u.id] || []
+                    : u.assignedBrandIds || [];
 
-            return (
-              <div
-                key={member.id}
-                className={`p-3.5 rounded-2xl border space-y-2.5 transition-all shadow-2xs ${
-                  sched.isOnVacation
-                    ? 'bg-amber-50/60 border-amber-300'
-                    : avail.isAvailable
-                    ? 'bg-slate-50 border-slate-200'
-                    : 'bg-slate-50/60 border-slate-200 opacity-90'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <img
-                      src={member.avatar}
-                      alt={member.name}
-                      className="w-9 h-9 rounded-full object-cover ring-2 ring-slate-200"
-                    />
-                    <div>
-                      <h4 className="font-bold text-xs text-slate-900 leading-tight">
-                        {member.name}
-                      </h4>
-                      <span className="text-[10.5px] text-slate-500 block truncate">
-                        {member.roleTitle}
-                      </span>
-                    </div>
-                  </div>
+                  return (
+                    <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-2.5">
+                          <img
+                            src={u.avatar}
+                            alt={u.name}
+                            className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200"
+                          />
+                          <div>
+                            <span className="font-bold text-slate-900 block leading-tight">
+                              {u.name}
+                            </span>
+                            <span className="text-[11px] text-slate-400 font-mono block">
+                              {u.email}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
 
-                  <span
-                    className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border ${
-                      avail.isAvailable
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                        : sched.isOnVacation
-                        ? 'bg-amber-100 border-amber-300 text-amber-800'
-                        : 'bg-slate-200 border-slate-300 text-slate-700'
-                    }`}
-                  >
-                    {avail.isAvailable ? '🟢 ACTIVO' : sched.isOnVacation ? '🌴 VACACIONES' : '🌙 ASÍNCRONO'}
-                  </span>
-                </div>
+                      <td className="py-3 px-3">
+                        {isEditing ? (
+                          <select
+                            value={updatingUserRole[u.id] || u.role}
+                            onChange={(e) =>
+                              setUpdatingUserRole((prev) => ({
+                                ...prev,
+                                [u.id]: e.target.value as UserRole,
+                              }))
+                            }
+                            className="px-2 py-1 rounded-lg border border-indigo-300 bg-white text-xs font-semibold text-indigo-900 focus:outline-none"
+                          >
+                            <option value="webadmin">👑 WebAdmin Global</option>
+                            <option value="director">🎬 Director Creativo</option>
+                            <option value="colaborador">✂️ Colaborador Técnico</option>
+                            <option value="cliente">🏢 Cliente de Marca</option>
+                          </select>
+                        ) : (
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border font-mono ${
+                              u.role === 'webadmin'
+                                ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                : u.role === 'director'
+                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                : u.role === 'colaborador'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            }`}
+                          >
+                            {u.role}
+                          </span>
+                        )}
+                      </td>
 
-                <div className="space-y-1 text-xs font-mono text-slate-600 bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-                  <div className="flex items-center justify-between">
-                    <span>Horario:</span>
-                    <strong className="text-slate-900">{sched.startHour} - {sched.endHour}</strong>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Días:</span>
-                    <span className="text-slate-700 font-sans text-[11px]">
-                      {sched.workDays.length === 5 ? 'Lun a Vie' : `${sched.workDays.length} días/sem`}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Alertas:</span>
-                    <span className={sched.alertsEnabled ? 'text-emerald-700 font-semibold' : 'text-slate-400'}>
-                      {sched.alertsEnabled ? '✓ Habilitadas' : '✕ Silenciadas'}
-                    </span>
-                  </div>
-                </div>
+                      <td className="py-3 px-3">
+                        {isEditing ? (
+                          <div className="flex flex-wrap gap-1.5 max-w-xs">
+                            {brands.map((b) => {
+                              const isChecked = currentAssigned.includes(b.id);
+                              return (
+                                <button
+                                  type="button"
+                                  key={b.id}
+                                  onClick={() => handleToggleUserBrand(u.id, b.id)}
+                                  className={`px-2 py-0.5 rounded-lg text-[10.5px] font-semibold border transition-all cursor-pointer ${
+                                    isChecked
+                                      ? 'bg-indigo-600 text-white border-indigo-600'
+                                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+                                  }`}
+                                >
+                                  {b.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {u.role === 'webadmin' || u.role === 'director' ? (
+                              <span className="text-[10.5px] text-slate-500 font-medium">
+                                Acceso Global (Todas las marcas)
+                              </span>
+                            ) : currentAssigned.length === 0 ? (
+                              <span className="text-[10.5px] text-slate-400 italic">
+                                Sin marcas vinculadas
+                              </span>
+                            ) : (
+                              currentAssigned.map((bid) => {
+                                const brd = brands.find((b) => b.id === bid);
+                                return (
+                                  <span
+                                    key={bid}
+                                    className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 text-[10.5px] font-medium"
+                                  >
+                                    {brd?.name || bid}
+                                  </span>
+                                );
+                              })
+                            )}
+                          </div>
+                        )}
+                      </td>
 
-                {/* Director Vacation Toggle Action */}
-                <div className="pt-1">
-                  <button
-                    onClick={() => handleToggleVacation(member.id)}
-                    className={`w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl text-xs font-semibold cursor-pointer transition-all shadow-2xs ${
-                      sched.isOnVacation
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                        : 'bg-white hover:bg-amber-500 hover:text-white text-slate-700 border border-slate-200 hover:border-amber-500'
-                    }`}
-                  >
-                    <Palmtree className="w-3.5 h-3.5" />
-                    <span>{sched.isOnVacation ? 'Finalizar Vacaciones' : 'Activar Modo Vacaciones'}</span>
-                  </button>
-                </div>
-              </div>
-            );
-          })
-        )}
+                      <td className="py-3 px-3">
+                        <span className="flex items-center gap-1 text-[11px] text-emerald-700 font-semibold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          <span>Activo</span>
+                        </span>
+                      </td>
+
+                      <td className="py-3 px-3 text-right">
+                        {isEditing ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setEditingUserId(null)}
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-500 hover:bg-slate-100 transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isSavingUser}
+                              onClick={() => handleSaveUserRBAC(u.id)}
+                              className="px-3 py-1 rounded-lg text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              {isSavingUser ? 'Guardando...' : 'Guardar'}
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditUser(u.id)}
+                            className="px-3 py-1 rounded-lg text-xs font-semibold text-indigo-600 hover:bg-indigo-50 border border-indigo-200 transition-colors cursor-pointer"
+                          >
+                            Editar Permisos
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Infrastructure Storage Multi-Account */}
+      {/* SECTION 2: CONEXIÓN DE API KEYS & INTEGRACIONES */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4.5 space-y-3.5 shadow-2xs">
+        <div className="flex items-center justify-between">
+          <h3 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+            <KeyRound className="w-4 h-4 text-amber-600" />
+            <span>Conexión de API Keys, Integraciones & Servicios Externos</span>
+          </h3>
+          <span className="text-slate-500 font-mono text-[10.5px] font-bold px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200">
+            Ambiente: Producción
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Service 1: Supabase */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Database className="w-4 h-4 text-emerald-600" />
+                <h4 className="font-bold text-xs text-slate-900">Supabase PostgreSQL</h4>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                Conectado
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Base de datos relacional con RLS, autenticación JWT y persistencia en la nube.
+            </p>
+            <div className="text-[10px] font-mono text-slate-600 bg-white p-2 rounded-lg border border-slate-200 space-y-0.5">
+              <div>Ref: <strong className="text-slate-900">qrwqzgzchhnirrzzfzsw</strong></div>
+              <div>Auth: <strong className="text-emerald-700">JWT Activo (Anon + Service)</strong></div>
+            </div>
+          </div>
+
+          {/* Service 2: Google Drive API v3 */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <HardDrive className="w-4 h-4 text-cyan-600" />
+                <h4 className="font-bold text-xs text-slate-900">Google Drive API v3</h4>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                Drive Sync Activo
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Bóveda multimedia multi-cuenta, carpetas estructuradas y streaming directo.
+            </p>
+            <div className="text-[10px] font-mono text-slate-600 bg-white p-2 rounded-lg border border-slate-200 space-y-0.5">
+              <div>Cuentas vinculadas: <strong className="text-slate-900">{driveAccounts.length} Bóvedas</strong></div>
+              <div>Permisos: <strong className="text-cyan-700">drive.file + metadata.readonly</strong></div>
+            </div>
+          </div>
+
+          {/* Service 3: Gemini AI Copilot */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-purple-600" />
+                <h4 className="font-bold text-xs text-slate-900">Google Gemini AI Engine</h4>
+              </div>
+              <span className="text-[10px] font-mono font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                Flash 2.5 Activo
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              Motor de co-creación estratégica, asistencia de guiones AV y sugerencia de tags.
+            </p>
+            <div className="text-[10px] font-mono text-slate-600 bg-white p-2 rounded-lg border border-slate-200 space-y-0.5">
+              <div>Modelo: <strong className="text-purple-900">Gemini 2.5 Flash / Pro</strong></div>
+              <div>Context Window: <strong className="text-purple-700">1M Tokens</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 3: INFRAESTRUCTURA DE ALMACENAMIENTO MULTI-CUENTA */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4.5 space-y-3 shadow-2xs">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
@@ -293,7 +423,7 @@ export const WebAdminDashboard: React.FC = () => {
             <span>Infraestructura de Almacenamiento: Google Drive Multi-Cuenta</span>
           </h3>
           <span className="text-emerald-800 font-mono text-[10.5px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200">
-            {driveAccounts.length} Cuentas Activas
+            {driveAccounts.length} Cuentas Conectadas
           </span>
         </div>
 
@@ -309,14 +439,20 @@ export const WebAdminDashboard: React.FC = () => {
                   <p className="text-xs text-slate-500 font-mono mt-0.5">{account.email}</p>
                 </div>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-200">
-                  {account.type === 'corporate_workspace' ? 'Shared Drive Agencia' : 'Drive Personal / Bóveda'}
+                  {account.type === 'corporate_workspace'
+                    ? 'Shared Drive Agencia'
+                    : 'Drive Personal / Bóveda'}
                 </span>
               </div>
 
               <div className="space-y-1 pt-1">
                 <div className="flex justify-between text-[11px] font-mono text-slate-600">
-                  <span>Cuota: {account.quotaUsedGB} GB / {account.quotaTotalGB} GB</span>
-                  <span className="font-bold text-slate-900">{Math.round((account.quotaUsedGB / account.quotaTotalGB) * 100)}%</span>
+                  <span>
+                    Cuota: {account.quotaUsedGB} GB / {account.quotaTotalGB} GB
+                  </span>
+                  <span className="font-bold text-slate-900">
+                    {Math.round((account.quotaUsedGB / account.quotaTotalGB) * 100)}%
+                  </span>
                 </div>
                 <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                   <div
@@ -338,12 +474,12 @@ export const WebAdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Audit Logs Live Feed */}
+      {/* SECTION 4: REGISTRO DE AUDITORÍA & TRAZABILIDAD */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4.5 space-y-3 shadow-2xs">
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
             <Activity className="w-4 h-4 text-emerald-600" />
-            <span>Registro de Auditoría & Trazabilidad de Eventos</span>
+            <span>Registro de Auditoría & Trazabilidad de Eventos del Sistema</span>
           </h3>
           <span className="text-slate-500 font-mono text-xs">
             {auditLogs.length} eventos registrados
@@ -367,14 +503,15 @@ export const WebAdminDashboard: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-3 text-slate-500 text-[10.5px]">
-                <span>Por: <strong className="text-slate-800">{log.userName || log.userId}</strong></span>
+                <span>
+                  Por: <strong className="text-slate-800">{log.userName || log.userId}</strong>
+                </span>
                 <span className="font-mono text-slate-400">{log.timestamp}</span>
               </div>
             </div>
           ))}
         </div>
       </div>
-
     </div>
   );
 };
