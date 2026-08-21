@@ -5,6 +5,9 @@ import {
   CommunicationTerritory,
   Deliverable,
   HardwareEquipment,
+  EquipmentReservation,
+  Campaign,
+  AuditLog,
   DriveAccount,
   DriveFolder,
   DriveFile,
@@ -481,7 +484,141 @@ export const driveVaultService = {
 };
 
 // ==============================================================================
-// 6. SEED DEMO DATA HELPER (FOR 1-CLICK WEBADMIN IMPORT)
+// 6. EQUIPMENT SERVICE
+// ==============================================================================
+
+export const equipmentService = {
+  async fetchEquipment(): Promise<HardwareEquipment[]> {
+    if (!isSupabaseConfigured) return [];
+    const { data, error } = await supabase.from('hardware_equipment').select('*');
+    if (error || !data) return [];
+    return data.map((e) => ({
+      id: e.id,
+      name: e.name,
+      category: e.category || 'camera',
+      model: e.model || e.name,
+      serialNumber: e.serial_number || '',
+      status: e.status || 'available',
+      specs: e.specs || '',
+      dailyRateUSD: Number(e.daily_rate_cents || 0) / 100,
+      image: e.image || 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400&auto=format&fit=crop&q=80',
+    }));
+  },
+
+  async createEquipment(eq: HardwareEquipment): Promise<void> {
+    if (!isSupabaseConfigured) return;
+    await supabase.from('hardware_equipment').insert({
+      id: eq.id,
+      name: eq.name,
+      category: eq.category,
+      status: eq.status,
+      serial_number: eq.serialNumber,
+      daily_rate_cents: Math.round(eq.dailyRateUSD * 100),
+    });
+  },
+
+  async fetchReservations(): Promise<EquipmentReservation[]> {
+    if (!isSupabaseConfigured) return [];
+    const { data, error } = await supabase.from('equipment_reservations').select('*');
+    if (error || !data) return [];
+    return data.map((r) => ({
+      id: r.id,
+      equipmentId: r.equipment_id,
+      deliverableId: r.deliverable_id || '',
+      deliverableTitle: r.deliverable_title || 'Entregable',
+      brandName: r.brand_name || 'Marca',
+      startDate: r.start_date,
+      endDate: r.end_date,
+      reservedById: r.user_id || '',
+      reservedByName: r.reserved_by_name || 'Usuario',
+      status: r.status || 'confirmed',
+      createdAt: r.created_at || new Date().toISOString().split('T')[0],
+    }));
+  },
+};
+
+// ==============================================================================
+// 7. CAMPAIGNS SERVICE
+// ==============================================================================
+
+export const campaignService = {
+  async fetchCampaigns(): Promise<Campaign[]> {
+    if (!isSupabaseConfigured) return [];
+    const { data, error } = await supabase.from('campaigns').select('*').order('created_at', { ascending: false });
+    if (error || !data) return [];
+    return data.map((c) => ({
+      id: c.id,
+      code: c.code || 'CMP-001',
+      brandId: c.brand_id,
+      name: c.name,
+      description: c.description || '',
+      objective: c.objective || '',
+      campaignType: c.type || 'brand_awareness',
+      startDate: c.start_date || new Date().toISOString().split('T')[0],
+      endDate: c.end_date || new Date().toISOString().split('T')[0],
+      budgetUSD: Number(c.budget_cents || 0) / 100,
+      spentUSD: Number(c.spent_cents || 0) / 100,
+      status: c.status || 'planning',
+      deliverableIds: c.deliverable_ids || [],
+      kpis: c.kpis || [],
+      createdAt: c.created_at || new Date().toISOString().split('T')[0],
+      updatedAt: c.updated_at || new Date().toISOString().split('T')[0],
+    }));
+  },
+
+  async createCampaign(camp: Campaign): Promise<void> {
+    if (!isSupabaseConfigured) return;
+    await supabase.from('campaigns').insert({
+      id: camp.id,
+      brand_id: camp.brandId,
+      name: camp.name,
+      type: camp.campaignType,
+      status: camp.status,
+      start_date: camp.startDate,
+      end_date: camp.endDate,
+      budget_cents: Math.round(camp.budgetUSD * 100),
+      spent_cents: Math.round((camp.spentUSD || 0) * 100),
+      kpis: camp.kpis,
+    });
+  },
+};
+
+// ==============================================================================
+// 8. AUDIT LOGS SERVICE
+// ==============================================================================
+
+export const auditService = {
+  async fetchAuditLogs(): Promise<AuditLog[]> {
+    if (!isSupabaseConfigured) return [];
+    const { data, error } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false }).limit(50);
+    if (error || !data) return [];
+    return data.map((a) => ({
+      id: a.id,
+      timestamp: a.created_at || new Date().toISOString(),
+      userId: a.user_id || 'usr_system',
+      userName: a.user_name || 'Sistema',
+      userRole: a.user_role || 'webadmin',
+      action: a.action,
+      entityType: a.entity_type || 'system',
+      entityId: a.entity_id || 'sys_root',
+      details: typeof a.details === 'string' ? a.details : JSON.stringify(a.details || {}),
+    }));
+  },
+
+  async addAuditLog(log: AuditLog): Promise<void> {
+    if (!isSupabaseConfigured) return;
+    await supabase.from('audit_logs').insert({
+      id: log.id,
+      user_id: log.userId,
+      action: log.action,
+      resource: log.entityType,
+      details: { details: log.details, userName: log.userName, userRole: log.userRole, entityId: log.entityId },
+    });
+  },
+};
+
+// ==============================================================================
+// 9. SEED DEMO DATA HELPER (FOR 1-CLICK WEBADMIN IMPORT)
 // ==============================================================================
 
 export async function seedDemoDataToSupabase(): Promise<{ success: boolean; message: string }> {

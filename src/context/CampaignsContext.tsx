@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Campaign } from '../types';
 import { INITIAL_CAMPAIGNS } from '../data/initialData';
+import { campaignService } from '../services/supabaseService';
+import { isSupabaseConfigured } from '../lib/supabaseClient';
 
 export interface CampaignsContextType {
   campaigns: Campaign[];
@@ -9,12 +11,14 @@ export interface CampaignsContextType {
   createCampaign: (campaign: Omit<Campaign, 'id' | 'code' | 'createdAt' | 'updatedAt'>) => Campaign;
   updateCampaign: (id: string, updates: Partial<Campaign>) => void;
   deleteCampaign: (id: string) => void;
+  refreshCampaignsFromSupabase: () => Promise<void>;
 }
 
 const CampaignsContext = createContext<CampaignsContextType | undefined>(undefined);
 
 export const CampaignsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [campaigns, setCampaigns] = useState<Campaign[]>(() => {
+    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_campaigns');
       return saved ? JSON.parse(saved) : INITIAL_CAMPAIGNS;
@@ -24,6 +28,20 @@ export const CampaignsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>('all');
+
+  const refreshCampaignsFromSupabase = async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const dbCamp = await campaignService.fetchCampaigns();
+      setCampaigns(dbCamp || []);
+    } catch (err) {
+      console.warn('Could not sync campaigns with Supabase:', err);
+    }
+  };
+
+  useEffect(() => {
+    refreshCampaignsFromSupabase();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('nataraja_campaigns', JSON.stringify(campaigns));
@@ -40,6 +58,7 @@ export const CampaignsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       updatedAt: new Date().toISOString().split('T')[0],
     };
     setCampaigns((prev) => [newCamp, ...prev]);
+    campaignService.createCampaign(newCamp).catch((err) => console.warn('Supabase createCampaign sync error:', err));
     return newCamp;
   };
 
@@ -62,6 +81,7 @@ export const CampaignsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         createCampaign,
         updateCampaign,
         deleteCampaign,
+        refreshCampaignsFromSupabase,
       }}
     >
       {children}

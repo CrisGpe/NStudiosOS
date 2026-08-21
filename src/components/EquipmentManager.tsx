@@ -247,83 +247,100 @@ export const EquipmentManager: React.FC = () => {
       </div>
 
       {/* Equipment Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {filteredEquipment.map((eq) => {
-          const statusBadge = getStatusBadge(eq.status);
-          const activeBookings = reservations.filter((r) => r.equipmentId === eq.id && r.status === 'confirmed');
-
-          return (
-            <div
-              key={eq.id}
-              className="bg-white border border-slate-200 hover:border-slate-300 rounded-lg overflow-hidden shadow-2xs flex flex-col justify-between group transition-all"
+      {filteredEquipment.length === 0 ? (
+        <div className="bg-white border border-dashed border-slate-300 rounded-2xl p-12 text-center space-y-3 shadow-2xs">
+          <Camera className="w-10 h-10 text-slate-300 mx-auto" />
+          <h3 className="font-bold text-sm text-slate-800">No hay equipos registrados en el inventario</h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            Registra cámaras cinema, ópticas, micrófonos o gimbals para gestionar reservas y disponibilidad en rodajes.
+          </p>
+          {(currentUser.role === 'webadmin' || currentUser.role === 'director') && (
+            <button
+              onClick={() => setIsCreateEquipmentModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold text-xs shadow-xs cursor-pointer transition-colors"
             >
-              <div>
-                {/* Equipment Image with Category Overlay */}
-                <div className="relative h-36 bg-slate-100 overflow-hidden border-b border-slate-100">
-                  <img
-                    src={eq.image}
-                    alt={eq.name}
-                    className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-black/20" />
+              <Plus className="w-4 h-4" />
+              <span>Registrar Primer Equipo</span>
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {filteredEquipment.map((eq) => {
+            const statusBadge = getStatusBadge(eq.status);
+            const activeBookings = reservations.filter((r) => r.equipmentId === eq.id && r.status === 'confirmed');
 
-                  {/* Status Badge */}
-                  <div className="absolute top-2 right-2">
-                    <span
-                      className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shadow-2xs backdrop-blur-xs ${statusBadge.className}`}
-                    >
-                      {statusBadge.label}
-                    </span>
-                  </div>
+            return (
+              <div
+                key={eq.id}
+                className="bg-white border border-slate-200 hover:border-slate-300 rounded-lg overflow-hidden shadow-2xs flex flex-col justify-between group transition-all"
+              >
+                <div>
+                  {/* Equipment Image with Category Overlay */}
+                  <div className="relative h-36 bg-slate-100 overflow-hidden border-b border-slate-100">
+                    <img
+                      src={eq.image}
+                      alt={eq.name}
+                      className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-black/20" />
 
-                  {/* Serial Number & Daily Rate Tag */}
-                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between text-[10px] text-white">
-                    <span className="bg-slate-900/80 px-1.5 py-0.2 rounded font-mono border border-white/20">
-                      {eq.serialNumber}
-                    </span>
-                    <span className="font-bold text-amber-300 bg-slate-900/80 px-1.5 py-0.2 rounded border border-white/20">
-                      ${eq.dailyRateUSD}/día
-                    </span>
-                  </div>
-                </div>
-
-                {/* Body Content */}
-                <div className="p-3 space-y-2">
-                  <div>
-                    <h3 className="text-xs font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">
-                      {eq.name}
-                    </h3>
-                    <p className="text-[10px] font-mono text-slate-500 mt-0.2">{eq.model}</p>
-                  </div>
-
-                  <p className="text-[11px] text-slate-600 leading-relaxed bg-slate-50 p-2 rounded-md border border-slate-100">
-                    {eq.specs}
-                  </p>
-
-                  {/* Upcoming Bookings on this device */}
-                  {activeBookings.length > 0 && (
-                    <div className="space-y-1 pt-1 border-t border-slate-100 text-[10px]">
-                      <div className="text-[9px] uppercase font-bold text-slate-500 flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-slate-400" />
-                        <span>Fechas Bloqueadas:</span>
-                      </div>
-                      {activeBookings.map((b) => (
-                        <div
-                          key={b.id}
-                          className="flex items-center justify-between bg-slate-50 px-2 py-0.5 rounded border border-slate-200 text-slate-700"
-                        >
-                          <span className="truncate max-w-[130px] font-medium text-amber-800">
-                            {b.deliverableTitle}
-                          </span>
-                          <span className="font-mono text-slate-500 text-[9px]">
-                            {b.startDate} al {b.endDate}
-                          </span>
-                        </div>
-                      ))}
+                    {/* Status Badge */}
+                    <div className="absolute top-2 right-2">
+                      <span
+                        className={`text-[9px] font-bold px-2 py-0.5 rounded-full border shadow-2xs backdrop-blur-xs ${statusBadge.className}`}
+                      >
+                        {statusBadge.label}
+                      </span>
                     </div>
-                  )}
+
+                    {/* Category Tag */}
+                    <div className="absolute bottom-2 left-2">
+                      <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-slate-900/80 text-white backdrop-blur-xs border border-white/10 uppercase">
+                        {eq.category}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Body Info */}
+                  <div className="p-3.5 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h4 className="font-bold text-xs text-slate-900 leading-tight">{eq.name}</h4>
+                        <p className="text-[10px] text-slate-500 font-mono mt-0.5">{eq.model}</p>
+                      </div>
+                      <span className="text-[11px] font-mono font-extrabold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                        ${eq.dailyRateUSD}/d
+                      </span>
+                    </div>
+
+                    <p className="text-[11px] text-slate-600 line-clamp-2 leading-relaxed">
+                      {eq.specs}
+                    </p>
+
+                    {activeBookings.length > 0 && (
+                      <div className="space-y-1 pt-1 border-t border-slate-100 text-[10px]">
+                        <div className="text-[9px] uppercase font-bold text-slate-500 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          <span>Fechas Bloqueadas:</span>
+                        </div>
+                        {activeBookings.map((b) => (
+                          <div
+                            key={b.id}
+                            className="flex items-center justify-between bg-slate-50 px-2 py-0.5 rounded border border-slate-200 text-slate-700"
+                          >
+                            <span className="truncate max-w-[130px] font-medium text-amber-800">
+                              {b.deliverableTitle}
+                            </span>
+                            <span className="font-mono text-slate-500 text-[9px]">
+                              {b.startDate} al {b.endDate}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
 
               {/* Card Footer: Action */}
               <div className="p-3 pt-0">
@@ -338,7 +355,8 @@ export const EquipmentManager: React.FC = () => {
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
 
       {/* Modal: Reserva de Hardware con Detección de Colisiones */}
       {isBookModalOpen && targetEquipment && (

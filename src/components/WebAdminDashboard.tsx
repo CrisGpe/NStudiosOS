@@ -33,7 +33,7 @@ export const WebAdminDashboard: React.FC = () => {
   const [seedToast, setSeedToast] = useState<string | null>(null);
 
   const activeReservationsCount = equipment.filter((e) => e.status !== 'available').length;
-  const hardwareUtilizationRate = Math.round((activeReservationsCount / equipment.length) * 100);
+  const hardwareUtilizationRate = equipment.length > 0 ? Math.round((activeReservationsCount / equipment.length) * 100) : 0;
 
   const teamCollaborators = users.filter(
     (u) => u.role === 'colaborador' || u.role === 'director' || u.role === 'webadmin'
@@ -125,19 +125,19 @@ export const WebAdminDashboard: React.FC = () => {
             <Building2 className="w-4 h-4 text-pink-600" />
           </div>
           <div className="text-2xl font-extrabold text-slate-900 font-mono">{brands.length}</div>
-          <div className="text-[11px] text-emerald-700 font-medium">
-            6 de 6 marcas con territorios válidos
+          <div className="text-[11px] text-slate-500 font-medium">
+            {brands.length} marca(s) registradas
           </div>
         </div>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-1 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 text-xs font-medium">
-            <span>Cupos de Colaborador</span>
+            <span>Cupos de Equipo</span>
             <Users className="w-4 h-4 text-blue-600" />
           </div>
-          <div className="text-2xl font-extrabold text-slate-900 font-mono">2 / 2 Asignados</div>
-          <div className="text-[11px] text-slate-500 font-medium">
-            Carlos Méndez & Sofía Alarcón
+          <div className="text-2xl font-extrabold text-slate-900 font-mono">{teamCollaborators.length} Asignados</div>
+          <div className="text-[11px] text-slate-500 font-medium truncate">
+            {teamCollaborators.map((c) => c.name.split(' ')[0]).join(', ') || 'Sin equipo registrado'}
           </div>
         </div>
 
@@ -159,7 +159,7 @@ export const WebAdminDashboard: React.FC = () => {
           </div>
           <div className="text-2xl font-extrabold text-slate-900 font-mono">{deliverables.length}</div>
           <div className="text-[11px] text-indigo-700 font-medium">
-            En 7 fases de ciclo de vida
+            {deliverables.length} entregable(s) en ciclo de vida
           </div>
         </div>
 
@@ -184,7 +184,16 @@ export const WebAdminDashboard: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {teamCollaborators.map((member) => {
+          {teamCollaborators.length === 0 ? (
+            <div className="col-span-full bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-8 text-center space-y-2">
+              <Users className="w-8 h-8 text-slate-300 mx-auto" />
+              <h4 className="font-bold text-xs text-slate-800">Sin colaboradores registrados</h4>
+              <p className="text-[11px] text-slate-500">
+                Registra miembros del equipo desde la pantalla de login para gestionar sus horarios y disponibilidad.
+              </p>
+            </div>
+          ) : (
+            teamCollaborators.map((member) => {
             const sched = member.schedule || {
               workDays: [1, 2, 3, 4, 5],
               startHour: '09:00',
@@ -271,7 +280,8 @@ export const WebAdminDashboard: React.FC = () => {
                 </div>
               </div>
             );
-          })}
+          })
+        )}
         </div>
       </div>
 
@@ -283,7 +293,7 @@ export const WebAdminDashboard: React.FC = () => {
             <span>Infraestructura de Almacenamiento: Google Drive Multi-Cuenta</span>
           </h3>
           <span className="text-emerald-800 font-mono text-[10.5px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200">
-            2 Cuentas Activas
+            {driveAccounts.length} Cuentas Activas
           </span>
         </div>
 

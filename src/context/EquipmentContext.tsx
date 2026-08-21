@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { HardwareEquipment, EquipmentReservation, CollaboratorSchedule } from '../types';
 import { INITIAL_EQUIPMENT, INITIAL_RESERVATIONS, INITIAL_USERS } from '../data/initialData';
+import { equipmentService } from '../services/supabaseService';
+import { isSupabaseConfigured } from '../lib/supabaseClient';
 
 export interface EquipmentContextType {
   equipment: HardwareEquipment[];
@@ -22,12 +24,14 @@ export interface EquipmentContextType {
   collaboratorSchedules: Record<string, CollaboratorSchedule>;
   updateCollaboratorSchedule: (userId: string, schedule: Partial<CollaboratorSchedule>) => void;
   checkCollaboratorAvailability: (userId: string, date?: string) => { isAvailable: boolean; reason?: string };
+  refreshEquipmentFromSupabase: () => Promise<void>;
 }
 
 const EquipmentContext = createContext<EquipmentContextType | undefined>(undefined);
 
 export const EquipmentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [equipment, setEquipment] = useState<HardwareEquipment[]>(() => {
+    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_equipment');
       return saved ? JSON.parse(saved) : INITIAL_EQUIPMENT;
@@ -37,6 +41,7 @@ export const EquipmentProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   });
 
   const [reservations, setReservations] = useState<EquipmentReservation[]>(() => {
+    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_reservations');
       return saved ? JSON.parse(saved) : INITIAL_RESERVATIONS;
@@ -59,6 +64,24 @@ export const EquipmentProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   });
 
+  const refreshEquipmentFromSupabase = async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const [dbEq, dbRes] = await Promise.all([
+        equipmentService.fetchEquipment(),
+        equipmentService.fetchReservations(),
+      ]);
+      setEquipment(dbEq || []);
+      setReservations(dbRes || []);
+    } catch (err) {
+      console.warn('Could not sync equipment with Supabase:', err);
+    }
+  };
+
+  useEffect(() => {
+    refreshEquipmentFromSupabase();
+  }, []);
+
   useEffect(() => {
     localStorage.setItem('nataraja_equipment', JSON.stringify(equipment));
   }, [equipment]);
@@ -77,6 +100,7 @@ export const EquipmentProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       id: 'eq_' + Date.now(),
     };
     setEquipment((prev) => [...prev, newEq]);
+    equipmentService.createEquipment(newEq).catch((err) => console.warn('Supabase createEquipment sync error:', err));
     return newEq;
   };
 
@@ -98,21 +122,16 @@ export const EquipmentProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const end = new Date(endDate).getTime();
 
     const activeReservations = reservations.filter(
-      (r) =>
-        r.equipmentId === equipmentId &&
-        r.status === 'confirmed' &&
-        (!excludeReservationId || r.id !== excludeReservationId)
+      (r) => r.equipmentId === equipmentId && r.status === 'confirmed' && r.id !== excludeReservationId
     );
 
     for (const res of activeReservations) {
       const resStart = new Date(res.startDate).getTime();
       const resEnd = new Date(res.endDate).getTime();
-
-      if ((start >= resStart && start <= resEnd) || (end >= resStart && end <= resEnd) || (start <= resStart && end >= resEnd)) {
+      if (Math.max(start, resStart) <= Math.min(end, resEnd)) {
         return { hasCollision: true, collidingWith: res };
       }
     }
-
     return { hasCollision: false };
   };
 
@@ -128,7 +147,7 @@ export const EquipmentProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (collision.hasCollision) {
       return {
         success: false,
-        error: 'Conflicto de reserva: El equipo ya está reservado del ' + collision.collidingWith?.startDate + ' al ' + collision.collidingWith?.endDate,
+        error: `Conflicto de reserva: Este equipo ya está asignado a "${collision.collidingWith?.deliverableTitle}" del ${collision.collidingWith?.startDate} al ${collision.collidingWith?.endDate}.`,
       };
     }
 
@@ -144,37 +163,44 @@ export const EquipmentProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   const cancelEquipmentReservation = (reservationId: string) => {
-    setReservations((prev) => prev.map((r) => (r.id === reservationId ? { ...r, status: 'cancelled' as const } : r)));
+    setReservations((prev) => prev.map((r) => (r.id === reservationId ? { ...r, status: 'cancelled' } : r)));
   };
 
-  const updateCollaboratorSchedule = (userId: string, schedule: Partial<CollaboratorSchedule>) => {
-    setCollaboratorSchedules((prev) => {
-      const current = prev[userId] || {
-        workDays: [1, 2, 3, 4, 5],
-        startHour: '09:00',
-        endHour: '18:00',
-        isOnVacation: false,
-        alertsEnabled: true,
-      };
+  const updateCollaboratorSchedule = (userId: string, scheduleUpdates: Partial<CollaboratorSchedule>) => {
+    setCollaboratorSchedules((prev) => ({
+      ...prev,
+      [userId]: {
+        ...(prev[userId] || {
+          workDays: [1, 2, 3, 4, 5],
+          startHour: '09:00',
+          endHour: '19:00',
+          isOnVacation: false,
+          alertsEnabled: true,
+        }),
+        ...scheduleUpdates,
+      },
+    }));
+  };
+
+  const checkCollaboratorAvailability = (userId: string, targetDateStr?: string) => {
+    const sched = collaboratorSchedules[userId];
+    if (!sched) return { isAvailable: true };
+
+    if (sched.isOnVacation) {
       return {
-        ...prev,
-        [userId]: { ...current, ...schedule },
+        isAvailable: false,
+        reason: `En período de vacaciones (${sched.vacationNotes || 'Autorizado por Dirección'})`,
       };
-    });
-  };
-
-  const checkCollaboratorAvailability = (userId: string, dateStr?: string) => {
-    const schedule = collaboratorSchedules[userId];
-    if (!schedule) return { isAvailable: true };
-
-    if (schedule.isOnVacation) {
-      return { isAvailable: false, reason: 'En período de vacaciones' };
     }
 
-    const date = dateStr ? new Date(dateStr) : new Date();
-    const dayOfWeek = date.getDay();
-    if (!schedule.workDays.includes(dayOfWeek)) {
-      return { isAvailable: false, reason: 'Día no laboral según horario configurado' };
+    const checkDate = targetDateStr ? new Date(targetDateStr) : new Date();
+    const dayOfWeek = checkDate.getDay();
+
+    if (!sched.workDays.includes(dayOfWeek)) {
+      return {
+        isAvailable: false,
+        reason: 'Fuera de jornada laboral programada para este día.',
+      };
     }
 
     return { isAvailable: true };
@@ -194,6 +220,7 @@ export const EquipmentProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         collaboratorSchedules,
         updateCollaboratorSchedule,
         checkCollaboratorAvailability,
+        refreshEquipmentFromSupabase,
       }}
     >
       {children}
