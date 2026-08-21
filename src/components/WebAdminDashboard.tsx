@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { UserRole } from '../types';
 import { supabaseService } from '../services/supabaseService';
+import { notificationService, WebhookConfig } from '../services/notificationService';
+import { Bell, Send, Check } from 'lucide-react';
 
 export const WebAdminDashboard: React.FC = () => {
   const {
@@ -35,6 +37,53 @@ export const WebAdminDashboard: React.FC = () => {
   const [updatingUserBrands, setUpdatingUserBrands] = useState<Record<string, string[]>>({});
   const [isSavingUser, setIsSavingUser] = useState(false);
   const [saveSuccessToast, setSaveSuccessToast] = useState<string | null>(null);
+
+  // Webhook State
+  const [webhookUrl, setWebhookUrl] = useState('');
+  const [webhookEnabled, setWebhookEnabled] = useState(true);
+  const [notifyOnSignup, setNotifyOnSignup] = useState(true);
+  const [adminEmail, setAdminEmail] = useState('crial0810@gmail.com');
+  const [isTestingWebhook, setIsTestingWebhook] = useState(false);
+  const [isSavingWebhook, setIsSavingWebhook] = useState(false);
+
+  React.useEffect(() => {
+    notificationService.getWebhookConfig().then((cfg) => {
+      setWebhookUrl(cfg.url);
+      setWebhookEnabled(cfg.enabled);
+      setNotifyOnSignup(cfg.notifyOnClientSignup);
+      setAdminEmail(cfg.adminEmail);
+    });
+  }, []);
+
+  const handleSaveWebhook = async () => {
+    setIsSavingWebhook(true);
+    const res = await notificationService.saveWebhookConfig({
+      url: webhookUrl,
+      enabled: webhookEnabled,
+      notifyOnClientSignup: notifyOnSignup,
+      notifyOnT3Approval: true,
+      adminEmail: adminEmail,
+    });
+    setIsSavingWebhook(false);
+    if (res.success) {
+      setSaveSuccessToast('Configuración de Webhook guardada');
+      setTimeout(() => setSaveSuccessToast(null), 3000);
+    } else {
+      alert(res.message);
+    }
+  };
+
+  const handleTestWebhook = async () => {
+    setIsTestingWebhook(true);
+    const res = await notificationService.testWebhook(webhookUrl);
+    setIsTestingWebhook(false);
+    if (res.success) {
+      setSaveSuccessToast(res.message);
+      setTimeout(() => setSaveSuccessToast(null), 3500);
+    } else {
+      alert(res.message);
+    }
+  };
 
   // Filtered users list
   const filteredUsers = users.filter((u) => {
@@ -410,6 +459,71 @@ export const WebAdminDashboard: React.FC = () => {
             <div className="text-[10px] font-mono text-slate-600 bg-white p-2 rounded-lg border border-slate-200 space-y-0.5">
               <div>Modelo: <strong className="text-purple-900">Gemini 2.5 Flash / Pro</strong></div>
               <div>Context Window: <strong className="text-purple-700">1M Tokens</strong></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Webhook Dispatcher Card */}
+        <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-xs">
+                <Bell className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="font-bold text-xs text-slate-900">
+                  Webhook de Notificaciones Automáticas (Nuevo Cliente Registrado)
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Despacha una alerta en tiempo real a tu Google Apps Script, Discord, Slack o Zapier cuando un cliente crea su cuenta.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={webhookEnabled}
+                  onChange={(e) => setWebhookEnabled(e.target.checked)}
+                  className="rounded-md border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span>Webhook Activo</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center pt-1">
+            <div className="md:col-span-8">
+              <input
+                type="url"
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+                placeholder="https://script.google.com/macros/s/.../exec o https://discord.com/api/webhooks/..."
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 focus:border-indigo-500 focus:outline-hidden shadow-2xs font-mono"
+              />
+            </div>
+            <div className="md:col-span-4 flex items-center gap-2">
+              <button
+                type="button"
+                disabled={isSavingWebhook}
+                onClick={handleSaveWebhook}
+                className="flex-1 py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>{isSavingWebhook ? 'Guardando...' : 'Guardar URL'}</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isTestingWebhook || !webhookUrl.trim()}
+                onClick={handleTestWebhook}
+                className="py-2 px-3 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200 transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                title="Enviar mensaje de prueba"
+              >
+                <Send className="w-3.5 h-3.5 text-indigo-600" />
+                <span>{isTestingWebhook ? 'Probando...' : 'Probar'}</span>
+              </button>
             </div>
           </div>
         </div>

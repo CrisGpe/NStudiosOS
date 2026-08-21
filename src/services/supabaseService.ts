@@ -58,7 +58,14 @@ export const authService = {
         name,
         email,
         role,
-        roleTitle: role === 'webadmin' ? 'Chief Technology Officer & WebAdmin Global' : 'Usuario Registrado',
+        roleTitle:
+          role === 'webadmin'
+            ? 'Chief Technology Officer & WebAdmin Global'
+            : role === 'director'
+            ? 'Director Creativo & Executive Producer'
+            : role === 'cliente'
+            ? 'Cliente de Marca'
+            : 'Colaborador Técnico / Post-Producción',
         avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
         assignedBrandIds: [],
         schedule: {
@@ -87,6 +94,36 @@ export const authService = {
         schedule: newProfile.schedule,
         preferences: newProfile.preferences,
       });
+
+      // 3. Log event in audit_logs
+      try {
+        await supabase.from('audit_logs').insert({
+          id: 'audit_' + Date.now(),
+          timestamp: new Date().toISOString(),
+          user_id: newProfile.id,
+          user_name: newProfile.name,
+          action: role === 'cliente' ? 'NUEVO_CLIENTE_REGISTRADO' : 'NUEVO_USUARIO_REGISTRADO',
+          entity_type: 'user_profile',
+          entity_id: newProfile.id,
+          details: { email: newProfile.email, role: newProfile.role },
+        });
+      } catch (logErr) {
+        console.warn('Could not insert audit log:', logErr);
+      }
+
+      // 4. Dispatch Webhook Notification if client
+      if (role === 'cliente') {
+        try {
+          const { notificationService } = await import('./notificationService');
+          await notificationService.notifyClientSignup({
+            name: newProfile.name,
+            email: newProfile.email,
+            userId: newProfile.id,
+          });
+        } catch (notifyErr) {
+          console.warn('Webhook notification error:', notifyErr);
+        }
+      }
 
       return { user: data.user, profile: newProfile };
     }

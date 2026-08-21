@@ -374,6 +374,32 @@ export const WebAdminMobileHub: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Service 4: Notification Webhook */}
+              <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Database className="w-4 h-4 text-indigo-600" />
+                    <h4 className="font-bold text-xs text-slate-900">Webhook de Avisos</h4>
+                  </div>
+                  <span className="text-[9.5px] font-mono font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                    🟢 Activo
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Avisos automáticos en tiempo real cuando un nuevo cliente se registra.
+                </p>
+                <div className="text-[11px] font-mono text-slate-600 bg-slate-50 p-2.5 rounded-xl space-y-1 border border-slate-100">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Destino:</span>
+                    <strong className="text-slate-800 truncate max-w-[170px]">crial0810@gmail.com</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Evento:</span>
+                    <strong className="text-indigo-700">NUEVO_CLIENTE_REGISTRADO</strong>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
