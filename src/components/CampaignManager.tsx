@@ -54,6 +54,11 @@ export const CampaignManager: React.FC = () => {
     0
   );
 
+  const campaignsWithROAS = filteredCampaigns.filter((c) => typeof c.targetROAS === 'number' && c.targetROAS > 0);
+  const avgTargetROAS = campaignsWithROAS.length > 0
+    ? (campaignsWithROAS.reduce((acc, c) => acc + (c.targetROAS || 0), 0) / campaignsWithROAS.length)
+    : 0;
+
   const getStatusBadge = (status: CampaignStatus) => {
     switch (status) {
       case 'active':
@@ -192,11 +197,21 @@ export const CampaignManager: React.FC = () => {
             <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500 block">
               ROAS Promedio Objetivo
             </span>
-            <div className="text-xl font-extrabold text-emerald-700 font-mono mt-1">
-              4.1x Retorno
+            <div className={`text-xl font-extrabold font-mono mt-1 ${avgTargetROAS > 0 ? 'text-emerald-700' : 'text-slate-400'}`}>
+              {avgTargetROAS > 0 ? `${avgTargetROAS.toFixed(1)}x Retorno` : '0.0x'}
             </div>
-            <span className="text-[10.5px] text-emerald-700 font-semibold mt-0.5 block">
-              ✓ Rendimiento óptimo
+            <span className={`text-[10.5px] font-semibold mt-0.5 block ${
+              avgTargetROAS >= 3.5
+                ? 'text-emerald-700'
+                : avgTargetROAS > 0
+                ? 'text-amber-600'
+                : 'text-slate-400'
+            }`}>
+              {avgTargetROAS >= 3.5
+                ? '✓ Rendimiento óptimo'
+                : avgTargetROAS > 0
+                ? '⚡ Retorno moderado'
+                : 'Sin campañas registradas'}
             </span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center text-purple-600 shadow-2xs shrink-0">
