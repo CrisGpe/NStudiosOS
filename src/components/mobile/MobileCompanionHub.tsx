@@ -21,7 +21,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { MobileFlashCaptureModal } from './MobileFlashCaptureModal';
-import { MobileCaptureType } from '../../types';
+import { MobileCaptureType, Brand } from '../../types';
 
 type FeedFilterType = 'all' | 'social' | 'media' | 'notes';
 
@@ -51,9 +51,12 @@ export const MobileCompanionHub: React.FC = () => {
     id: 'brd_default',
     name: 'Estudio General',
     industry: 'Producción & Publicidad',
-    primaryColor: '#4f46e5',
     logo: '',
-    status: 'active',
+    primaryColor: '#4f46e5',
+    slogan: 'Creatividad & Producción',
+    contactPerson: 'Director de Estudio',
+    contactEmail: 'contacto@estudio.com',
+    createdAt: new Date().toISOString(),
   };
 
   const activeBrandId = isClient

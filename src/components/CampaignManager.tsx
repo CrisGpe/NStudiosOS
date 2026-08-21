@@ -139,13 +139,13 @@ export const CampaignManager: React.FC = () => {
         <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-between shadow-2xs">
           <div>
             <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500 block">
-              Presupuesto Total (USD)
+              Presupuesto Total (S/.)
             </span>
             <div className="text-xl font-extrabold text-slate-900 font-mono mt-1">
-              ${totalBudget.toLocaleString('en-US')} USD
+              S/. {totalBudget.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <span className="text-[10.5px] text-slate-500 font-mono mt-0.5 block">
-              Ejecutado: ${totalSpent.toLocaleString('en-US')} USD ({totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0}%)
+              Ejecutado: S/. {totalSpent.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0}%)
             </span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-2xs shrink-0">
@@ -159,7 +159,7 @@ export const CampaignManager: React.FC = () => {
               Inversión en Pauta (Ad Spend)
             </span>
             <div className="text-xl font-extrabold text-rose-600 font-mono mt-1">
-              ${totalAdSpend.toLocaleString('en-US')} USD
+              S/. {totalAdSpend.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <span className="text-[10.5px] text-slate-500 mt-0.5 block">
               Meta Ads • Google • TikTok
@@ -311,14 +311,14 @@ export const CampaignManager: React.FC = () => {
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-2xs">
                     <span className="text-slate-500 text-[9.5px] block font-medium">Presupuesto Total</span>
                     <span className="font-mono font-bold text-slate-900 text-xs mt-0.5 block">
-                      ${camp.budgetUSD.toLocaleString('en-US')}
+                      S/. {camp.budgetUSD.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
 
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-2xs">
                     <span className="text-slate-500 text-[9.5px] block font-medium">Pauta (Ad Spend)</span>
                     <span className="font-mono font-bold text-rose-600 text-xs mt-0.5 block">
-                      ${(camp.adSpendUSD || 0).toLocaleString('en-US')}
+                      S/. {(camp.adSpendUSD || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
 
@@ -332,7 +332,7 @@ export const CampaignManager: React.FC = () => {
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-2xs">
                     <span className="text-slate-500 text-[9.5px] block font-medium">CPA Objetivo</span>
                     <span className="font-mono font-bold text-indigo-600 text-xs mt-0.5 block">
-                      {camp.targetCPAUSD ? `$${camp.targetCPAUSD}` : 'N/A'}
+                      {camp.targetCPAUSD ? `S/. ${Number(camp.targetCPAUSD).toFixed(2)}` : 'N/A'}
                     </span>
                   </div>
                 </div>

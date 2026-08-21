@@ -46,7 +46,7 @@ export const CreateCampaignModal: React.FC = () => {
 
   const [kpis, setKpis] = useState<Omit<CampaignKPI, 'id'>[]>([
     { metric: 'Retorno de Inversión (ROAS)', targetValue: 4.2, currentValue: 0, unit: 'x' },
-    { metric: 'Costo por Adquisición (CPA)', targetValue: 14.5, currentValue: 0, unit: 'USD' },
+    { metric: 'Costo por Adquisición (CPA)', targetValue: 14.5, currentValue: 0, unit: 'S/.' },
     { metric: 'Visualizaciones 3s Retención', targetValue: 120000, currentValue: 0, unit: 'vistas' },
   ]);
 
@@ -278,7 +278,7 @@ export const CreateCampaignModal: React.FC = () => {
 
             <div>
               <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                Presupuesto Producción (USD)
+                Presupuesto Producción (S/.)
               </label>
               <input
                 type="number"
@@ -290,7 +290,7 @@ export const CreateCampaignModal: React.FC = () => {
 
             <div>
               <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                Pauta Publicitaria (USD)
+                Pauta Publicitaria (S/.)
               </label>
               <input
                 type="number"
@@ -318,7 +318,7 @@ export const CreateCampaignModal: React.FC = () => {
 
             <div>
               <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                CPA Máximo Permitido (USD)
+                CPA Máximo Permitido (S/.)
               </label>
               <input
                 type="number"
