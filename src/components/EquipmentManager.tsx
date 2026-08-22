@@ -44,8 +44,8 @@ export const EquipmentManager: React.FC = () => {
   const [isBookModalOpen, setIsBookModalOpen] = useState<boolean>(false);
   const [targetEquipment, setTargetEquipment] = useState<HardwareEquipment | null>(null);
   const [selectedDeliverableId, setSelectedDeliverableId] = useState<string>(deliverables[0]?.id || '');
-  const [bookStartDate, setBookStartDate] = useState<string>('2026-08-25');
-  const [bookEndDate, setBookEndDate] = useState<string>('2026-08-27');
+  const [bookStartDate, setBookStartDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [bookEndDate, setBookEndDate] = useState<string>(() => new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]);
   const [bookNotes, setBookNotes] = useState<string>('');
   const [collisionWarning, setCollisionWarning] = useState<string | null>(null);
 
@@ -77,18 +77,18 @@ export const EquipmentManager: React.FC = () => {
     switch (status) {
       case 'available':
         return {
-          label: 'Disponible',
-          className: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+          label: 'Disponible en Pañol',
+          className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
         };
       case 'reserved':
         return {
-          label: 'Reservado',
-          className: 'bg-amber-50 text-amber-800 border-amber-200',
+          label: 'Reservado para Rodaje',
+          className: 'bg-amber-50 text-amber-700 border-amber-200',
         };
       case 'in_shoot':
         return {
-          label: 'En Rodaje Activo',
-          className: 'bg-rose-50 text-rose-800 border-rose-200',
+          label: 'En Set / Rodaje Activo',
+          className: 'bg-rose-50 text-rose-700 border-rose-200',
         };
       case 'maintenance':
         return {
@@ -100,8 +100,8 @@ export const EquipmentManager: React.FC = () => {
 
   const openBookingModal = (eq: HardwareEquipment) => {
     setTargetEquipment(eq);
-    setBookStartDate('2026-08-25');
-    setBookEndDate('2026-08-27');
+    setBookStartDate(new Date().toISOString().split('T')[0]);
+    setBookEndDate(new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]);
     setBookNotes('');
     setCollisionWarning(null);
     setIsBookModalOpen(true);

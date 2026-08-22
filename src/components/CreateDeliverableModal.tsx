@@ -28,9 +28,9 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
   const [newPriority, setNewPriority] = useState<DeliverablePriority>('medium');
   const [newConceptHook, setNewConceptHook] = useState('');
   const [newDescription, setNewDescription] = useState('');
-  const [newProdStart, setNewProdStart] = useState('2026-08-25');
-  const [newProdEnd, setNewProdEnd] = useState('2026-08-26');
-  const [newPublishDate, setNewPublishDate] = useState('2026-09-02');
+  const [newProdStart, setNewProdStart] = useState(() => new Date().toISOString().split('T')[0]);
+  const [newProdEnd, setNewProdEnd] = useState(() => new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0]);
+  const [newPublishDate, setNewPublishDate] = useState(() => new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]);
 
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();

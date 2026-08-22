@@ -27,9 +27,8 @@ export const DualCalendar: React.FC = () => {
   } = useApp();
 
   const [viewMode, setViewMode] = useState<'dual' | 'production' | 'publishing'>('dual');
-  // Months: Current is August 2026, 1 month past (July 2026), 2 months future (Sept 2026, Oct 2026)
-  const [currentYear, setCurrentYear] = useState<number>(2026);
-  const [currentMonth, setCurrentMonth] = useState<number>(7); // 0-indexed: 7 is August
+  const [currentYear, setCurrentYear] = useState<number>(() => new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState<number>(() => new Date().getMonth());
 
   const monthNames = [
     'Enero',
@@ -201,7 +200,7 @@ export const DualCalendar: React.FC = () => {
         </div>
 
         <span className="text-slate-500 font-mono text-[11px] font-medium">
-          Hoy: 17 de Agosto, 2026
+          Hoy: {new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date())}
         </span>
       </div>
 
@@ -231,7 +230,11 @@ export const DualCalendar: React.FC = () => {
             const dayNum = i + 1;
             const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
             const { prodEvents, pubEvents } = getEventsForDate(dateStr);
-            const isToday = currentYear === 2026 && currentMonth === 7 && dayNum === 17;
+            const nowObj = new Date();
+            const isToday =
+              currentYear === nowObj.getFullYear() &&
+              currentMonth === nowObj.getMonth() &&
+              dayNum === nowObj.getDate();
 
             return (
               <div
@@ -283,7 +286,7 @@ export const DualCalendar: React.FC = () => {
                   {/* Publishing Events */}
                   {pubEvents.map((del) => {
                     const brand = brands.find((b) => b.id === del.brandId);
-                    const now = new Date('2026-08-17').getTime();
+                    const now = new Date().getTime();
                     const pub = new Date(del.publishDate).getTime();
                     const diffDays = Math.ceil((pub - now) / (1000 * 60 * 60 * 24));
                     const isTMinus3 = diffDays <= 3 && diffDays >= 0;

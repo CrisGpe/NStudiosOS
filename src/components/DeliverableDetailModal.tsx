@@ -72,7 +72,7 @@ export const DeliverableDetailModal: React.FC = () => {
   const reservedGear = equipment.filter((e) => (selectedDeliverable.equipmentReservedIds || []).includes(e.id));
 
   // T-3 calculation
-  const now = new Date('2026-08-17').getTime();
+  const now = new Date().getTime();
   const pub = new Date(selectedDeliverable.publishDate).getTime();
   const daysToPublish = Math.ceil((pub - now) / (1000 * 60 * 60 * 24));
   const isTMinus3Active = daysToPublish <= 3 && daysToPublish >= 0;
@@ -116,7 +116,7 @@ export const DeliverableDetailModal: React.FC = () => {
             description: changeDesc,
             reason: changeReason,
           },
-          currentDate: '2026-08-17',
+          currentDate: new Date().toISOString().split('T')[0],
         }),
       });
 

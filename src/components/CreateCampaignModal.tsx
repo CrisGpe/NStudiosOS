@@ -32,8 +32,8 @@ export const CreateCampaignModal: React.FC = () => {
   );
   const [objective, setObjective] = useState('');
   const [campaignType, setCampaignType] = useState<CampaignType>('performance_paid_ads');
-  const [startDate, setStartDate] = useState('2026-09-01');
-  const [endDate, setEndDate] = useState('2026-09-30');
+  const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(() => new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]);
   const [productionBudgetUSD, setProductionBudgetUSD] = useState<number>(3500);
   const [adSpendUSD, setAdSpendUSD] = useState<number>(5000);
   const [targetROAS, setTargetROAS] = useState<number>(4.2);

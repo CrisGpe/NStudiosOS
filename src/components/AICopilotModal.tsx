@@ -104,9 +104,9 @@ export const AICopilotModal: React.FC = () => {
       format: idea.format || 'Video 9:16 UHD',
       conceptHook: idea.hook,
       description: idea.narrativeConcept,
-      productionStartDate: '2026-08-28',
-      productionEndDate: '2026-08-29',
-      publishDate: '2026-09-08',
+      productionStartDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
+      productionEndDate: new Date(Date.now() + 4 * 86400000).toISOString().split('T')[0],
+      publishDate: new Date(Date.now() + 10 * 86400000).toISOString().split('T')[0],
       equipmentReservedIds: [],
       assetsLinked: [],
       technicalGuide: {
