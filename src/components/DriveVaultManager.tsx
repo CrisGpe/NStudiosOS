@@ -377,7 +377,7 @@ export const DriveVaultManager: React.FC = () => {
                 <div
                   key={fld.id}
                   onClick={() => setCurrentFolderId(fld.id)}
-                  className={`rounded-2xl p-3.5 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-2.5 group bg-white border ${
+                  className={`rounded-2xl p-3.5 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-2.5 group bg-white border relative hover:z-20 ${
                     isSandbox
                       ? 'bg-purple-50/50 border-purple-200 hover:border-purple-400'
                       : 'border-slate-200 hover:border-indigo-400'
@@ -460,7 +460,7 @@ export const DriveVaultManager: React.FC = () => {
               return (
                 <div
                   key={file.id}
-                  className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all space-y-3 relative group overflow-hidden"
+                  className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all space-y-3 relative group hover:z-20"
                   style={{ borderLeftColor: brand?.primaryColor || '#4f46e5', borderLeftWidth: '4px' }}
                 >
                   {/* File Header */}

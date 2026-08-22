@@ -902,7 +902,7 @@ export const WebAdminDashboard: React.FC = () => {
             {driveAccounts.map((account) => (
               <div
                 key={account.id}
-                className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 shadow-2xs"
+                className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 shadow-2xs relative hover:z-20"
               >
                 <div className="flex items-start justify-between">
                   <div>

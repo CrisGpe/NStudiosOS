@@ -385,7 +385,7 @@ export const BrandTerritoryManager: React.FC = () => {
               {brandTerritories.map((territory) => (
                 <div
                   key={territory.id}
-                  className={`bg-slate-50/70 border rounded-lg p-3 space-y-2.5 relative group transition-all ${
+                  className={`bg-slate-50/70 border rounded-lg p-3 space-y-2.5 relative group transition-all hover:z-20 ${
                     territory.active
                       ? 'border-slate-200 hover:border-blue-400 bg-white shadow-2xs'
                       : 'border-slate-200 opacity-60'
@@ -476,7 +476,7 @@ export const BrandTerritoryManager: React.FC = () => {
                 brandAssets.map((asset) => (
                   <div
                     key={asset.id}
-                    className="bg-white border border-slate-200 hover:border-slate-300 rounded-lg p-3 space-y-2 relative group shadow-2xs"
+                    className="bg-white border border-slate-200 hover:border-slate-300 rounded-lg p-3 space-y-2 relative group shadow-2xs hover:z-20"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2">

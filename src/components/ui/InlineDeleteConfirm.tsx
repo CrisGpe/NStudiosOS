@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Trash2, AlertTriangle, X, Check } from 'lucide-react';
+import { Trash2, AlertTriangle, X } from 'lucide-react';
 
 interface InlineDeleteConfirmProps {
   title?: string;
@@ -10,6 +10,7 @@ interface InlineDeleteConfirmProps {
   triggerIcon?: React.ReactNode;
   triggerClassName?: string;
   align?: 'left' | 'right' | 'center';
+  placement?: 'top' | 'bottom' | 'auto';
   disabled?: boolean;
 }
 
@@ -22,11 +23,33 @@ export const InlineDeleteConfirm: React.FC<InlineDeleteConfirmProps> = ({
   triggerIcon,
   triggerClassName,
   align = 'right',
+  placement = 'auto',
   disabled = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [calculatedPlacement, setCalculatedPlacement] = useState<'top' | 'bottom'>('top');
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-detect whether to open upward or downward based on viewport space
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      if (placement === 'top') {
+        setCalculatedPlacement('top');
+      } else if (placement === 'bottom') {
+        setCalculatedPlacement('bottom');
+      } else {
+        const rect = containerRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        // If less than 140px below, open upwards
+        if (spaceBelow < 140) {
+          setCalculatedPlacement('top');
+        } else {
+          setCalculatedPlacement('bottom');
+        }
+      }
+    }
+  }, [isOpen, placement]);
 
   // Click outside listener
   useEffect(() => {
@@ -74,13 +97,21 @@ export const InlineDeleteConfirm: React.FC<InlineDeleteConfirmProps> = ({
   };
 
   const alignmentClasses = {
-    left: 'left-0 origin-top-left',
-    right: 'right-0 origin-top-right',
-    center: 'left-1/2 -translate-x-1/2 origin-top',
+    left: 'left-0',
+    right: 'right-0',
+    center: 'left-1/2 -translate-x-1/2',
+  };
+
+  const placementClasses = {
+    top: 'bottom-full mb-2 origin-bottom shadow-2xl animate-in zoom-in-95 fade-in slide-in-from-bottom-2 duration-150',
+    bottom: 'top-full mt-2 origin-top shadow-2xl animate-in zoom-in-95 fade-in slide-in-from-top-2 duration-150',
   };
 
   return (
-    <div className="relative inline-block text-left" ref={containerRef}>
+    <div
+      className={`relative inline-block text-left ${isOpen ? 'z-[70]' : ''}`}
+      ref={containerRef}
+    >
       {/* Trigger Button */}
       <button
         type="button"
@@ -99,7 +130,7 @@ export const InlineDeleteConfirm: React.FC<InlineDeleteConfirmProps> = ({
       {isOpen && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className={`absolute z-50 mt-1.5 w-64 rounded-2xl bg-white border border-slate-200 shadow-2xl p-3.5 text-slate-800 animate-in zoom-in-95 fade-in duration-150 ${alignmentClasses[align]}`}
+          className={`absolute z-[80] w-64 rounded-2xl bg-white border border-slate-200/90 shadow-2xl p-3.5 text-slate-800 ring-1 ring-black/5 ${alignmentClasses[align]} ${placementClasses[calculatedPlacement]}`}
         >
           <div className="flex items-start gap-2.5">
             <div className="w-7 h-7 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0">
