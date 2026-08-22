@@ -187,7 +187,7 @@ export const WebAdminDashboard: React.FC = () => {
     try {
       await supabaseService.updateUserProfile(userId, {
         role: newRole,
-        assigned_brand_ids: newBrandIds,
+        assignedBrandIds: newBrandIds,
       });
 
       addAuditLog(

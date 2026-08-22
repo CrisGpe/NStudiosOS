@@ -5,19 +5,19 @@ import { AppLayout } from './components/AppLayout';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 import { useApp } from './context/AppContext';
 
-// Lazy loading views
-const LoginView = React.lazy(() => import('./components/LoginView').then((m) => ({ default: m.LoginView })));
-const KanbanBoard = React.lazy(() => import('./components/KanbanBoard').then((m) => ({ default: m.KanbanBoard })));
-const CampaignManager = React.lazy(() => import('./components/CampaignManager').then((m) => ({ default: m.CampaignManager })));
-const DriveVaultManager = React.lazy(() => import('./components/DriveVaultManager').then((m) => ({ default: m.DriveVaultManager })));
-const BrandTerritoryManager = React.lazy(() => import('./components/BrandTerritoryManager').then((m) => ({ default: m.BrandTerritoryManager })));
-const EquipmentManager = React.lazy(() => import('./components/EquipmentManager').then((m) => ({ default: m.EquipmentManager })));
-const DualCalendar = React.lazy(() => import('./components/DualCalendar').then((m) => ({ default: m.DualCalendar })));
-const WebAdminDashboard = React.lazy(() => import('./components/WebAdminDashboard').then((m) => ({ default: m.WebAdminDashboard })));
+// Lazy loaded page components
+const LoginPage = React.lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
+const KanbanPage = React.lazy(() => import('./pages/KanbanPage').then((m) => ({ default: m.KanbanPage })));
+const CampaignsPage = React.lazy(() => import('./pages/CampaignsPage').then((m) => ({ default: m.CampaignsPage })));
+const DriveVaultPage = React.lazy(() => import('./pages/DriveVaultPage').then((m) => ({ default: m.DriveVaultPage })));
+const BrandTerritoryPage = React.lazy(() => import('./pages/BrandTerritoryPage').then((m) => ({ default: m.BrandTerritoryPage })));
+const EquipmentPage = React.lazy(() => import('./pages/EquipmentPage').then((m) => ({ default: m.EquipmentPage })));
+const DualCalendarPage = React.lazy(() => import('./pages/DualCalendarPage').then((m) => ({ default: m.DualCalendarPage })));
+const AdminPage = React.lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
 const DirectorOperationsDashboard = React.lazy(() => import('./components/DirectorOperationsDashboard').then((m) => ({ default: m.DirectorOperationsDashboard })));
-const ClientBrandHub = React.lazy(() => import('./components/ClientBrandHub').then((m) => ({ default: m.ClientBrandHub })));
-const SystemSpecsHub = React.lazy(() => import('./components/SystemSpecsHub').then((m) => ({ default: m.SystemSpecsHub })));
-const MobileCompanionHub = React.lazy(() => import('./components/mobile/MobileCompanionHub').then((m) => ({ default: m.MobileCompanionHub })));
+const ClientHubPage = React.lazy(() => import('./pages/ClientHubPage').then((m) => ({ default: m.ClientHubPage })));
+const SystemSpecsPage = React.lazy(() => import('./pages/SystemSpecsPage').then((m) => ({ default: m.SystemSpecsPage })));
+const MobileCompanionPage = React.lazy(() => import('./pages/MobileCompanionPage').then((m) => ({ default: m.MobileCompanionPage })));
 
 const IndexRedirect: React.FC = () => {
   const { currentUser } = useApp();
@@ -38,8 +38,8 @@ export const router = createBrowserRouter([
     path: '/login',
     errorElement: <RouteErrorBoundary />,
     element: (
-      <React.Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500 font-medium text-xs">Cargando acceso...</div>}>
-        <LoginView />
+      <React.Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400 font-medium text-xs">Cargando acceso...</div>}>
+        <LoginPage />
       </React.Suspense>
     ),
   },
@@ -51,8 +51,8 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: (
-          <React.Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500 font-medium text-xs">Cargando N. Studios Mobile...</div>}>
-            <MobileCompanionHub />
+          <React.Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400 font-medium text-xs">Cargando N. Studios Mobile...</div>}>
+            <MobileCompanionPage />
           </React.Suspense>
         ),
       },
@@ -66,8 +66,8 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: (
-          <React.Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500 font-medium text-xs">Cargando Portal de Cliente Móvil...</div>}>
-            <MobileCompanionHub />
+          <React.Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-400 font-medium text-xs">Cargando Portal de Cliente Móvil...</div>}>
+            <MobileCompanionPage />
           </React.Suspense>
         ),
       },
@@ -90,7 +90,7 @@ export const router = createBrowserRouter([
             path: 'kanban',
             element: (
               <React.Suspense fallback={<div className="p-8 text-center text-slate-500 text-xs font-medium">Cargando Tablero Kanban...</div>}>
-                <KanbanBoard />
+                <KanbanPage />
               </React.Suspense>
             ),
           },
@@ -98,7 +98,7 @@ export const router = createBrowserRouter([
             path: 'campaigns',
             element: (
               <React.Suspense fallback={<div className="p-8 text-center text-slate-500 text-xs font-medium">Cargando Gestor de Campañas...</div>}>
-                <CampaignManager />
+                <CampaignsPage />
               </React.Suspense>
             ),
           },
@@ -106,7 +106,7 @@ export const router = createBrowserRouter([
             path: 'drive',
             element: (
               <React.Suspense fallback={<div className="p-8 text-center text-slate-500 text-xs font-medium">Cargando Drive Vault & Media Hub...</div>}>
-                <DriveVaultManager />
+                <DriveVaultPage />
               </React.Suspense>
             ),
           },
@@ -114,7 +114,7 @@ export const router = createBrowserRouter([
             path: 'drive-vault',
             element: (
               <React.Suspense fallback={<div className="p-8 text-center text-slate-500 text-xs font-medium">Cargando Drive Vault & Media Hub...</div>}>
-                <DriveVaultManager />
+                <DriveVaultPage />
               </React.Suspense>
             ),
           },
@@ -126,7 +126,7 @@ export const router = createBrowserRouter([
                 index: true,
                 element: (
                   <React.Suspense fallback={<div className="p-8 text-center text-slate-500 text-xs font-medium">Cargando Gestión de Marcas & Territorios...</div>}>
-                    <BrandTerritoryManager />
+                    <BrandTerritoryPage />
                   </React.Suspense>
                 ),
               },
@@ -140,7 +140,7 @@ export const router = createBrowserRouter([
                 index: true,
                 element: (
                   <React.Suspense fallback={<div className="p-8 text-center text-slate-500 text-xs font-medium">Cargando Inventario de Hardware & Equipos...</div>}>
-                    <EquipmentManager />
+                    <EquipmentPage />
                   </React.Suspense>
                 ),
               },
@@ -150,7 +150,7 @@ export const router = createBrowserRouter([
             path: 'calendar',
             element: (
               <React.Suspense fallback={<div className="p-8 text-center text-slate-500 text-xs font-medium">Cargando Calendarios Duales...</div>}>
-                <DualCalendar />
+                <DualCalendarPage />
               </React.Suspense>
             ),
           },
@@ -176,7 +176,7 @@ export const router = createBrowserRouter([
                 index: true,
                 element: (
                   <React.Suspense fallback={<div className="p-8 text-center text-slate-500 text-xs font-medium">Cargando WebAdmin Dashboard...</div>}>
-                    <WebAdminDashboard />
+                    <AdminPage />
                   </React.Suspense>
                 ),
               },
@@ -186,7 +186,7 @@ export const router = createBrowserRouter([
             path: 'client/hub',
             element: (
               <React.Suspense fallback={<div className="p-8 text-center text-slate-500 text-xs font-medium">Cargando Hub de Marca & Co-Creación...</div>}>
-                <ClientBrandHub />
+                <ClientHubPage />
               </React.Suspense>
             ),
           },
@@ -198,7 +198,7 @@ export const router = createBrowserRouter([
                 index: true,
                 element: (
                   <React.Suspense fallback={<div className="p-8 text-center text-slate-500 text-xs font-medium">Cargando System Specs Hub...</div>}>
-                    <SystemSpecsHub />
+                    <SystemSpecsPage />
                   </React.Suspense>
                 ),
               },

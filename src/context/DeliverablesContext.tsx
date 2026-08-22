@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Deliverable, DeliverablePhase, ChangeRequest, TechnicalGuide, DeliverableType } from '../types';
-import { INITIAL_DELIVERABLES } from '../data/initialData';
-import { deliverableService } from '../services/supabaseService';
+import { DeliverablesRepository } from '../repositories/deliverables.repository';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 
 export interface DeliverablesContextType {
@@ -36,12 +35,11 @@ const PHASE_ORDER: DeliverablePhase[] = [
 
 export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [deliverables, setDeliverables] = useState<Deliverable[]>(() => {
-    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_deliverables');
-      return saved ? JSON.parse(saved) : INITIAL_DELIVERABLES;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_DELIVERABLES;
+      return [];
     }
   });
 
@@ -50,7 +48,7 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const refreshDeliverablesFromSupabase = async () => {
     if (!isSupabaseConfigured) return;
     try {
-      const dbDel = await deliverableService.fetchDeliverables();
+      const dbDel = await DeliverablesRepository.fetchDeliverables();
       setDeliverables(dbDel || []);
     } catch (err) {
       console.warn('Could not sync deliverables with Supabase:', err);
@@ -103,7 +101,7 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
 
     setDeliverables((prev) => [newDel, ...prev]);
-    deliverableService.createDeliverable(newDel).catch((err) => console.warn('Supabase createDeliverable sync error:', err));
+    DeliverablesRepository.createDeliverable(newDel).catch((err) => console.warn('Supabase createDeliverable sync error:', err));
     return newDel;
   };
 
@@ -112,7 +110,7 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const next = prev.map((d) => (d.id === id ? { ...d, ...updates, updatedAt: new Date().toISOString().split('T')[0] } : d));
       const updated = next.find((d) => d.id === id);
       if (updated) {
-        deliverableService.updateDeliverable(updated).catch((err) => console.warn('Supabase updateDeliverable sync error:', err));
+        DeliverablesRepository.updateDeliverable(updated).catch((err) => console.warn('Supabase updateDeliverable sync error:', err));
       }
       return next;
     });
@@ -120,7 +118,7 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const deleteDeliverable = (id: string) => {
     setDeliverables((prev) => prev.filter((d) => d.id !== id));
-    deliverableService.deleteDeliverable(id).catch((err) => console.warn('Supabase deleteDeliverable sync error:', err));
+    DeliverablesRepository.deleteDeliverable(id).catch((err) => console.warn('Supabase deleteDeliverable sync error:', err));
   };
 
   const moveDeliverablePhase = (id: string, directionOrPhase: 'advance' | 'retreat' | DeliverablePhase) => {
@@ -147,7 +145,7 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       const updated = next.find((d) => d.id === id);
       if (updated) {
-        deliverableService.updateDeliverable(updated).catch((err) => console.warn('Supabase updateDeliverable sync error:', err));
+        DeliverablesRepository.updateDeliverable(updated).catch((err) => console.warn('Supabase updateDeliverable sync error:', err));
       }
       return next;
     });
@@ -158,7 +156,7 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const next = prev.map((d) => (d.id === deliverableId ? { ...d, technicalGuide: guide, updatedAt: new Date().toISOString().split('T')[0] } : d));
       const updated = next.find((d) => d.id === deliverableId);
       if (updated) {
-        deliverableService.updateDeliverable(updated).catch((err) => console.warn('Supabase updateDeliverable sync error:', err));
+        DeliverablesRepository.updateDeliverable(updated).catch((err) => console.warn('Supabase updateDeliverable sync error:', err));
       }
       return next;
     });
@@ -184,7 +182,7 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
       );
       const updated = next.find((d) => d.id === deliverableId);
       if (updated) {
-        deliverableService.updateDeliverable(updated).catch((err) => console.warn('Supabase submitChangeRequest sync error:', err));
+        DeliverablesRepository.updateDeliverable(updated).catch((err) => console.warn('Supabase submitChangeRequest sync error:', err));
       }
       return next;
     });
@@ -209,7 +207,7 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
       });
       const updated = next.find((d) => d.id === deliverableId);
       if (updated) {
-        deliverableService.updateDeliverable(updated).catch((err) => console.warn('Supabase respondChangeRequest sync error:', err));
+        DeliverablesRepository.updateDeliverable(updated).catch((err) => console.warn('Supabase respondChangeRequest sync error:', err));
       }
       return next;
     });
@@ -235,8 +233,8 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
       id: 'del_' + Date.now(),
       code,
       title: data.title,
-      brandId: data.brandId || 'brd_apex',
-      territoryId: data.territoryId || 'ter_apx_01',
+      brandId: data.brandId || 'brd_default',
+      territoryId: data.territoryId || 'ter_default',
       assigneeId: 'usr_director_1',
       phase: 'ideacion',
       priority: 'medium',
@@ -266,7 +264,7 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
       },
     };
     setDeliverables((prev) => [newProposal, ...prev]);
-    deliverableService.createDeliverable(newProposal).catch((err) => console.warn('Supabase createClientProposal sync error:', err));
+    DeliverablesRepository.createDeliverable(newProposal).catch((err) => console.warn('Supabase createClientProposal sync error:', err));
     return newProposal;
   };
 

@@ -8,7 +8,7 @@ import {
   DigitalAsset,
   HardwareEquipment,
 } from '../types';
-import { INITIAL_DRIVE_ACCOUNTS, INITIAL_DRIVE_FOLDERS, INITIAL_DRIVE_FILES } from '../data/initialData';
+import { DriveVaultRepository } from '../repositories/drive.repository';
 import { driveVaultService } from '../services/supabaseService';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 
@@ -44,32 +44,29 @@ const DriveVaultContext = createContext<DriveVaultContextType | undefined>(undef
 
 export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [driveAccounts, setDriveAccounts] = useState<DriveAccount[]>(() => {
-    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_drive_accounts');
-      return saved ? JSON.parse(saved) : INITIAL_DRIVE_ACCOUNTS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_DRIVE_ACCOUNTS;
+      return [];
     }
   });
 
   const [driveFolders, setDriveFolders] = useState<DriveFolder[]>(() => {
-    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_drive_folders');
-      return saved ? JSON.parse(saved) : INITIAL_DRIVE_FOLDERS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_DRIVE_FOLDERS;
+      return [];
     }
   });
 
   const [driveFiles, setDriveFiles] = useState<DriveFile[]>(() => {
-    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_drive_files');
-      return saved ? JSON.parse(saved) : INITIAL_DRIVE_FILES;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_DRIVE_FILES;
+      return [];
     }
   });
 
@@ -81,14 +78,14 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!isSupabaseConfigured) return;
     try {
       const [dbAccounts, dbFolders, dbFiles] = await Promise.all([
-        driveVaultService.fetchDriveAccounts(),
-        driveVaultService.fetchDriveFolders(),
-        driveVaultService.fetchDriveFiles(),
+        DriveVaultRepository.fetchAccounts(),
+        DriveVaultRepository.fetchFolders(),
+        DriveVaultRepository.fetchFiles(),
       ]);
       setDriveAccounts(dbAccounts || []);
       setDriveFolders(dbFolders || []);
       setDriveFiles(dbFiles || []);
-      if (dbAccounts && dbAccounts.length > 0) {
+      if (dbAccounts && dbAccounts.length > 0 && !selectedDriveAccountId) {
         setSelectedDriveAccountId(dbAccounts[0].id);
       }
     } catch (err) {
@@ -123,7 +120,7 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setSelectedDriveAccountId(newAccount.id);
     }
     if (isSupabaseConfigured) {
-      await driveVaultService.createDriveAccount(newAccount);
+      await DriveVaultRepository.createAccount(newAccount);
     }
     return newAccount;
   };
@@ -135,13 +132,13 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setSelectedDriveAccountId(remaining[0]?.id || '');
     }
     if (isSupabaseConfigured) {
-      await driveVaultService.deleteDriveAccount(id);
+      await DriveVaultRepository.deleteAccount(id);
     }
   };
 
   const createDriveFolder = (folderData: Partial<DriveFolder> & { name: string; accountId: string }): DriveFolder => {
     const newFolder: DriveFolder = {
-      brandId: folderData.brandId || 'brd_apex',
+      brandId: folderData.brandId || '',
       parentFolderId: undefined,
       path: `/${folderData.name}`,
       isSystemGenerated: false,
@@ -151,7 +148,7 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       id: 'fld_' + Date.now(),
     };
     setDriveFolders((prev) => [...prev, newFolder]);
-    driveVaultService.createDriveFolder(newFolder).catch((err) => console.warn('Supabase createDriveFolder sync error:', err));
+    DriveVaultRepository.createFolder(newFolder).catch((err) => console.warn('Supabase createDriveFolder sync error:', err));
     return newFolder;
   };
 
@@ -163,20 +160,20 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       updatedAt: new Date().toISOString().split('T')[0],
     };
     setDriveFiles((prev) => [newFile, ...prev]);
-    driveVaultService.createDriveFile(newFile).catch((err) => console.warn('Supabase createDriveFile sync error:', err));
+    DriveVaultRepository.createFile(newFile).catch((err) => console.warn('Supabase createDriveFile sync error:', err));
     return newFile;
   };
 
   const deleteDriveFile = (id: string) => {
     setDriveFiles((prev) => prev.filter((f) => f.id !== id));
-    driveVaultService.deleteDriveFile(id).catch((err) => console.warn('Supabase deleteDriveFile sync error:', err));
+    DriveVaultRepository.deleteFile(id).catch((err) => console.warn('Supabase deleteDriveFile sync error:', err));
   };
 
   const deleteDriveFolder = (id: string) => {
     setDriveFolders((prev) => prev.filter((f) => f.id !== id));
     setDriveFiles((prev) => prev.filter((f) => f.folderId !== id));
     if (selectedFolderId === id) setSelectedFolderId(null);
-    driveVaultService.deleteDriveFolder(id).catch((err) => console.warn('Supabase deleteDriveFolder sync error:', err));
+    DriveVaultRepository.deleteFolder(id).catch((err) => console.warn('Supabase deleteDriveFolder sync error:', err));
   };
 
   const updateDriveAccount = (id: string, updates: Partial<DriveAccount>) => {

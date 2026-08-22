@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Brand, CommunicationTerritory, DigitalAsset, ClientOrganization, ClientBrandPermission } from '../types';
-import { INITIAL_BRANDS, INITIAL_TERRITORIES, INITIAL_DIGITAL_ASSETS } from '../data/initialData';
-import { brandService, clientOrgService } from '../services/supabaseService';
+import { BrandsRepository } from '../repositories/brands.repository';
+import { ClientOrganizationsRepository } from '../repositories/organizations.repository';
+import { clientOrgService } from '../services/supabaseService';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 
 export interface BrandsContextType {
@@ -47,34 +48,31 @@ const BrandsContext = createContext<BrandsContextType | undefined>(undefined);
 
 export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [brands, setBrands] = useState<Brand[]>(() => {
-    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_brands');
-      return saved ? JSON.parse(saved) : INITIAL_BRANDS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_BRANDS;
+      return [];
     }
   });
 
   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
 
   const [territories, setTerritories] = useState<CommunicationTerritory[]>(() => {
-    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_territories');
-      return saved ? JSON.parse(saved) : INITIAL_TERRITORIES;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_TERRITORIES;
+      return [];
     }
   });
 
   const [digitalAssets, setDigitalAssets] = useState<DigitalAsset[]>(() => {
-    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_digital_assets');
-      return saved ? JSON.parse(saved) : INITIAL_DIGITAL_ASSETS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_DIGITAL_ASSETS;
+      return [];
     }
   });
 
@@ -90,10 +88,8 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const refreshOrganizationsFromSupabase = async () => {
     if (!isSupabaseConfigured) return;
     try {
-      const dbOrgs = await clientOrgService.fetchOrganizations();
-      if (dbOrgs && dbOrgs.length > 0) {
-        setOrganizations(dbOrgs);
-      }
+      const dbOrgs = await ClientOrganizationsRepository.fetchOrganizations();
+      setOrganizations(dbOrgs || []);
     } catch (err) {
       console.warn('Could not sync client organizations with Supabase:', err);
     }
@@ -103,11 +99,12 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!isSupabaseConfigured) return;
     try {
       const [dbBrands, dbTerritories, dbOrgs, dbAssets] = await Promise.all([
-        brandService.fetchBrands(),
-        brandService.fetchTerritories(),
-        clientOrgService.fetchOrganizations(),
-        brandService.fetchDigitalAssets(),
+        BrandsRepository.fetchBrands(),
+        BrandsRepository.fetchTerritories(),
+        ClientOrganizationsRepository.fetchOrganizations(),
+        BrandsRepository.fetchDigitalAssets(),
       ]);
+
       setBrands(dbBrands || []);
       if (dbBrands && dbBrands.length > 0) {
         if (!selectedBrandId || !dbBrands.some((b) => b.id === selectedBrandId)) {
@@ -117,12 +114,8 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setSelectedBrandId('');
       }
       setTerritories(dbTerritories || []);
-      if (dbOrgs && dbOrgs.length > 0) {
-        setOrganizations(dbOrgs);
-      }
-      if (dbAssets && dbAssets.length > 0) {
-        setDigitalAssets(dbAssets);
-      }
+      setOrganizations(dbOrgs || []);
+      setDigitalAssets(dbAssets || []);
     } catch (err) {
       console.warn('Could not sync brands with Supabase:', err);
     }
@@ -174,7 +167,7 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setBrands((prev) => [newBrand, ...prev]);
 
     try {
-      await brandService.createBrand(newBrand);
+      await BrandsRepository.createBrand(newBrand);
     } catch (err) {
       console.warn('Supabase createBrand sync error:', err);
     }
@@ -188,7 +181,7 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setTerritories((prev) => [...newTerritories, ...prev]);
       for (const t of newTerritories) {
         try {
-          await brandService.createTerritory(t);
+          await BrandsRepository.createTerritory(t);
         } catch (err) {
           console.warn('Supabase createTerritory sync error:', err);
         }
@@ -203,7 +196,7 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const next = prev.map((b) => (b.id === id ? { ...b, ...updates } : b));
       const updated = next.find((b) => b.id === id);
       if (updated) {
-        brandService.updateBrand(updated).catch((err) => console.warn('Supabase updateBrand sync error:', err));
+        BrandsRepository.updateBrand(updated).catch((err) => console.warn('Supabase updateBrand sync error:', err));
       }
       return next;
     });
@@ -212,7 +205,7 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const deleteBrand = (id: string) => {
     setBrands((prev) => prev.filter((b) => b.id !== id));
     setTerritories((prev) => prev.filter((t) => t.brandId !== id));
-    brandService.deleteBrand(id).catch((err) => console.warn('Supabase deleteBrand sync error:', err));
+    BrandsRepository.deleteBrand(id).catch((err) => console.warn('Supabase deleteBrand sync error:', err));
   };
 
   const createTerritory = (territoryData: Omit<CommunicationTerritory, 'id'>) => {
@@ -221,12 +214,19 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       id: 'terr_' + Date.now(),
     };
     setTerritories((prev) => [newTerritory, ...prev]);
-    brandService.createTerritory(newTerritory).catch((err) => console.warn('Supabase createTerritory sync error:', err));
+    BrandsRepository.createTerritory(newTerritory).catch((err) => console.warn('Supabase createTerritory sync error:', err));
     return { success: true };
   };
 
   const updateTerritory = (id: string, updates: Partial<CommunicationTerritory>) => {
-    setTerritories((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
+    setTerritories((prev) => {
+      const next = prev.map((t) => (t.id === id ? { ...t, ...updates } : t));
+      const updated = next.find((t) => t.id === id);
+      if (updated) {
+        BrandsRepository.updateTerritory(updated).catch((err) => console.warn('Supabase updateTerritory sync error:', err));
+      }
+      return next;
+    });
     return { success: true };
   };
 
@@ -242,6 +242,7 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
     }
     setTerritories((prev) => prev.filter((t) => t.id !== id));
+    BrandsRepository.deleteTerritory(id).catch((err) => console.warn('Supabase deleteTerritory error:', err));
     return { success: true };
   };
 
@@ -252,22 +253,36 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       updatedAt: new Date().toISOString().split('T')[0],
     };
     setDigitalAssets((prev) => [newAsset, ...prev]);
-    brandService.createDigitalAsset(newAsset).catch((err) => console.warn('Supabase createDigitalAsset sync error:', err));
+    BrandsRepository.createDigitalAsset(newAsset).catch((err) => console.warn('Supabase createDigitalAsset sync error:', err));
   };
 
   const updateDigitalAsset = (id: string, updates: Partial<DigitalAsset>) => {
-    setDigitalAssets((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, ...updates, updatedAt: new Date().toISOString().split('T')[0] } : a))
-    );
+    setDigitalAssets((prev) => {
+      const next = prev.map((a) => (a.id === id ? { ...a, ...updates, updatedAt: new Date().toISOString().split('T')[0] } : a));
+      const updated = next.find((a) => a.id === id);
+      if (updated) {
+        BrandsRepository.updateDigitalAsset(updated).catch((err) => console.warn('Supabase updateDigitalAsset error:', err));
+      }
+      return next;
+    });
   };
 
   const deleteDigitalAsset = (id: string) => {
     setDigitalAssets((prev) => prev.filter((a) => a.id !== id));
-    brandService.deleteDigitalAsset(id).catch((err) => console.warn('Supabase deleteDigitalAsset sync error:', err));
+    BrandsRepository.deleteDigitalAsset(id).catch((err) => console.warn('Supabase deleteDigitalAsset error:', err));
   };
 
   const createOrganization = async (orgData: Partial<ClientOrganization>): Promise<ClientOrganization> => {
-    const created = await clientOrgService.createOrganization(orgData);
+    const org: ClientOrganization = {
+      id: orgData.id || 'org_' + Date.now(),
+      name: orgData.name || 'Nueva Organización',
+      legalName: orgData.legalName,
+      contactEmail: orgData.contactEmail || '',
+      ownerUserId: orgData.ownerUserId || '',
+      brandIds: orgData.brandIds || [],
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    const created = await ClientOrganizationsRepository.createOrganization(org);
     setOrganizations((prev) => {
       const exists = prev.some((o) => o.id === created.id);
       return exists ? prev.map((o) => (o.id === created.id ? created : o)) : [...prev, created];
@@ -276,7 +291,7 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const syncBrandContacts = async (): Promise<{ syncedCount: number; orgsCreated: number }> => {
-    const res = await clientOrgService.syncBrandContactsToAuth(brands);
+    const res = await clientOrgService.syncBrandContacts();
     await refreshBrandsFromSupabase();
     return res;
   };

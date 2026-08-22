@@ -114,7 +114,7 @@ export const WebAdminMobileHub: React.FC = () => {
     try {
       await supabaseService.updateUserProfile(editingUserId, {
         role: editingRole,
-        assigned_brand_ids: editingBrands,
+        assignedBrandIds: editingBrands,
       });
 
       addAuditLog(

@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Campaign } from '../types';
-import { INITIAL_CAMPAIGNS } from '../data/initialData';
-import { campaignService } from '../services/supabaseService';
+import { CampaignsRepository } from '../repositories/campaigns.repository';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 
 export interface CampaignsContextType {
@@ -18,12 +17,11 @@ const CampaignsContext = createContext<CampaignsContextType | undefined>(undefin
 
 export const CampaignsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [campaigns, setCampaigns] = useState<Campaign[]>(() => {
-    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_campaigns');
-      return saved ? JSON.parse(saved) : INITIAL_CAMPAIGNS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_CAMPAIGNS;
+      return [];
     }
   });
 
@@ -32,7 +30,7 @@ export const CampaignsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const refreshCampaignsFromSupabase = async () => {
     if (!isSupabaseConfigured) return;
     try {
-      const dbCamp = await campaignService.fetchCampaigns();
+      const dbCamp = await CampaignsRepository.fetchCampaigns();
       setCampaigns(dbCamp || []);
     } catch (err) {
       console.warn('Could not sync campaigns with Supabase:', err);
@@ -58,18 +56,24 @@ export const CampaignsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       updatedAt: new Date().toISOString().split('T')[0],
     };
     setCampaigns((prev) => [newCamp, ...prev]);
-    campaignService.createCampaign(newCamp).catch((err) => console.warn('Supabase createCampaign sync error:', err));
+    CampaignsRepository.createCampaign(newCamp).catch((err) => console.warn('Supabase createCampaign sync error:', err));
     return newCamp;
   };
 
   const updateCampaign = (id: string, updates: Partial<Campaign>) => {
-    setCampaigns((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString().split('T')[0] } : c))
-    );
+    setCampaigns((prev) => {
+      const next = prev.map((c) => (c.id === id ? { ...c, ...updates, updatedAt: new Date().toISOString().split('T')[0] } : c));
+      const updated = next.find((c) => c.id === id);
+      if (updated) {
+        CampaignsRepository.updateCampaign(updated).catch((err) => console.warn('Supabase updateCampaign error:', err));
+      }
+      return next;
+    });
   };
 
   const deleteCampaign = (id: string) => {
     setCampaigns((prev) => prev.filter((c) => c.id !== id));
+    CampaignsRepository.deleteCampaign(id).catch((err) => console.warn('Supabase deleteCampaign error:', err));
   };
 
   return (

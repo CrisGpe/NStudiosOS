@@ -14,9 +14,38 @@ import {
   Cpu,
   BookOpen,
 } from 'lucide-react';
-import { INITIAL_DATA_SNAPSHOT } from '../data/initialData';
 
 export const SystemSpecsHub: React.FC = () => {
+  const {
+    users,
+    brands,
+    territories,
+    digitalAssets,
+    deliverables,
+    campaigns,
+    equipment,
+    reservations,
+    driveAccounts,
+    driveFolders,
+    driveFiles,
+    auditLogs,
+  } = useApp();
+
+  const liveDataSnapshot = {
+    users,
+    brands,
+    territories,
+    digitalAssets,
+    deliverables,
+    campaigns,
+    equipment,
+    reservations,
+    driveAccounts,
+    driveFolders,
+    driveFiles,
+    auditLogs,
+  };
+
   const [activeSpecTab, setActiveSpecTab] = useState<'erd' | 'stateMachine' | 'apiDocs' | 'mockData'>('erd');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
@@ -580,31 +609,31 @@ Table change_requests {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="font-bold text-slate-900 text-sm">
-                Dataset Inicial de Demostración Completo
+                Dataset del Sistema en Tiempo Real (Supabase)
               </h3>
               <p className="text-[11px] text-slate-500">
-                1 Director de Proyecto, 2 Colaboradores con cupos, 6 Clientes/Marcas con ≥3 territorios, inventario de hardware y 12 entregables.
+                Visualización JSON en vivo de todas las entidades sincronizadas desde Supabase.
               </p>
             </div>
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => handleCopy(JSON.stringify(INITIAL_DATA_SNAPSHOT, null, 2), 'mockJson')}
+                onClick={() => handleCopy(JSON.stringify(liveDataSnapshot, null, 2), 'liveJson')}
                 className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-semibold transition-all cursor-pointer"
               >
-                {copiedCode === 'mockJson' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedCode === 'mockJson' ? 'Copiado' : 'Copiar JSON'}</span>
+                {copiedCode === 'liveJson' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedCode === 'liveJson' ? 'Copiado' : 'Copiar JSON'}</span>
               </button>
 
               <button
                 onClick={() => {
-                  const blob = new Blob([JSON.stringify(INITIAL_DATA_SNAPSHOT, null, 2)], {
+                  const blob = new Blob([JSON.stringify(liveDataSnapshot, null, 2)], {
                     type: 'application/json',
                   });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a');
                   a.href = url;
-                  a.download = 'cineflow-dataset.json';
+                  a.download = 'cineflow-live-dataset.json';
                   a.click();
                 }}
                 className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs cursor-pointer"
@@ -616,7 +645,7 @@ Table change_requests {
           </div>
 
           <pre className="bg-slate-900 p-3.5 rounded-lg border border-slate-800 text-[11px] font-mono text-slate-200 overflow-x-auto max-h-[460px] custom-scrollbar">
-            {JSON.stringify(INITIAL_DATA_SNAPSHOT, null, 2)}
+            {JSON.stringify(liveDataSnapshot, null, 2)}
           </pre>
         </div>
       )}

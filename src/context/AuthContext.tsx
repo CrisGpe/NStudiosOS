@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { UserProfile, UserRole } from '../types';
-import { INITIAL_USERS } from '../data/initialData';
-import { authService } from '../services/supabaseService';
+import { AuthRepository } from '../repositories/auth.repository';
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 
 export interface AuthContextType {
@@ -17,49 +16,44 @@ export interface AuthContextType {
   refreshProfiles: () => Promise<void>;
 }
 
+const DEFAULT_ANONYMOUS_USER: UserProfile = {
+  id: '',
+  name: 'Invitado',
+  email: '',
+  role: 'webadmin',
+  roleTitle: 'WebAdmin Global',
+  avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest',
+  assignedBrandIds: [],
+};
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [users, setUsers] = useState<UserProfile[]>(() => {
-    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_users');
-      return saved ? JSON.parse(saved) : INITIAL_USERS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_USERS;
+      return [];
     }
   });
 
   const [currentUser, setCurrentUserState] = useState<UserProfile>(() => {
-    if (isSupabaseConfigured) {
-      return {
-        id: '',
-        name: 'Cargando...',
-        email: '',
-        role: 'webadmin',
-        roleTitle: 'WebAdmin Global',
-        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
-        assignedBrandIds: [],
-      };
-    }
     try {
       const saved = localStorage.getItem('nataraja_current_user');
-      return saved ? JSON.parse(saved) : INITIAL_USERS[0];
+      return saved ? JSON.parse(saved) : DEFAULT_ANONYMOUS_USER;
     } catch {
-      return INITIAL_USERS[0];
+      return DEFAULT_ANONYMOUS_USER;
     }
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    if (isSupabaseConfigured) {
-      try {
-        const saved = localStorage.getItem('nataraja_is_auth');
-        return saved === 'true';
-      } catch {
-        return false;
-      }
+    try {
+      const saved = localStorage.getItem('nataraja_is_auth');
+      return saved === 'true';
+    } catch {
+      return false;
     }
-    return true;
   });
 
   const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(false);
@@ -68,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshProfiles = async () => {
     if (!isSupabaseConfigured) return;
     try {
-      const dbProfiles = await authService.fetchAllProfiles();
+      const dbProfiles = await AuthRepository.fetchProfiles();
       setUsers(dbProfiles || []);
       if (dbProfiles && dbProfiles.length > 0) {
         const matchingCurrent = dbProfiles.find((u) => u.id === currentUser.id || u.email === currentUser.email);
@@ -95,7 +89,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         setIsLoadingAuth(true);
         try {
-          const profile = await authService.fetchUserProfile(session.user.id);
+          const profiles = await AuthRepository.fetchProfiles();
+          const profile = profiles.find((p) => p.id === session.user.id);
           if (profile) {
             setCurrentUserState(profile);
             setIsAuthenticated(true);
@@ -130,35 +125,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginWithPassword = async (email: string, password: string) => {
     setIsLoadingAuth(true);
     try {
-      const data = await authService.signIn(email, password);
+      const data = await AuthRepository.signIn(email, password);
       if (data?.user) {
-        let profile = await authService.fetchUserProfile(data.user.id);
-        if (!profile) {
-          // Create default profile for authenticated user
-          profile = {
-            id: data.user.id,
-            name: data.user.user_metadata?.name || email.split('@')[0],
-            email,
-            role: (data.user.user_metadata?.role as UserRole) || 'webadmin',
-            roleTitle: 'WebAdmin Global',
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
-            assignedBrandIds: [],
-            schedule: {
-              workDays: [1, 2, 3, 4, 5],
-              startHour: '09:00',
-              endHour: '18:00',
-              isOnVacation: false,
-              alertsEnabled: true,
-            },
-            preferences: {
-              navPosition: 'topbar',
-              theme: 'light-density',
-              compactCards: false,
-              enableNotifications: true,
-            },
-          };
-          await authService.upsertProfile(profile);
-        }
+        const profiles = await AuthRepository.fetchProfiles();
+        const profile = profiles.find((p) => p.id === data.user.id) || {
+          id: data.user.id,
+          name: data.user.user_metadata?.name || email.split('@')[0],
+          email,
+          role: (data.user.user_metadata?.role as UserRole) || 'webadmin',
+          roleTitle: 'WebAdmin Global',
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
+          assignedBrandIds: [],
+        };
         setCurrentUserState(profile);
         setIsAuthenticated(true);
         await refreshProfiles();
@@ -171,9 +149,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUpWithPassword = async (email: string, password: string, name: string, role: UserRole = 'webadmin') => {
     setIsLoadingAuth(true);
     try {
-      const result = await authService.signUp(email, password, name, role);
-      if (result.profile) {
-        setCurrentUserState(result.profile);
+      const profile = await AuthRepository.signUp(email, password, name, role);
+      if (profile) {
+        setCurrentUserState(profile);
         setIsAuthenticated(true);
         await refreshProfiles();
       }
@@ -192,7 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      await authService.signOut();
+      await AuthRepository.signOut();
     } catch {
       // ignore
     }
@@ -202,11 +180,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const setCurrentUser = async (user: UserProfile) => {
     setCurrentUserState(user);
     setUsers((prev) => prev.map((u) => (u.id === user.id ? user : u)));
-    try {
-      await authService.upsertProfile(user);
-    } catch {
-      // ignore
-    }
   };
 
   return (

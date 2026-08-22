@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { HardwareEquipment, EquipmentReservation, CollaboratorSchedule } from '../types';
-import { INITIAL_EQUIPMENT, INITIAL_RESERVATIONS, INITIAL_USERS } from '../data/initialData';
-import { equipmentService } from '../services/supabaseService';
+import { EquipmentRepository } from '../repositories/equipment.repository';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 
 export interface EquipmentContextType {
@@ -31,34 +30,27 @@ const EquipmentContext = createContext<EquipmentContextType | undefined>(undefin
 
 export const EquipmentProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [equipment, setEquipment] = useState<HardwareEquipment[]>(() => {
-    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_equipment');
-      return saved ? JSON.parse(saved) : INITIAL_EQUIPMENT;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_EQUIPMENT;
+      return [];
     }
   });
 
   const [reservations, setReservations] = useState<EquipmentReservation[]>(() => {
-    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_reservations');
-      return saved ? JSON.parse(saved) : INITIAL_RESERVATIONS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_RESERVATIONS;
+      return [];
     }
   });
 
   const [collaboratorSchedules, setCollaboratorSchedules] = useState<Record<string, CollaboratorSchedule>>(() => {
     try {
       const saved = localStorage.getItem('nataraja_schedules');
-      if (saved) return JSON.parse(saved);
-      const initial: Record<string, CollaboratorSchedule> = {};
-      INITIAL_USERS.forEach((u) => {
-        if (u.schedule) initial[u.id] = u.schedule;
-      });
-      return initial;
+      return saved ? JSON.parse(saved) : {};
     } catch {
       return {};
     }
@@ -68,8 +60,8 @@ export const EquipmentProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     if (!isSupabaseConfigured) return;
     try {
       const [dbEq, dbRes] = await Promise.all([
-        equipmentService.fetchEquipment(),
-        equipmentService.fetchReservations(),
+        EquipmentRepository.fetchEquipment(),
+        EquipmentRepository.fetchReservations(),
       ]);
       setEquipment(dbEq || []);
       setReservations(dbRes || []);
@@ -100,16 +92,24 @@ export const EquipmentProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       id: 'eq_' + Date.now(),
     };
     setEquipment((prev) => [...prev, newEq]);
-    equipmentService.createEquipment(newEq).catch((err) => console.warn('Supabase createEquipment sync error:', err));
+    EquipmentRepository.createEquipment(newEq).catch((err) => console.warn('Supabase createEquipment sync error:', err));
     return newEq;
   };
 
   const updateEquipment = (id: string, updates: Partial<HardwareEquipment>) => {
-    setEquipment((prev) => prev.map((eq) => (eq.id === id ? { ...eq, ...updates } : eq)));
+    setEquipment((prev) => {
+      const next = prev.map((eq) => (eq.id === id ? { ...eq, ...updates } : eq));
+      const updated = next.find((eq) => eq.id === id);
+      if (updated) {
+        EquipmentRepository.updateEquipment(updated).catch((err) => console.warn('Supabase updateEquipment error:', err));
+      }
+      return next;
+    });
   };
 
   const deleteEquipment = (id: string) => {
     setEquipment((prev) => prev.filter((eq) => eq.id !== id));
+    EquipmentRepository.deleteEquipment(id).catch((err) => console.warn('Supabase deleteEquipment error:', err));
   };
 
   const checkEquipmentCollision = (
@@ -159,11 +159,13 @@ export const EquipmentProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     setReservations((prev) => [...prev, newRes]);
+    EquipmentRepository.createReservation(newRes).catch((err) => console.warn('Supabase createReservation sync error:', err));
     return { success: true };
   };
 
   const cancelEquipmentReservation = (reservationId: string) => {
     setReservations((prev) => prev.map((r) => (r.id === reservationId ? { ...r, status: 'cancelled' } : r)));
+    EquipmentRepository.cancelReservation(reservationId).catch((err) => console.warn('Supabase cancelReservation error:', err));
   };
 
   const updateCollaboratorSchedule = (userId: string, scheduleUpdates: Partial<CollaboratorSchedule>) => {

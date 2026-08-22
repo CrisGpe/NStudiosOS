@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ClientIdeaSandboxItem } from '../types';
-import { INITIAL_SANDBOX_IDEAS } from '../data/initialData';
-import { sandboxService } from '../services/supabaseService';
+import { ClientSandboxRepository } from '../repositories/sandbox.repository';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 
 export interface ClientSandboxContextType {
@@ -22,19 +21,18 @@ const ClientSandboxContext = createContext<ClientSandboxContextType | undefined>
 
 export const ClientSandboxProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sandboxIdeas, setSandboxIdeas] = useState<ClientIdeaSandboxItem[]>(() => {
-    if (isSupabaseConfigured) return [];
     try {
       const saved = localStorage.getItem('nataraja_sandbox_ideas');
-      return saved ? JSON.parse(saved) : INITIAL_SANDBOX_IDEAS;
+      return saved ? JSON.parse(saved) : [];
     } catch {
-      return INITIAL_SANDBOX_IDEAS;
+      return [];
     }
   });
 
   const refreshSandboxFromSupabase = async () => {
     if (!isSupabaseConfigured) return;
     try {
-      const dbIdeas = await sandboxService.fetchSandboxIdeas();
+      const dbIdeas = await ClientSandboxRepository.fetchIdeas();
       setSandboxIdeas(dbIdeas || []);
     } catch (err) {
       console.warn('Could not sync sandbox with Supabase:', err);
@@ -62,36 +60,46 @@ export const ClientSandboxProvider: React.FC<{ children: React.ReactNode }> = ({
       updatedAt: new Date().toISOString().split('T')[0],
     };
     setSandboxIdeas((prev) => [newIdea, ...prev]);
-    sandboxService.createSandboxIdea(newIdea).catch((err) => console.warn('Supabase createSandboxIdea sync error:', err));
+    ClientSandboxRepository.createIdea(newIdea).catch((err) => console.warn('Supabase createSandboxIdea sync error:', err));
     return newIdea;
   };
 
   const updateSandboxIdea = (id: string, updates: Partial<ClientIdeaSandboxItem>) => {
-    setSandboxIdeas((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, ...updates, updatedAt: new Date().toISOString().split('T')[0] } : i))
-    );
+    setSandboxIdeas((prev) => {
+      const next = prev.map((i) => (i.id === id ? { ...i, ...updates, updatedAt: new Date().toISOString().split('T')[0] } : i));
+      const updated = next.find((i) => i.id === id);
+      if (updated) {
+        ClientSandboxRepository.updateIdea(updated).catch((err) => console.warn('Supabase updateSandboxIdea error:', err));
+      }
+      return next;
+    });
   };
 
   const deleteSandboxIdea = (id: string) => {
     setSandboxIdeas((prev) => prev.filter((i) => i.id !== id));
-    sandboxService.deleteSandboxIdea(id).catch((err) => console.warn('Supabase deleteSandboxIdea sync error:', err));
+    ClientSandboxRepository.deleteIdea(id).catch((err) => console.warn('Supabase deleteSandboxIdea error:', err));
   };
 
   const convertSandboxIdeaToDeliverable = (ideaId: string, deliverableId?: string): any => {
     const targetDelId = deliverableId || 'del_' + Date.now();
     const fakeCode = 'CF-DEL-' + Math.floor(100 + Math.random() * 900);
-    setSandboxIdeas((prev) =>
-      prev.map((i) =>
+    setSandboxIdeas((prev) => {
+      const next = prev.map((i) =>
         i.id === ideaId
           ? {
               ...i,
               status: 'converted_to_deliverable' as const,
-              convertedDeliverableId: targetDelId,
+              convertedToDeliverableId: targetDelId,
               updatedAt: new Date().toISOString().split('T')[0],
             }
           : i
-      )
-    );
+      );
+      const updated = next.find((i) => i.id === ideaId);
+      if (updated) {
+        ClientSandboxRepository.updateIdea(updated).catch((err) => console.warn('Supabase convertSandboxIdea error:', err));
+      }
+      return next;
+    });
     return { id: targetDelId, code: fakeCode };
   };
 
@@ -108,7 +116,7 @@ export const ClientSandboxProvider: React.FC<{ children: React.ReactNode }> = ({
           industry: 'Producción Audiovisual',
           brandTone: 'Innovador',
           territory: 'Sandbox',
-          briefPrompt: idea.title + ': ' + idea.notes,
+          briefPrompt: idea.title + ': ' + (idea.description || ''),
         }),
       });
       const data = await response.json();
@@ -128,17 +136,10 @@ export const ClientSandboxProvider: React.FC<{ children: React.ReactNode }> = ({
             recommendedPlatforms: ['Reels'],
           };
 
-      updateSandboxIdea(ideaId, { aiGeneratedBrief: briefObj });
+      updateSandboxIdea(ideaId, { notes: `${idea.notes || ''}\n\n[Brief IA]: ${briefObj.hook}` });
       return briefObj.hook;
     } catch {
-      const fallbackObj = {
-        hook: 'Impacto visual asegurado',
-        narrativeAngle: 'Enfoque cinemático',
-        suggestedDuration: '30s',
-        recommendedPlatforms: ['Reels', 'TikTok'],
-      };
-      updateSandboxIdea(ideaId, { aiGeneratedBrief: fallbackObj });
-      return fallbackObj.hook;
+      return 'Concepto visual cinemático';
     }
   };
 
