@@ -20,6 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { DriveFileType, DriveAccount } from '../types';
+import { InlineDeleteConfirm } from './ui/InlineDeleteConfirm';
 
 export const DriveVaultManager: React.FC = () => {
   const {
@@ -33,6 +34,7 @@ export const DriveVaultManager: React.FC = () => {
     currentUser,
     setActivePreviewFile,
     createDriveFolder,
+    deleteDriveFolder,
     createDriveFile,
     deleteDriveFile,
     syncDriveAccount,
@@ -47,7 +49,9 @@ export const DriveVaultManager: React.FC = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [newFolderBrandId, setNewFolderBrandId] = useState(selectedBrandId !== 'all' ? selectedBrandId : brands[0]?.id || 'brd_apex');
   const [uploadFileName, setUploadFileName] = useState('');
+  const [uploadBrandId, setUploadBrandId] = useState(selectedBrandId !== 'all' ? selectedBrandId : brands[0]?.id || 'brd_apex');
   const [uploadFileType, setUploadFileType] = useState<DriveFileType>('video');
   const [uploadFileSize, setUploadFileSize] = useState('250 MB');
   const [uploadFileUrl, setUploadFileUrl] = useState('');
@@ -113,7 +117,7 @@ export const DriveVaultManager: React.FC = () => {
       name: newFolderName.trim(),
       accountId: selectedDriveAccountId,
       parentFolderId: currentFolderId || undefined,
-      brandId: activeBrandFilter !== 'all' ? activeBrandFilter : undefined,
+      brandId: newFolderBrandId || (activeBrandFilter !== 'all' ? activeBrandFilter : undefined),
     });
 
     setNewFolderName('');
@@ -124,10 +128,7 @@ export const DriveVaultManager: React.FC = () => {
     e.preventDefault();
     if (!uploadFileName.trim()) return;
 
-    const brandForFile =
-      activeBrandFilter !== 'all'
-        ? activeBrandFilter
-        : brands[0]?.id || 'brand_apex';
+    const brandForFile = uploadBrandId || (activeBrandFilter !== 'all' ? activeBrandFilter : brands[0]?.id || 'brd_apex');
 
     const targetFolderId =
       currentFolderId ||
@@ -392,13 +393,26 @@ export const DriveVaultManager: React.FC = () => {
                       <Folder className="w-5 h-5 text-indigo-600 group-hover:scale-110 transition-transform" />
                     )}
 
-                    {brand && (
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shadow-2xs ring-1 ring-slate-200"
-                        style={{ backgroundColor: brand.primaryColor }}
-                        title={brand.name}
-                      />
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      {brand && (
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shadow-2xs ring-1 ring-slate-200"
+                          style={{ backgroundColor: brand.primaryColor }}
+                          title={brand.name}
+                        />
+                      )}
+                      {currentUser.role !== 'cliente' && !fld.isSystemGenerated && (
+                        <div onClick={(e) => e.stopPropagation()} className="opacity-0 group-hover:opacity-100 transition-all">
+                          <InlineDeleteConfirm
+                            title="¿Eliminar carpeta?"
+                            description={fld.name}
+                            onConfirm={() => deleteDriveFolder(fld.id)}
+                            triggerClassName="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+                            triggerIcon={<Trash2 className="w-3 h-3" />}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div>
@@ -543,17 +557,14 @@ export const DriveVaultManager: React.FC = () => {
                       </a>
 
                       {currentUser.role !== 'cliente' && (
-                        <button
-                          onClick={() => {
-                            if (window.confirm(`¿Eliminar '${file.name}' del Drive Vault?`)) {
-                              deleteDriveFile(file.id);
-                            }
-                          }}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
-                          title="Eliminar archivo"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        <InlineDeleteConfirm
+                          title="¿Eliminar del Vault?"
+                          description={file.name}
+                          onConfirm={() => deleteDriveFile(file.id)}
+                          triggerClassName="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
+                          triggerIcon={<Trash2 className="w-3.5 h-3.5" />}
+                          align="right"
+                        />
                       )}
                     </div>
                   </div>
@@ -598,6 +609,21 @@ export const DriveVaultManager: React.FC = () => {
                 />
               </div>
 
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Marca Asociada</label>
+                <select
+                  value={newFolderBrandId}
+                  onChange={(e) => setNewFolderBrandId(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all cursor-pointer"
+                >
+                  {brands.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} ({b.industry})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="button"
@@ -639,6 +665,21 @@ export const DriveVaultManager: React.FC = () => {
               </button>
             </div>
             <form onSubmit={handleUploadSubmit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Marca de Destino *</label>
+                <select
+                  value={uploadBrandId}
+                  onChange={(e) => setUploadBrandId(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all cursor-pointer font-bold text-indigo-700"
+                >
+                  {brands.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name} — {b.industry}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Nombre del Archivo *</label>
                 <input

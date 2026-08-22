@@ -26,12 +26,16 @@ import {
 import { UserRole } from '../../types';
 import { supabaseService } from '../../services/supabaseService';
 import { isSupabaseConfigured } from '../../lib/supabaseClient';
+import { InlineDeleteConfirm } from '../ui/InlineDeleteConfirm';
 
 export const WebAdminMobileHub: React.FC = () => {
   const {
     currentUser,
     users,
     brands,
+    organizations,
+    syncBrandContacts,
+    refreshProfiles,
     driveAccounts,
     createDriveAccount,
     deleteDriveAccount,
@@ -39,6 +43,7 @@ export const WebAdminMobileHub: React.FC = () => {
     addAuditLog,
     refreshAuditLogs,
     logout,
+    toast,
   } = useApp();
 
   const navigate = useNavigate();
@@ -122,11 +127,11 @@ export const WebAdminMobileHub: React.FC = () => {
         currentUser.role
       );
 
-      showToast('Permisos guardados en Supabase');
+      toast.success('Permisos guardados en Supabase');
       setEditingUserId(null);
     } catch (err: any) {
       console.error('Error saving user RBAC:', err);
-      alert('Error: ' + (err.message || 'No se pudo guardar'));
+      toast.error('Error: ' + (err.message || 'No se pudo guardar'));
     } finally {
       setIsSaving(false);
     }
@@ -135,7 +140,7 @@ export const WebAdminMobileHub: React.FC = () => {
   const handleCreateUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName || !newUserEmail || !newUserPassword) {
-      alert('Completa los campos requeridos.');
+      toast.warning('Completa los campos requeridos.');
       return;
     }
     setIsCreatingUser(true);
@@ -154,12 +159,12 @@ export const WebAdminMobileHub: React.FC = () => {
         currentUser.role
       );
 
-      showToast(`Usuario ${newUserName} creado.`);
+      toast.success(`Usuario ${newUserName} creado.`);
       setShowCreateUserModal(false);
       setNewUserName('');
       setNewUserEmail('');
     } catch (err: any) {
-      alert('Error: ' + err.message);
+      toast.error('Error: ' + err.message);
     } finally {
       setIsCreatingUser(false);
     }
@@ -190,17 +195,16 @@ export const WebAdminMobileHub: React.FC = () => {
         currentUser.role
       );
 
-      showToast('Bóveda conectada con éxito.');
+      toast.success('Bóveda conectada con éxito.');
       setShowDriveModal(false);
     } catch (err: any) {
-      alert('Error: ' + err.message);
+      toast.error('Error: ' + err.message);
     } finally {
       setIsSavingDrive(false);
     }
   };
 
   const handleDeleteDriveAccountMobile = async (id: string, name: string) => {
-    if (!window.confirm(`¿Deseas desconectar y eliminar la bóveda "${name}"?`)) return;
     try {
       await deleteDriveAccount(id);
       addAuditLog(
@@ -212,9 +216,9 @@ export const WebAdminMobileHub: React.FC = () => {
         currentUser.name,
         currentUser.role
       );
-      showToast('Bóveda eliminada.');
+      toast.success('Bóveda eliminada.');
     } catch (err: any) {
-      alert('Error: ' + err.message);
+      toast.error('Error: ' + err.message);
     }
   };
 
@@ -314,9 +318,19 @@ export const WebAdminMobileHub: React.FC = () => {
                     <Users className="w-4 h-4 text-indigo-600" />
                     <span>Usuarios Registrados ({users.length})</span>
                   </span>
-                  <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                    Supabase Auth
-                  </span>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      showToast('Sincronizando clientes...');
+                      const res = await syncBrandContacts();
+                      await refreshProfiles();
+                      showToast(`Sincronizados ${res.syncedCount} clientes.`);
+                    }}
+                    className="text-[10px] font-mono font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-0.5 rounded-full cursor-pointer flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-2.5 h-2.5" />
+                    <span>Sync Marcas</span>
+                  </button>
                 </div>
 
                 {/* Search Bar */}
@@ -615,14 +629,13 @@ export const WebAdminMobileHub: React.FC = () => {
                               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                               <span>Listo</span>
                             </span>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteDriveAccountMobile(acc.id, acc.name)}
-                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                              title="Eliminar Bóveda"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
+                            <InlineDeleteConfirm
+                              title="¿Eliminar Bóveda?"
+                              description={acc.name}
+                              onConfirm={() => handleDeleteDriveAccountMobile(acc.id, acc.name)}
+                              triggerClassName="p-1 rounded-lg text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                              triggerIcon={<Trash2 className="w-3 h-3" />}
+                            />
                           </div>
                         </div>
                       </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Film, X, Plus } from 'lucide-react';
 import { Brand, CommunicationTerritory, UserProfile, DeliverableType, DeliverablePriority } from '../types';
+import { useToast } from '../context/ToastContext';
 
 interface CreateDeliverableModalProps {
   brands: Brand[];
@@ -17,6 +18,7 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
   createDeliverable,
   onClose,
 }) => {
+  const toast = useToast();
   const [newTitle, setNewTitle] = useState('');
   const [newBrandId, setNewBrandId] = useState(brands[0]?.id || '');
   const [newTerritoryId, setNewTerritoryId] = useState('');
@@ -33,7 +35,7 @@ export const CreateDeliverableModal: React.FC<CreateDeliverableModalProps> = ({
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) {
-      alert('Por favor ingresa un título para el entregable');
+      toast.warning('Por favor ingresa un título para el entregable', 'Título Requerido');
       return;
     }
 

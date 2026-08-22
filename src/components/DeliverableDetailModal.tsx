@@ -48,6 +48,7 @@ export const DeliverableDetailModal: React.FC = () => {
     submitChangeRequest,
     respondToChangeRequest,
     currentUser,
+    toast,
     openAiModalWithContext,
     driveFiles,
     setActivePreviewFile,
@@ -97,7 +98,7 @@ export const DeliverableDetailModal: React.FC = () => {
 
   const handleEvaluateWithAI = async () => {
     if (!changeDesc.trim()) {
-      alert('Por favor escribe primero la descripción del cambio solicitado para que Gemini pueda evaluarlo.');
+      toast.warning('Por favor escribe la descripción del cambio solicitado para que Gemini pueda evaluarlo.', 'Evaluación de Cambio T-3');
       return;
     }
 
@@ -121,9 +122,10 @@ export const DeliverableDetailModal: React.FC = () => {
 
       const data = await response.json();
       setAiAnalysisResult(data);
+      toast.success('Impacto técnico y financiero evaluado con Gemini AI.');
     } catch (err) {
       console.error('Error evaluating change with Gemini AI', err);
-      alert('Error evaluando el cambio con Gemini AI.');
+      toast.error('Error evaluando el cambio con Gemini AI.');
     } finally {
       setIsAiEvaluating(false);
     }

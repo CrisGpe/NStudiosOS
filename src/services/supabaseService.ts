@@ -15,6 +15,9 @@ import {
   UserRole,
   DeliverablePhase,
   DeliverablePriority,
+  ClientOrganization,
+  ClientBrandPermission,
+  DigitalAsset,
 } from '../types';
 import {
   INITIAL_BRANDS,
@@ -160,6 +163,9 @@ export const authService = {
       roleTitle: data.role_title,
       avatar: data.avatar,
       assignedBrandIds: data.assigned_brand_ids || [],
+      clientOrganizationId: data.client_organization_id,
+      clientRole: data.client_role || 'holding_admin',
+      clientPermissionsMatrix: data.client_permissions_matrix || {},
       schedule: data.schedule,
       preferences: data.preferences,
     };
@@ -177,6 +183,9 @@ export const authService = {
       roleTitle: d.role_title,
       avatar: d.avatar,
       assignedBrandIds: d.assigned_brand_ids || [],
+      clientOrganizationId: d.client_organization_id,
+      clientRole: d.client_role || 'holding_admin',
+      clientPermissionsMatrix: d.client_permissions_matrix || {},
       schedule: d.schedule,
       preferences: d.preferences,
     }));
@@ -192,6 +201,9 @@ export const authService = {
       role_title: profile.roleTitle,
       avatar: profile.avatar,
       assigned_brand_ids: profile.assignedBrandIds,
+      client_organization_id: profile.clientOrganizationId,
+      client_role: profile.clientRole || 'holding_admin',
+      client_permissions_matrix: profile.clientPermissionsMatrix || {},
       schedule: profile.schedule,
       preferences: profile.preferences,
       updated_at: new Date().toISOString(),
@@ -205,6 +217,9 @@ export const authService = {
       role?: UserRole;
       role_title?: string;
       assigned_brand_ids?: string[];
+      client_organization_id?: string;
+      client_role?: 'holding_admin' | 'team_member';
+      client_permissions_matrix?: Record<string, any>;
       schedule?: any;
       preferences?: any;
     }
@@ -247,6 +262,7 @@ export const brandService = {
       slogan: b.tagline || b.slogan || '',
       contactPerson: b.contact_person || 'Director de Marca',
       contactEmail: b.contact_email || 'contacto@marca.com',
+      clientOrganizationId: b.client_organization_id,
       driveFolderId: b.folder_id,
       createdAt: b.created_at || new Date().toISOString().split('T')[0],
     }));
@@ -261,11 +277,23 @@ export const brandService = {
       primary_color: brand.primaryColor,
       logo_url: brand.logo,
       industry: brand.industry,
+      contact_person: brand.contactPerson,
+      contact_email: brand.contactEmail,
+      client_organization_id: brand.clientOrganizationId,
       folder_id: brand.driveFolderId,
     });
     if (error) {
       console.error('Supabase createBrand error:', error);
       throw error;
+    }
+
+    // Auto-provision or link Client Auth Account
+    if (brand.contactEmail && brand.contactEmail.includes('@') && !brand.contactEmail.includes('ejemplo')) {
+      try {
+        await clientOrgService.syncBrandContactsToAuth([brand]);
+      } catch (err) {
+        console.warn('Auto-provisioning client for brand note:', err);
+      }
     }
   },
 
@@ -277,6 +305,9 @@ export const brandService = {
       primary_color: brand.primaryColor,
       logo_url: brand.logo,
       industry: brand.industry,
+      contact_person: brand.contactPerson,
+      contact_email: brand.contactEmail,
+      client_organization_id: brand.clientOrganizationId,
       folder_id: brand.driveFolderId,
       updated_at: new Date().toISOString(),
     }).eq('id', brand.id);
@@ -326,6 +357,315 @@ export const brandService = {
       console.error('Supabase createTerritory error:', error);
       throw error;
     }
+  },
+
+  async fetchDigitalAssets(): Promise<DigitalAsset[]> {
+    if (!isSupabaseConfigured) return [];
+    try {
+      const { data, error } = await supabase.from('digital_assets').select('*').order('created_at', { ascending: false });
+      if (error || !data) return [];
+      return data.map((a) => ({
+        id: a.id,
+        brandId: a.brand_id,
+        name: a.name,
+        type: a.type || 'brand_guidelines',
+        url: a.url,
+        status: a.status || 'active',
+        notes: a.notes,
+        updatedAt: a.updated_at || a.created_at || new Date().toISOString().split('T')[0],
+      }));
+    } catch (err) {
+      console.warn('Could not fetch digital assets from Supabase:', err);
+      return [];
+    }
+  },
+
+  async createDigitalAsset(asset: DigitalAsset): Promise<void> {
+    if (!isSupabaseConfigured) return;
+    try {
+      const { error } = await supabase.from('digital_assets').insert({
+        id: asset.id,
+        brand_id: asset.brandId,
+        name: asset.name,
+        type: asset.type,
+        url: asset.url,
+        status: asset.status || 'active',
+        notes: asset.notes,
+      });
+      if (error) throw error;
+    } catch (err) {
+      console.warn('Supabase createDigitalAsset error:', err);
+    }
+  },
+
+  async deleteDigitalAsset(id: string): Promise<void> {
+    if (!isSupabaseConfigured) return;
+    try {
+      const { error } = await supabase.from('digital_assets').delete().eq('id', id);
+      if (error) throw error;
+    } catch (err) {
+      console.warn('Supabase deleteDigitalAsset error:', err);
+      throw err;
+    }
+  },
+};
+
+// ==============================================================================
+// 2.1 CLIENT ORGANIZATIONS (HOLDINGS / GRUPOS CLIENTES) SERVICE
+// ==============================================================================
+
+export const clientOrgService = {
+  async fetchOrganizations(): Promise<ClientOrganization[]> {
+    if (!isSupabaseConfigured) return [];
+    try {
+      const { data, error } = await supabase
+        .from('client_organizations')
+        .select('*')
+        .order('created_at', { ascending: true });
+      if (error || !data) return [];
+
+      const { data: brandsData } = await supabase.from('brands').select('id, client_organization_id');
+
+      return data.map((o) => ({
+        id: o.id,
+        name: o.name,
+        legalName: o.legal_name,
+        contactEmail: o.contact_email,
+        ownerUserId: o.owner_user_id || '',
+        brandIds: (brandsData || []).filter((b) => b.client_organization_id === o.id).map((b) => b.id),
+        createdAt: o.created_at || new Date().toISOString(),
+      }));
+    } catch (err) {
+      console.warn('Error fetching client organizations:', err);
+      return [];
+    }
+  },
+
+  async createOrganization(org: Partial<ClientOrganization>): Promise<ClientOrganization> {
+    const newOrg: ClientOrganization = {
+      id: org.id || 'org_' + Date.now(),
+      name: org.name || 'Organización Cliente',
+      legalName: org.legalName || '',
+      contactEmail: org.contactEmail || '',
+      ownerUserId: org.ownerUserId || '',
+      brandIds: org.brandIds || [],
+      createdAt: new Date().toISOString(),
+    };
+
+    if (isSupabaseConfigured) {
+      try {
+        const { error } = await supabase.from('client_organizations').upsert({
+          id: newOrg.id,
+          name: newOrg.name,
+          legal_name: newOrg.legalName,
+          contact_email: newOrg.contactEmail,
+          owner_user_id: newOrg.ownerUserId,
+          created_at: newOrg.createdAt,
+        });
+        if (error) console.warn('Supabase createOrganization note:', error.message);
+      } catch (e) {
+        console.warn('Supabase createOrganization catch:', e);
+      }
+    }
+    return newOrg;
+  },
+
+  async inviteClientTeamMember(params: {
+    orgId: string;
+    email: string;
+    name: string;
+    tempPassword?: string;
+    roleTitle?: string;
+    permissionsMatrix: Record<string, ClientBrandPermission>;
+  }): Promise<{ user: any; profile: UserProfile }> {
+    const password = params.tempPassword || 'Nataraja2026!';
+    const assignedBrands = Object.keys(params.permissionsMatrix).filter(
+      (bid) =>
+        params.permissionsMatrix[bid]?.canAccessSandbox ||
+        params.permissionsMatrix[bid]?.canViewProduction ||
+        params.permissionsMatrix[bid]?.canApproveT3 ||
+        params.permissionsMatrix[bid]?.canAccessDrive ||
+        params.permissionsMatrix[bid]?.isBrandLead
+    );
+
+    let authUser: any = null;
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email: params.email,
+          password: password,
+          options: {
+            data: {
+              name: params.name,
+              role: 'cliente',
+            },
+          },
+        });
+        if (error) throw error;
+        authUser = data.user;
+      } catch (err: any) {
+        console.warn('Auth signup note (account may already exist):', err.message);
+      }
+    }
+
+    const userId = authUser?.id || 'usr_client_' + Date.now();
+    const newProfile: UserProfile = {
+      id: userId,
+      email: params.email,
+      name: params.name,
+      role: 'cliente',
+      roleTitle: params.roleTitle || 'Miembro del Equipo Cliente',
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(params.name)}`,
+      assignedBrandIds: assignedBrands,
+      clientOrganizationId: params.orgId,
+      clientRole: 'team_member',
+      clientPermissionsMatrix: params.permissionsMatrix,
+      schedule: {
+        workDays: [1, 2, 3, 4, 5],
+        startHour: '09:00',
+        endHour: '18:00',
+        isOnVacation: false,
+        alertsEnabled: true,
+      },
+    };
+
+    if (isSupabaseConfigured) {
+      await authService.upsertProfile(newProfile);
+    }
+
+    return { user: authUser, profile: newProfile };
+  },
+
+  async updateMemberPermissions(
+    userId: string,
+    matrix: Record<string, ClientBrandPermission>
+  ): Promise<void> {
+    const assignedBrands = Object.keys(matrix).filter(
+      (bid) =>
+        matrix[bid]?.canAccessSandbox ||
+        matrix[bid]?.canViewProduction ||
+        matrix[bid]?.canApproveT3 ||
+        matrix[bid]?.canAccessDrive ||
+        matrix[bid]?.isBrandLead
+    );
+
+    if (isSupabaseConfigured) {
+      await authService.updateUserProfile(userId, {
+        assigned_brand_ids: assignedBrands,
+        client_permissions_matrix: matrix,
+      });
+    }
+  },
+
+  async syncBrandContactsToAuth(existingBrands: Brand[]): Promise<{ syncedCount: number; orgsCreated: number }> {
+    if (!existingBrands || existingBrands.length === 0) return { syncedCount: 0, orgsCreated: 0 };
+
+    const emailGroups: Record<string, { contactPerson: string; brands: Brand[] }> = {};
+    existingBrands.forEach((b) => {
+      const email = (b.contactEmail || '').trim().toLowerCase();
+      if (!email || email.includes('ejemplo') || email === 'contacto@marca.com') return;
+      if (!emailGroups[email]) {
+        emailGroups[email] = { contactPerson: b.contactPerson || 'Cliente Principal', brands: [] };
+      }
+      emailGroups[email].brands.push(b);
+    });
+
+    let syncedCount = 0;
+    let orgsCreated = 0;
+
+    for (const email of Object.keys(emailGroups)) {
+      const group = emailGroups[email];
+      const brandIds = group.brands.map((b) => b.id);
+      const orgName =
+        group.brands.length > 1
+          ? `Grupo Empresarial ${group.contactPerson}`
+          : `Organización ${group.brands[0].name}`;
+
+      const orgId = 'org_' + email.replace(/[^a-zA-Z0-9]/g, '_');
+
+      // 1. Create / Upsert Organization
+      await clientOrgService.createOrganization({
+        id: orgId,
+        name: orgName,
+        contactEmail: email,
+        brandIds: brandIds,
+      });
+      orgsCreated++;
+
+      // 2. Link brands to Organization in Supabase
+      if (isSupabaseConfigured) {
+        for (const bid of brandIds) {
+          try {
+            await supabase.from('brands').update({ client_organization_id: orgId }).eq('id', bid);
+          } catch (e) {
+            console.warn('Could not update brand org link:', e);
+          }
+        }
+      }
+
+      // 3. Build Full Permissions Matrix for Holding Admin
+      const matrix: Record<string, ClientBrandPermission> = {};
+      brandIds.forEach((bid) => {
+        matrix[bid] = {
+          canAccessSandbox: true,
+          canViewProduction: true,
+          canApproveT3: true,
+          canAccessDrive: true,
+          isBrandLead: true,
+        };
+      });
+
+      // 4. Create / Upsert Auth User & Profile
+      let authUser: any = null;
+      if (isSupabaseConfigured) {
+        try {
+          const { data } = await supabase.auth.signUp({
+            email: email,
+            password: 'Nataraja2026!',
+            options: {
+              data: {
+                name: group.contactPerson,
+                role: 'cliente',
+              },
+            },
+          });
+          authUser = data?.user;
+        } catch (err) {
+          console.warn('Signup notice for brand contact:', email, err);
+        }
+      }
+
+      const clientUser: UserProfile = {
+        id: authUser?.id || 'usr_client_' + email.replace(/[^a-zA-Z0-9]/g, '_'),
+        name: group.contactPerson,
+        email: email,
+        role: 'cliente',
+        roleTitle: 'Administrador de Holding & Brand Owner',
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(group.contactPerson)}`,
+        assignedBrandIds: brandIds,
+        clientOrganizationId: orgId,
+        clientRole: 'holding_admin',
+        clientPermissionsMatrix: matrix,
+        schedule: {
+          workDays: [1, 2, 3, 4, 5],
+          startHour: '09:00',
+          endHour: '18:00',
+          isOnVacation: false,
+          alertsEnabled: true,
+        },
+      };
+
+      if (isSupabaseConfigured) {
+        try {
+          await authService.upsertProfile(clientUser);
+        } catch (e) {
+          console.warn('Upsert client profile warning:', e);
+        }
+      }
+      syncedCount++;
+    }
+
+    return { syncedCount, orgsCreated };
   },
 };
 
@@ -639,6 +979,96 @@ export const driveVaultService = {
       console.error('Supabase createDriveFile error:', error);
       throw error;
     }
+  },
+
+  async deleteDriveFile(id: string): Promise<void> {
+    if (!isSupabaseConfigured) return;
+    try {
+      const { error } = await supabase.from('drive_files').delete().eq('id', id);
+      if (error) throw error;
+    } catch (err: any) {
+      console.warn('Supabase deleteDriveFile error:', err);
+      throw err;
+    }
+  },
+
+  async createDriveFolder(folder: DriveFolder): Promise<void> {
+    if (!isSupabaseConfigured) return;
+    try {
+      const { error } = await supabase.from('drive_folders').upsert({
+        id: folder.id,
+        account_id: folder.accountId,
+        brand_id: folder.brandId,
+        parent_id: folder.parentFolderId,
+        name: folder.name,
+        path: folder.path,
+        is_system_folder: folder.isSystemGenerated,
+      });
+      if (error) console.warn('Supabase createDriveFolder note:', error);
+    } catch (err) {
+      console.warn('Supabase createDriveFolder error:', err);
+    }
+  },
+
+  async deleteDriveFolder(id: string): Promise<void> {
+    if (!isSupabaseConfigured) return;
+    try {
+      await supabase.from('drive_files').delete().eq('folder_id', id);
+      const { error } = await supabase.from('drive_folders').delete().eq('id', id);
+      if (error) throw error;
+    } catch (err: any) {
+      console.warn('Supabase deleteDriveFolder error:', err);
+      throw err;
+    }
+  },
+
+  async syncAndScanDriveAccount(
+    accountId: string,
+    brands: Brand[]
+  ): Promise<{ scannedFilesCount: number; scannedFoldersCount: number }> {
+    if (isSupabaseConfigured) {
+      try {
+        await supabase
+          .from('drive_accounts')
+          .update({ last_sync_at: new Date().toISOString() })
+          .eq('id', accountId);
+      } catch (e) {
+        console.warn('Sync account date note:', e);
+      }
+    }
+
+    let createdFolders = 0;
+    for (const b of brands) {
+      const folderId = `fld_${b.id}_root`;
+      const brandRootFolder: DriveFolder = {
+        id: folderId,
+        accountId: accountId,
+        brandId: b.id,
+        name: `${b.name} - Official Media Vault`,
+        path: `/${b.name}`,
+        isSystemGenerated: true,
+        itemCount: 4,
+        createdAt: new Date().toISOString().split('T')[0],
+      };
+
+      if (isSupabaseConfigured) {
+        try {
+          await supabase.from('drive_folders').upsert({
+            id: brandRootFolder.id,
+            account_id: brandRootFolder.accountId,
+            brand_id: brandRootFolder.brandId,
+            name: brandRootFolder.name,
+            path: brandRootFolder.path,
+            is_system_folder: true,
+          });
+          createdFolders++;
+        } catch (e) {
+          console.warn('Sync brand root folder note:', e);
+        }
+      }
+    }
+
+    return { scannedFilesCount: 0, scannedFoldersCount: createdFolders };
   },
 };
 

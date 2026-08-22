@@ -31,7 +31,7 @@ export const TechnicalGuideViewer: React.FC<TechnicalGuideViewerProps> = ({
   deliverable,
   onUpdate,
 }) => {
-  const { updateTechnicalGuide, currentUser, brands, openAiModalWithContext } = useApp();
+  const { updateTechnicalGuide, currentUser, brands, openAiModalWithContext, toast } = useApp();
   const [guide, setGuide] = useState<TechnicalGuide>(deliverable.technicalGuide);
   const [isEditingShotlist, setIsEditingShotlist] = useState(false);
 
@@ -83,7 +83,7 @@ export const TechnicalGuideViewer: React.FC<TechnicalGuideViewerProps> = ({
 
   const handleDirectorSignOff = () => {
     if (!isDirector) {
-      alert('Solo el Director de Proyecto o WebAdmin pueden firmar formalmente la Guía Técnica.');
+      toast.error('Solo el Director de Proyecto o WebAdmin pueden firmar formalmente la Guía Técnica.', 'Permiso Denegado');
       return;
     }
 
@@ -99,6 +99,7 @@ export const TechnicalGuideViewer: React.FC<TechnicalGuideViewerProps> = ({
 
     setGuide(updatedGuide);
     updateTechnicalGuide(deliverable.id, updatedGuide);
+    toast.success('Guía técnica y especificaciones de cámara/audio firmadas por Dirección.');
     if (onUpdate) onUpdate(updatedGuide);
   };
 

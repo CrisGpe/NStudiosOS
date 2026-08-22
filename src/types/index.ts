@@ -22,6 +22,24 @@ export interface UserPreferences {
   kanbanTypeFilter?: 'all' | 'audiovisual' | 'graphic';
 }
 
+export interface ClientBrandPermission {
+  canAccessSandbox: boolean; // Pre-producción / Ideas / Co-creación
+  canViewProduction: boolean; // Producción / Rodajes / Fechas
+  canApproveT3: boolean; // Post-producción / Ventana T-3 Aprobación
+  canAccessDrive: boolean; // Drive Vault & Archivos
+  isBrandLead: boolean; // Administrador o líder de esta marca específica
+}
+
+export interface ClientOrganization {
+  id: string;
+  name: string;
+  legalName?: string;
+  contactEmail: string;
+  ownerUserId: string;
+  brandIds: string[];
+  createdAt: string;
+}
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -30,6 +48,9 @@ export interface UserProfile {
   roleTitle: string;
   avatar: string;
   assignedBrandIds?: string[]; // If cliente or specific manager
+  clientOrganizationId?: string; // Holding o grupo empresarial
+  clientRole?: 'holding_admin' | 'team_member'; // Nivel de autoridad dentro del cliente
+  clientPermissionsMatrix?: Record<string, ClientBrandPermission>; // Matriz granular por Marca
   quotaSlot?: string; // e.g. "Cupo 1/2 Colaborador Demo"
   preferences?: UserPreferences;
   schedule?: CollaboratorSchedule;
@@ -45,6 +66,7 @@ export interface Brand {
   slogan: string;
   contactPerson: string;
   contactEmail: string;
+  clientOrganizationId?: string; // Holding o grupo empresarial al que pertenece
   driveFolderId?: string;
   driveFilesCount?: number;
   createdAt: string;

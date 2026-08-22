@@ -33,6 +33,7 @@ export const EquipmentManager: React.FC = () => {
     currentUser,
     brands,
     setIsCreateEquipmentModalOpen,
+    toast,
   } = useApp();
 
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -141,10 +142,11 @@ export const EquipmentManager: React.FC = () => {
     });
 
     if (!res.success) {
-      alert(res.error);
+      toast.error(res.error || 'Conflicto al reservar equipo.', 'Conflicto de Fechas / Equipo');
       return;
     }
 
+    toast.success('Equipo reservado exitosamente.');
     setIsBookModalOpen(false);
   };
 

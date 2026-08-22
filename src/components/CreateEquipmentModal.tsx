@@ -9,7 +9,7 @@ import {
 import { EquipmentCategory } from '../types';
 
 export const CreateEquipmentModal: React.FC = () => {
-  const { isCreateEquipmentModalOpen, setIsCreateEquipmentModalOpen, createEquipment } = useApp();
+  const { isCreateEquipmentModalOpen, setIsCreateEquipmentModalOpen, createEquipment, toast } = useApp();
 
   const [name, setName] = useState('');
   const [category, setCategory] = useState<EquipmentCategory>('camera');
@@ -30,11 +30,11 @@ export const CreateEquipmentModal: React.FC = () => {
       case 'lens':
         setImage('https://images.unsplash.com/photo-1617005082133-548c4dd27f35?w=300&auto=format&fit=crop&q=80');
         break;
-      case 'lighting':
-        setImage('https://images.unsplash.com/photo-1524863479829-916d8e77f114?w=300&auto=format&fit=crop&q=80');
-        break;
       case 'audio':
         setImage('https://images.unsplash.com/photo-1590602847861-f357a9332bbc?w=300&auto=format&fit=crop&q=80');
+        break;
+      case 'lighting':
+        setImage('https://images.unsplash.com/photo-1563245372-f21724e3856d?w=300&auto=format&fit=crop&q=80');
         break;
       case 'mobile_capture':
         setImage('https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=300&auto=format&fit=crop&q=80');
@@ -48,7 +48,7 @@ export const CreateEquipmentModal: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !model.trim() || !serialNumber.trim()) {
-      alert('Por favor completa los campos obligatorios.');
+      toast.warning('Por favor completa los campos obligatorios.', 'Campos Requeridos');
       return;
     }
 
@@ -62,6 +62,8 @@ export const CreateEquipmentModal: React.FC = () => {
       dailyRateUSD: Number(dailyRateUSD) || 50,
       image: image.trim(),
     });
+
+    toast.success(`Equipo '${name}' registrado exitosamente en inventario.`);
 
     setIsCreateEquipmentModalOpen(false);
   };

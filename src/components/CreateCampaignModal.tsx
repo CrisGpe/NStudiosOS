@@ -21,6 +21,7 @@ export const CreateCampaignModal: React.FC = () => {
     deliverables,
     selectedBrandId,
     currentUser,
+    toast,
   } = useApp();
 
   const [name, setName] = useState('');
@@ -86,7 +87,7 @@ export const CreateCampaignModal: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !objective.trim() || !brandId) {
-      alert('Por favor completa los campos obligatorios de la campaña.');
+      toast.warning('Por favor completa los campos obligatorios de la campaña.', 'Campos Requeridos');
       return;
     }
 

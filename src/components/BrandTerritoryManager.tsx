@@ -24,6 +24,7 @@ import {
   DigitalAsset,
   AssetType,
 } from '../types';
+import { InlineDeleteConfirm } from './ui/InlineDeleteConfirm';
 
 export const BrandTerritoryManager: React.FC = () => {
   const {
@@ -38,6 +39,7 @@ export const BrandTerritoryManager: React.FC = () => {
     updateDigitalAsset,
     deleteDigitalAsset,
     currentUser,
+    toast,
     openAiModalWithContext,
     setIsCreateBrandModalOpen,
   } = useApp();
@@ -110,9 +112,10 @@ export const BrandTerritoryManager: React.FC = () => {
       });
 
       if (!res.success) {
-        alert(res.error);
+        toast.warning(res.error || 'No se pudo actualizar el territorio.', 'Validación de Territorios');
         return;
       }
+      toast.success('Territorio actualizado correctamente.');
     } else {
       const res = createTerritory({
         brandId: currentBrand.id,
@@ -126,20 +129,21 @@ export const BrandTerritoryManager: React.FC = () => {
       });
 
       if (!res.success) {
-        alert(res.error);
+        toast.warning(res.error || 'No se pudo crear el territorio.', 'Validación de Territorios');
         return;
       }
+      toast.success('Nuevo territorio de comunicación registrado.');
     }
 
     setIsTerritoryModalOpen(false);
   };
 
   const handleDeleteTerritory = (id: string) => {
-    if (window.confirm('¿Estás seguro de eliminar este territorio de comunicación?')) {
-      const res = deleteTerritory(id);
-      if (!res.success) {
-        alert(res.error);
-      }
+    const res = deleteTerritory(id);
+    if (!res.success) {
+      toast.warning(res.error || 'No se puede eliminar el territorio.', 'Regla de Territorios Mínimos');
+    } else {
+      toast.success('Territorio eliminado.');
     }
   };
 
@@ -404,13 +408,13 @@ export const BrandTerritoryManager: React.FC = () => {
                       >
                         <Edit2 className="w-3 h-3" />
                       </button>
-                      <button
-                        onClick={() => handleDeleteTerritory(territory.id)}
-                        className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded cursor-pointer"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      <InlineDeleteConfirm
+                        title="¿Eliminar territorio?"
+                        description={territory.name}
+                        onConfirm={() => handleDeleteTerritory(territory.id)}
+                        triggerClassName="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded cursor-pointer transition-colors"
+                        triggerIcon={<Trash2 className="w-3 h-3" />}
+                      />
                     </div>
                   </div>
 
@@ -494,12 +498,16 @@ export const BrandTerritoryManager: React.FC = () => {
                         >
                           <Edit2 className="w-3 h-3" />
                         </button>
-                        <button
-                          onClick={() => deleteDigitalAsset(asset.id)}
-                          className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded cursor-pointer"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                        <InlineDeleteConfirm
+                          title="¿Eliminar asset digital?"
+                          description={asset.name}
+                          onConfirm={() => {
+                            deleteDigitalAsset(asset.id);
+                            toast.success(`Asset '${asset.name}' eliminado permanentemente.`);
+                          }}
+                          triggerClassName="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded cursor-pointer transition-colors"
+                          triggerIcon={<Trash2 className="w-3 h-3" />}
+                        />
                       </div>
                     </div>
 

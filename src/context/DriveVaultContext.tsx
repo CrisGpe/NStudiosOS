@@ -27,6 +27,7 @@ export interface DriveVaultContextType {
   createDriveFolder: (folder: Partial<DriveFolder> & { name: string; accountId: string }) => DriveFolder;
   createDriveFile: (file: Omit<DriveFile, 'id' | 'createdAt' | 'updatedAt'>) => DriveFile;
   deleteDriveFile: (id: string) => void;
+  deleteDriveFolder: (id: string) => void;
   updateDriveAccount: (id: string, updates: Partial<DriveAccount>) => void;
   syncDriveAccount: (id: string) => Promise<void>;
   generateBrandDriveTreeAndDocs: (params: {
@@ -140,7 +141,7 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const createDriveFolder = (folderData: Partial<DriveFolder> & { name: string; accountId: string }): DriveFolder => {
     const newFolder: DriveFolder = {
-      brandId: 'brd_apex',
+      brandId: folderData.brandId || 'brd_apex',
       parentFolderId: undefined,
       path: `/${folderData.name}`,
       isSystemGenerated: false,
@@ -150,6 +151,7 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       id: 'fld_' + Date.now(),
     };
     setDriveFolders((prev) => [...prev, newFolder]);
+    driveVaultService.createDriveFolder(newFolder).catch((err) => console.warn('Supabase createDriveFolder sync error:', err));
     return newFolder;
   };
 
@@ -167,6 +169,14 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const deleteDriveFile = (id: string) => {
     setDriveFiles((prev) => prev.filter((f) => f.id !== id));
+    driveVaultService.deleteDriveFile(id).catch((err) => console.warn('Supabase deleteDriveFile sync error:', err));
+  };
+
+  const deleteDriveFolder = (id: string) => {
+    setDriveFolders((prev) => prev.filter((f) => f.id !== id));
+    setDriveFiles((prev) => prev.filter((f) => f.folderId !== id));
+    if (selectedFolderId === id) setSelectedFolderId(null);
+    driveVaultService.deleteDriveFolder(id).catch((err) => console.warn('Supabase deleteDriveFolder sync error:', err));
   };
 
   const updateDriveAccount = (id: string, updates: Partial<DriveAccount>) => {
@@ -177,6 +187,12 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setDriveAccounts((prev) =>
       prev.map((a) => (a.id === id ? { ...a, lastSyncedAt: new Date().toISOString() } : a))
     );
+    try {
+      await driveVaultService.syncAndScanDriveAccount(id, []);
+      await refreshDriveFromSupabase();
+    } catch (e) {
+      console.warn('Sync drive account catch:', e);
+    }
   };
 
   const generateBrandDriveTreeAndDocs = (params: {
@@ -238,6 +254,7 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         createDriveFolder,
         createDriveFile,
         deleteDriveFile,
+        deleteDriveFolder,
         updateDriveAccount,
         syncDriveAccount,
         generateBrandDriveTreeAndDocs,

@@ -27,6 +27,7 @@ export const AICopilotModal: React.FC = () => {
     createDeliverable,
     updateTechnicalGuide,
     deliverables,
+    toast,
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'ideate' | 'techGuide' | 'evaluate'>(
@@ -82,10 +83,11 @@ export const AICopilotModal: React.FC = () => {
       const data = await response.json();
       if (data.ideas) {
         setGeneratedIdeas(data.ideas);
+        toast.success('¡Ideas de campaña co-creadas con éxito por Gemini!');
       }
     } catch (err) {
       console.error('Error generating ideas with AI', err);
-      alert('Error comunicando con Gemini API.');
+      toast.error('Error comunicando con Gemini API.');
     } finally {
       setIsIdeating(false);
     }
@@ -119,7 +121,7 @@ export const AICopilotModal: React.FC = () => {
       },
     });
 
-    alert(`¡Entregable "${newDeliverable.title}" creado con éxito en Fase de Ideación!`);
+    toast.success(`¡Entregable "${newDeliverable.title}" creado con éxito en Fase de Ideación!`);
     setIsAiModalOpen(false);
   };
 
@@ -142,9 +144,10 @@ export const AICopilotModal: React.FC = () => {
 
       const data = await response.json();
       setGeneratedGuideResult(data);
+      toast.success('Guía técnica generada por Gemini.');
     } catch (err) {
       console.error('Error compiling tech guide with AI', err);
-      alert('Error comunicando con Gemini API.');
+      toast.error('Error comunicando con Gemini API.');
     } finally {
       setIsGeneratingGuide(false);
     }
@@ -172,7 +175,7 @@ export const AICopilotModal: React.FC = () => {
     };
 
     updateTechnicalGuide(targetDeliverableId, formattedGuide);
-    alert('¡Guía Técnica y Shotlist sincronizados con el entregable correctamente!');
+    toast.success('¡Guía Técnica y Shotlist sincronizados con el entregable correctamente!');
     setIsAiModalOpen(false);
   };
 

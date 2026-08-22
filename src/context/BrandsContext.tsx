@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Brand, CommunicationTerritory, DigitalAsset } from '../types';
+import { Brand, CommunicationTerritory, DigitalAsset, ClientOrganization, ClientBrandPermission } from '../types';
 import { INITIAL_BRANDS, INITIAL_TERRITORIES, INITIAL_DIGITAL_ASSETS } from '../data/initialData';
-import { brandService } from '../services/supabaseService';
+import { brandService, clientOrgService } from '../services/supabaseService';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
 
 export interface BrandsContextType {
@@ -14,6 +14,21 @@ export interface BrandsContextType {
   ) => Promise<Brand>;
   updateBrand: (id: string, brand: Partial<Brand>) => void;
   deleteBrand?: (id: string) => void;
+
+  // Organizations (Holdings)
+  organizations: ClientOrganization[];
+  createOrganization: (org: Partial<ClientOrganization>) => Promise<ClientOrganization>;
+  syncBrandContacts: () => Promise<{ syncedCount: number; orgsCreated: number }>;
+  inviteClientTeamMember: (params: {
+    orgId: string;
+    email: string;
+    name: string;
+    tempPassword?: string;
+    roleTitle?: string;
+    permissionsMatrix: Record<string, ClientBrandPermission>;
+  }) => Promise<any>;
+  updateMemberPermissions: (userId: string, matrix: Record<string, ClientBrandPermission>) => Promise<void>;
+  refreshOrganizationsFromSupabase: () => Promise<void>;
 
   territories: CommunicationTerritory[];
   createTerritory: (territory: Omit<CommunicationTerritory, 'id'>) => { success: boolean; error?: string };
@@ -63,12 +78,35 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   });
 
+  const [organizations, setOrganizations] = useState<ClientOrganization[]>(() => {
+    try {
+      const saved = localStorage.getItem('nataraja_client_orgs');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const refreshOrganizationsFromSupabase = async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const dbOrgs = await clientOrgService.fetchOrganizations();
+      if (dbOrgs && dbOrgs.length > 0) {
+        setOrganizations(dbOrgs);
+      }
+    } catch (err) {
+      console.warn('Could not sync client organizations with Supabase:', err);
+    }
+  };
+
   const refreshBrandsFromSupabase = async () => {
     if (!isSupabaseConfigured) return;
     try {
-      const [dbBrands, dbTerritories] = await Promise.all([
+      const [dbBrands, dbTerritories, dbOrgs, dbAssets] = await Promise.all([
         brandService.fetchBrands(),
         brandService.fetchTerritories(),
+        clientOrgService.fetchOrganizations(),
+        brandService.fetchDigitalAssets(),
       ]);
       setBrands(dbBrands || []);
       if (dbBrands && dbBrands.length > 0) {
@@ -79,6 +117,12 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setSelectedBrandId('');
       }
       setTerritories(dbTerritories || []);
+      if (dbOrgs && dbOrgs.length > 0) {
+        setOrganizations(dbOrgs);
+      }
+      if (dbAssets && dbAssets.length > 0) {
+        setDigitalAssets(dbAssets);
+      }
     } catch (err) {
       console.warn('Could not sync brands with Supabase:', err);
     }
@@ -87,6 +131,10 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     refreshBrandsFromSupabase();
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem('nataraja_client_orgs', JSON.stringify(organizations));
+  }, [organizations]);
 
   useEffect(() => {
     localStorage.setItem('nataraja_brands', JSON.stringify(brands));
@@ -204,6 +252,7 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       updatedAt: new Date().toISOString().split('T')[0],
     };
     setDigitalAssets((prev) => [newAsset, ...prev]);
+    brandService.createDigitalAsset(newAsset).catch((err) => console.warn('Supabase createDigitalAsset sync error:', err));
   };
 
   const updateDigitalAsset = (id: string, updates: Partial<DigitalAsset>) => {
@@ -214,6 +263,41 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const deleteDigitalAsset = (id: string) => {
     setDigitalAssets((prev) => prev.filter((a) => a.id !== id));
+    brandService.deleteDigitalAsset(id).catch((err) => console.warn('Supabase deleteDigitalAsset sync error:', err));
+  };
+
+  const createOrganization = async (orgData: Partial<ClientOrganization>): Promise<ClientOrganization> => {
+    const created = await clientOrgService.createOrganization(orgData);
+    setOrganizations((prev) => {
+      const exists = prev.some((o) => o.id === created.id);
+      return exists ? prev.map((o) => (o.id === created.id ? created : o)) : [...prev, created];
+    });
+    return created;
+  };
+
+  const syncBrandContacts = async (): Promise<{ syncedCount: number; orgsCreated: number }> => {
+    const res = await clientOrgService.syncBrandContactsToAuth(brands);
+    await refreshBrandsFromSupabase();
+    return res;
+  };
+
+  const inviteClientTeamMember = async (params: {
+    orgId: string;
+    email: string;
+    name: string;
+    tempPassword?: string;
+    roleTitle?: string;
+    permissionsMatrix: Record<string, ClientBrandPermission>;
+  }) => {
+    const res = await clientOrgService.inviteClientTeamMember(params);
+    return res;
+  };
+
+  const updateMemberPermissions = async (
+    userId: string,
+    matrix: Record<string, ClientBrandPermission>
+  ) => {
+    await clientOrgService.updateMemberPermissions(userId, matrix);
   };
 
   return (
@@ -225,6 +309,12 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         createBrand,
         updateBrand,
         deleteBrand,
+        organizations,
+        createOrganization,
+        syncBrandContacts,
+        inviteClientTeamMember,
+        updateMemberPermissions,
+        refreshOrganizationsFromSupabase,
         territories,
         createTerritory,
         updateTerritory,

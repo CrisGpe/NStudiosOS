@@ -8,6 +8,7 @@ import { DriveVaultProvider, useDriveVaultContext } from './DriveVaultContext';
 import { EquipmentProvider, useEquipmentContext } from './EquipmentContext';
 import { ClientSandboxProvider, useClientSandboxContext } from './ClientSandboxContext';
 import { AuditProvider, useAuditContext } from './AuditContext';
+import { ToastProvider, useToast } from './ToastContext';
 
 export { useAuth } from './AuthContext';
 export { useUI } from './UIContext';
@@ -18,27 +19,30 @@ export { useDriveVaultContext } from './DriveVaultContext';
 export { useEquipmentContext } from './EquipmentContext';
 export { useClientSandboxContext } from './ClientSandboxContext';
 export { useAuditContext } from './AuditContext';
+export { useToast } from './ToastContext';
 export type { AppTab };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
-    <AuthProvider>
-      <UIProvider>
-        <BrandsProvider>
-          <DeliverablesProvider>
-            <CampaignsProvider>
-              <DriveVaultProvider>
-                <EquipmentProvider>
-                  <ClientSandboxProvider>
-                    <AuditProvider>{children}</AuditProvider>
-                  </ClientSandboxProvider>
-                </EquipmentProvider>
-              </DriveVaultProvider>
-            </CampaignsProvider>
-          </DeliverablesProvider>
-        </BrandsProvider>
-      </UIProvider>
-    </AuthProvider>
+    <ToastProvider>
+      <AuthProvider>
+        <UIProvider>
+          <BrandsProvider>
+            <DeliverablesProvider>
+              <CampaignsProvider>
+                <DriveVaultProvider>
+                  <EquipmentProvider>
+                    <ClientSandboxProvider>
+                      <AuditProvider>{children}</AuditProvider>
+                    </ClientSandboxProvider>
+                  </EquipmentProvider>
+                </DriveVaultProvider>
+              </CampaignsProvider>
+            </DeliverablesProvider>
+          </BrandsProvider>
+        </UIProvider>
+      </AuthProvider>
+    </ToastProvider>
   );
 };
 
@@ -52,8 +56,17 @@ export const useApp = () => {
   const equipment = useEquipmentContext();
   const sandbox = useClientSandboxContext();
   const audit = useAuditContext();
+  const toast = useToast();
 
   return {
+    // Toast Notifications
+    toast,
+    showToast: toast.showToast,
+    toastSuccess: toast.success,
+    toastError: toast.error,
+    toastWarning: toast.warning,
+    toastInfo: toast.info,
+
     // Auth & User Profile
     isAuthenticated: auth.isAuthenticated,
     isLoadingAuth: auth.isLoadingAuth,
@@ -108,13 +121,19 @@ export const useApp = () => {
     activePreviewFile: ui.activePreviewFile,
     setActivePreviewFile: ui.setActivePreviewFile,
 
-    // Brands & Territories
+    // Brands, Organizations & Territories
     brands: brands.brands,
     selectedBrandId: brands.selectedBrandId,
     setSelectedBrandId: brands.setSelectedBrandId,
     createBrand: brands.createBrand,
     updateBrand: brands.updateBrand,
     deleteBrand: brands.deleteBrand,
+    organizations: brands.organizations,
+    createOrganization: brands.createOrganization,
+    syncBrandContacts: brands.syncBrandContacts,
+    inviteClientTeamMember: brands.inviteClientTeamMember,
+    updateMemberPermissions: brands.updateMemberPermissions,
+    refreshOrganizationsFromSupabase: brands.refreshOrganizationsFromSupabase,
     territories: brands.territories,
     createTerritory: brands.createTerritory,
     updateTerritory: brands.updateTerritory,
@@ -124,6 +143,36 @@ export const useApp = () => {
     createDigitalAsset: brands.createDigitalAsset,
     updateDigitalAsset: brands.updateDigitalAsset,
     deleteDigitalAsset: brands.deleteDigitalAsset,
+
+    // Permission evaluation helper for Clients
+    canClientPerform: (
+      action: 'sandbox' | 'production' | 't3' | 'drive' | 'lead',
+      brandId?: string
+    ): boolean => {
+      // Global roles always have full permissions
+      if (auth.currentUser.role === 'webadmin' || auth.currentUser.role === 'director' || auth.currentUser.role === 'colaborador') {
+        return true;
+      }
+      if (auth.currentUser.role !== 'cliente') return false;
+
+      // Holding Admin has full access to all assigned brands
+      if (auth.currentUser.clientRole === 'holding_admin') return true;
+
+      // Check matrix for team_member
+      const targetBrandId = brandId || brands.selectedBrandId;
+      if (!targetBrandId) return false;
+
+      const matrix = auth.currentUser.clientPermissionsMatrix?.[targetBrandId];
+      if (!matrix) return false;
+
+      if (action === 'sandbox') return !!matrix.canAccessSandbox || !!matrix.isBrandLead;
+      if (action === 'production') return !!matrix.canViewProduction || !!matrix.isBrandLead;
+      if (action === 't3') return !!matrix.canApproveT3 || !!matrix.isBrandLead;
+      if (action === 'drive') return !!matrix.canAccessDrive || !!matrix.isBrandLead;
+      if (action === 'lead') return !!matrix.isBrandLead;
+
+      return false;
+    },
 
     // Deliverables
     deliverables: deliverables.deliverables,
@@ -157,6 +206,7 @@ export const useApp = () => {
     createDriveAccount: drive.createDriveAccount,
     deleteDriveAccount: drive.deleteDriveAccount,
     createDriveFolder: drive.createDriveFolder,
+    deleteDriveFolder: drive.deleteDriveFolder,
     createDriveFile: drive.createDriveFile,
     deleteDriveFile: drive.deleteDriveFile,
     updateDriveAccount: drive.updateDriveAccount,

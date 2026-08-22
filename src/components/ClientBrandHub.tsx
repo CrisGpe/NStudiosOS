@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { useDriveVaultContext } from '../context/DriveVaultContext';
+import { useBrandsContext } from '../context/BrandsContext';
 import {
   Sparkles,
   Lightbulb,
@@ -13,7 +15,11 @@ import {
   HardDrive,
   Compass,
   Link,
+  Building2,
+  ShieldCheck,
+  Lock,
 } from 'lucide-react';
+import { ClientOrganizationTeamManager } from './client/ClientOrganizationTeamManager';
 
 export const ClientBrandHub: React.FC = () => {
   const {
@@ -29,23 +35,23 @@ export const ClientBrandHub: React.FC = () => {
     deleteSandboxIdea,
     convertSandboxIdeaToDeliverable,
     generateAIBriefForSandboxIdea,
-    driveFiles,
-    setActivePreviewFile,
-    digitalAssets,
+    canClientPerform,
     setActiveTab,
   } = useApp();
 
-  // Allowed Brands based on RBAC & assignments
-  const isClient = currentUser.role === 'cliente';
-  const allowedBrands = isClient && currentUser.assignedBrandIds && currentUser.assignedBrandIds.length > 0
-    ? brands.filter((b) => currentUser.assignedBrandIds?.includes(b.id))
+  const { driveFiles, setActivePreviewFile } = useDriveVaultContext();
+  const { digitalAssets } = useBrandsContext();
+
+  // Determine allowed brands for this user
+  const isClientRole = currentUser.role === 'cliente';
+  const allowedBrands = isClientRole && currentUser.assignedBrandIds && currentUser.assignedBrandIds.length > 0
+    ? brands.filter((b) => currentUser.assignedBrandIds!.includes(b.id))
     : brands;
 
-  // Active Brand Resolution
-  const activeBrandId =
-    selectedBrandId !== 'all' && allowedBrands.some((b) => b.id === selectedBrandId)
-      ? selectedBrandId
-      : (allowedBrands[0]?.id || brands[0]?.id || 'brd_apex');
+  // Active brand resolution
+  const activeBrandId = (selectedBrandId && selectedBrandId !== 'all' && allowedBrands.some((b) => b.id === selectedBrandId))
+    ? selectedBrandId
+    : (allowedBrands[0]?.id || brands[0]?.id || 'brd_apex');
 
   const brand = brands.find((b) => b.id === activeBrandId) || allowedBrands[0] || brands[0];
   const brandTerritories = territories.filter((t) => t.brandId === brand?.id && t.active);
@@ -55,7 +61,7 @@ export const ClientBrandHub: React.FC = () => {
   const brandDocs = driveFiles.filter((f) => f.brandId === brand?.id && f.type === 'document');
   const brandAssets = digitalAssets.filter((a) => a.brandId === brand?.id);
 
-  const [activeSubTab, setActiveSubTab] = useState<'sandbox' | 'identity' | 'drive'>('sandbox');
+  const [activeSubTab, setActiveSubTab] = useState<'sandbox' | 'identity' | 'drive' | 'organization'>('sandbox');
   const [isAddingIdea, setIsAddingIdea] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newNotes, setNewNotes] = useState('');
@@ -219,6 +225,18 @@ export const ClientBrandHub: React.FC = () => {
             <HardDrive className="w-3.5 h-3.5" />
             <span>Documentos Oficiales Drive ({brandDocs.length})</span>
           </button>
+
+          <button
+            onClick={() => setActiveSubTab('organization')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
+              activeSubTab === 'organization'
+                ? 'bg-indigo-600 text-white shadow-2xs font-bold'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5" />
+            <span>🏢 Mi Organización & Equipo</span>
+          </button>
         </div>
       </div>
 
@@ -240,13 +258,20 @@ export const ClientBrandHub: React.FC = () => {
               </p>
             </div>
 
-            <button
-              onClick={() => setIsAddingIdea(!isAddingIdea)}
-              className="btn-primary"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{isAddingIdea ? 'Cerrar Formulario' : '+ Nueva Idea / Referencia'}</span>
-            </button>
+            {canClientPerform('sandbox', brand.id) ? (
+              <button
+                onClick={() => setIsAddingIdea(!isAddingIdea)}
+                className="btn-primary"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{isAddingIdea ? 'Cerrar Formulario' : '+ Nueva Idea / Referencia'}</span>
+              </button>
+            ) : (
+              <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 flex items-center gap-1.5">
+                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                <span>Solo Lectura (Pre-prod)</span>
+              </span>
+            )}
           </div>
 
           {/* New Idea Inline Form */}
@@ -652,6 +677,13 @@ export const ClientBrandHub: React.FC = () => {
           </div>
 
         </div>
+      )}
+
+      {/* ========================================================
+          TAB 4: MI ORGANIZACIÓN & EQUIPO (HOLDING / MULTI-MARCA)
+          ======================================================== */}
+      {activeSubTab === 'organization' && (
+        <ClientOrganizationTeamManager />
       )}
 
     </div>
