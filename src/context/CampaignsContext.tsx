@@ -50,13 +50,13 @@ export const CampaignsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     const code = 'CMP-' + String(nextNum).padStart(3, '0');
     const newCamp: Campaign = {
       ...campaignData,
-      id: 'camp_' + Date.now(),
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? 'camp_' + crypto.randomUUID().slice(0, 8) : 'camp_' + Date.now(),
       code,
       createdAt: new Date().toISOString().split('T')[0],
       updatedAt: new Date().toISOString().split('T')[0],
     };
     setCampaigns((prev) => [newCamp, ...prev]);
-    CampaignsRepository.createCampaign(newCamp).catch((err) => console.warn('Supabase createCampaign sync error:', err));
+    CampaignsRepository.createCampaign(newCamp).catch((err) => console.warn('Supabase createCampaign error:', err));
     return newCamp;
   };
 
@@ -76,18 +76,21 @@ export const CampaignsProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     CampaignsRepository.deleteCampaign(id).catch((err) => console.warn('Supabase deleteCampaign error:', err));
   };
 
+  const contextValue = React.useMemo(
+    () => ({
+      campaigns,
+      selectedCampaignId,
+      setSelectedCampaignId,
+      createCampaign,
+      updateCampaign,
+      deleteCampaign,
+      refreshCampaignsFromSupabase,
+    }),
+    [campaigns, selectedCampaignId]
+  );
+
   return (
-    <CampaignsContext.Provider
-      value={{
-        campaigns,
-        selectedCampaignId,
-        setSelectedCampaignId,
-        createCampaign,
-        updateCampaign,
-        deleteCampaign,
-        refreshCampaignsFromSupabase,
-      }}
-    >
+    <CampaignsContext.Provider value={contextValue}>
       {children}
     </CampaignsContext.Provider>
   );

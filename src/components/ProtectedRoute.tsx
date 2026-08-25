@@ -14,8 +14,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ allowedRoles }) 
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
-    const defaultRoute = currentUser.role === 'cliente' ? '/client/hub' : '/kanban';
+  if (allowedRoles && (!currentUser || !allowedRoles.includes(currentUser.role))) {
+    const defaultRoute = currentUser?.role === 'cliente' ? '/client/hub' : '/kanban';
     return <Navigate to={defaultRoute} replace />;
   }
 

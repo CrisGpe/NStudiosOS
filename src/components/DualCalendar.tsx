@@ -70,31 +70,40 @@ export const DualCalendar: React.FC = () => {
   // Offset so Monday is index 0
   const startOffset = (firstDayOfMonth + 6) % 7;
 
-  const filteredDeliverables = deliverables.filter((d) => {
-    if (selectedBrandId !== 'all' && d.brandId !== selectedBrandId) return false;
-    return true;
-  });
+  const filteredDeliverables = useMemo(() => {
+    return deliverables.filter((d) => {
+      if (selectedBrandId !== 'all' && d.brandId !== selectedBrandId) return false;
+      return true;
+    });
+  }, [deliverables, selectedBrandId]);
+
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, { prodEvents: Deliverable[]; pubEvents: Deliverable[] }>();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const prodEvents: Deliverable[] = [];
+      const pubEvents: Deliverable[] = [];
+
+      filteredDeliverables.forEach((del) => {
+        if (viewMode === 'dual' || viewMode === 'production') {
+          if (del.productionStartDate <= dateStr && dateStr <= del.productionEndDate) {
+            prodEvents.push(del);
+          }
+        }
+        if (viewMode === 'dual' || viewMode === 'publishing') {
+          if (del.publishDate === dateStr) {
+            pubEvents.push(del);
+          }
+        }
+      });
+
+      map.set(dateStr, { prodEvents, pubEvents });
+    }
+    return map;
+  }, [filteredDeliverables, daysInMonth, currentYear, currentMonth, viewMode]);
 
   const getEventsForDate = (dateStr: string) => {
-    const prodEvents: Deliverable[] = [];
-    const pubEvents: Deliverable[] = [];
-
-    filteredDeliverables.forEach((del) => {
-      // Check if date falls in production date range
-      if (viewMode === 'dual' || viewMode === 'production') {
-        if (del.productionStartDate <= dateStr && dateStr <= del.productionEndDate) {
-          prodEvents.push(del);
-        }
-      }
-      // Check if date matches publication date
-      if (viewMode === 'dual' || viewMode === 'publishing') {
-        if (del.publishDate === dateStr) {
-          pubEvents.push(del);
-        }
-      }
-    });
-
-    return { prodEvents, pubEvents };
+    return eventsByDate.get(dateStr) || { prodEvents: [], pubEvents: [] };
   };
 
   return (

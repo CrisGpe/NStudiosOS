@@ -37,9 +37,10 @@ export const ClientOrganizationTeamManager: React.FC = () => {
 
   // Find the active organization for this client (or current user's org)
   const userOrg = organizations.find((o) => o.id === currentUser.clientOrganizationId) ||
-    organizations[0] || {
-      id: 'org_default',
-      name: 'Grupo Empresarial & Marcas',
+    organizations.find((o) => currentUser.assignedBrandIds?.some((bid) => o.brandIds.includes(bid))) ||
+    (currentUser.role === 'webadmin' || currentUser.role === 'director' ? organizations[0] : undefined) || {
+      id: 'org_personal',
+      name: 'Mi Organización',
       contactEmail: currentUser.email,
       ownerUserId: currentUser.id,
       brandIds: currentUser.assignedBrandIds || [],
@@ -67,7 +68,7 @@ export const ClientOrganizationTeamManager: React.FC = () => {
   const [inviteName, setInviteName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRoleTitle, setInviteRoleTitle] = useState('');
-  const [invitePassword, setInvitePassword] = useState('Nataraja2026!');
+  const [invitePassword, setInvitePassword] = useState(() => 'Pass_' + Math.random().toString(36).slice(-6) + '!');
   const [isSubmittingInvite, setIsSubmittingInvite] = useState(false);
 
   // Matrix state for new member: { [brandId]: ClientBrandPermission }
@@ -170,7 +171,7 @@ export const ClientOrganizationTeamManager: React.FC = () => {
         email: inviteEmail.trim(),
         name: inviteName.trim(),
         roleTitle: inviteRoleTitle.trim() || 'Miembro del Equipo de Marca',
-        tempPassword: invitePassword || 'Nataraja2026!',
+        tempPassword: invitePassword || ('Pass_' + Math.random().toString(36).slice(-6) + '!'),
         permissionsMatrix,
       });
 

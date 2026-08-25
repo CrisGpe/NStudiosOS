@@ -14,7 +14,7 @@ const BrandTerritoryPage = React.lazy(() => import('./pages/BrandTerritoryPage')
 const EquipmentPage = React.lazy(() => import('./pages/EquipmentPage').then((m) => ({ default: m.EquipmentPage })));
 const DualCalendarPage = React.lazy(() => import('./pages/DualCalendarPage').then((m) => ({ default: m.DualCalendarPage })));
 const AdminPage = React.lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
-const DirectorOperationsDashboard = React.lazy(() => import('./components/DirectorOperationsDashboard').then((m) => ({ default: m.DirectorOperationsDashboard })));
+const OperationsPage = React.lazy(() => import('./pages/OperationsPage').then((m) => ({ default: m.OperationsPage })));
 const ClientHubPage = React.lazy(() => import('./pages/ClientHubPage').then((m) => ({ default: m.ClientHubPage })));
 const SystemSpecsPage = React.lazy(() => import('./pages/SystemSpecsPage').then((m) => ({ default: m.SystemSpecsPage })));
 const MobileCompanionPage = React.lazy(() => import('./pages/MobileCompanionPage').then((m) => ({ default: m.MobileCompanionPage })));
@@ -162,7 +162,7 @@ export const router = createBrowserRouter([
                 index: true,
                 element: (
                   <React.Suspense fallback={<div className="p-8 text-center text-slate-500 text-xs font-medium">Cargando Panel de Dirección & Operaciones...</div>}>
-                    <DirectorOperationsDashboard />
+                    <OperationsPage />
                   </React.Suspense>
                 ),
               },
@@ -184,11 +184,17 @@ export const router = createBrowserRouter([
           },
           {
             path: 'client/hub',
-            element: (
-              <React.Suspense fallback={<div className="p-8 text-center text-slate-500 text-xs font-medium">Cargando Hub de Marca & Co-Creación...</div>}>
-                <ClientHubPage />
-              </React.Suspense>
-            ),
+            element: <ProtectedRoute allowedRoles={['cliente', 'webadmin', 'director']} />,
+            children: [
+              {
+                index: true,
+                element: (
+                  <React.Suspense fallback={<div className="p-8 text-center text-slate-500 text-xs font-medium">Cargando Hub de Marca & Co-Creación...</div>}>
+                    <ClientHubPage />
+                  </React.Suspense>
+                ),
+              },
+            ],
           },
           {
             path: 'specs',

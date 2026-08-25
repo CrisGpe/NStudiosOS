@@ -20,8 +20,8 @@ const DEFAULT_ANONYMOUS_USER: UserProfile = {
   id: '',
   name: 'Invitado',
   email: '',
-  role: 'webadmin',
-  roleTitle: 'WebAdmin Global',
+  role: 'cliente',
+  roleTitle: 'Cliente / Invitado',
   avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest',
   assignedBrandIds: [],
 };
@@ -68,12 +68,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const matchingCurrent = dbProfiles.find((u) => u.id === currentUser.id || u.email === currentUser.email);
         if (matchingCurrent) {
           setCurrentUserState(matchingCurrent);
-        } else if (!currentUser.id) {
-          setCurrentUserState(dbProfiles[0]);
         }
       }
     } catch (err) {
-      console.warn('Could not fetch Supabase profiles:', err);
+      console.warn('Error fetching Supabase profiles:', err);
     }
   };
 
@@ -81,62 +79,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshProfiles();
   }, []);
 
-  // Listen to Supabase Auth State Change
+  // Listen to Supabase auth state changes
   useEffect(() => {
     if (!isSupabaseConfigured) return;
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        setIsLoadingAuth(true);
-        try {
-          const profiles = await AuthRepository.fetchProfiles();
-          const profile = profiles.find((p) => p.id === session.user.id);
-          if (profile) {
-            setCurrentUserState(profile);
-            setIsAuthenticated(true);
-          }
-        } catch (err) {
-          console.error('Error fetching user profile on auth change:', err);
-        } finally {
-          setIsLoadingAuth(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setIsAuthenticated(true);
+        const dbProfiles = await AuthRepository.fetchProfiles();
+        const found = dbProfiles.find((p) => p.id === session.user.id || p.email === session.user.email);
+        if (found) {
+          setCurrentUserState(found);
         }
       } else if (event === 'SIGNED_OUT') {
         setIsAuthenticated(false);
+        setCurrentUserState(DEFAULT_ANONYMOUS_USER);
       }
     });
 
     return () => {
-      authListener?.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
+  // Sync to localStorage
   useEffect(() => {
-    localStorage.setItem('nataraja_users', JSON.stringify(users));
+    try {
+      localStorage.setItem('nataraja_users', JSON.stringify(users));
+    } catch {
+      // storage full or disabled
+    }
   }, [users]);
 
   useEffect(() => {
-    localStorage.setItem('nataraja_current_user', JSON.stringify(currentUser));
+    try {
+      localStorage.setItem('nataraja_current_user', JSON.stringify(currentUser));
+    } catch {
+      // storage full or disabled
+    }
   }, [currentUser]);
 
   useEffect(() => {
-    localStorage.setItem('nataraja_is_auth', JSON.stringify(isAuthenticated));
+    try {
+      localStorage.setItem('nataraja_is_auth', String(isAuthenticated));
+    } catch {
+      // storage full or disabled
+    }
   }, [isAuthenticated]);
 
   const loginWithPassword = async (email: string, password: string) => {
     setIsLoadingAuth(true);
     try {
-      const data = await AuthRepository.signIn(email, password);
-      if (data?.user) {
-        const profiles = await AuthRepository.fetchProfiles();
-        const profile = profiles.find((p) => p.id === data.user.id) || {
-          id: data.user.id,
-          name: data.user.user_metadata?.name || email.split('@')[0],
-          email,
-          role: (data.user.user_metadata?.role as UserRole) || 'webadmin',
-          roleTitle: 'WebAdmin Global',
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
-          assignedBrandIds: [],
-        };
+      const profile = await AuthRepository.signIn(email, password);
+      if (profile) {
         setCurrentUserState(profile);
         setIsAuthenticated(true);
         await refreshProfiles();
@@ -146,7 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUpWithPassword = async (email: string, password: string, name: string, role: UserRole = 'webadmin') => {
+  const signUpWithPassword = async (email: string, password: string, name: string, role?: UserRole) => {
     setIsLoadingAuth(true);
     try {
       const profile = await AuthRepository.signUp(email, password, name, role);
@@ -171,32 +166,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await AuthRepository.signOut();
-    } catch {
-      // ignore
+    } catch (err) {
+      console.warn('Sign out error:', err);
     }
     setIsAuthenticated(false);
+    setCurrentUserState(DEFAULT_ANONYMOUS_USER);
   };
 
   const setCurrentUser = async (user: UserProfile) => {
     setCurrentUserState(user);
     setUsers((prev) => prev.map((u) => (u.id === user.id ? user : u)));
+    if (isSupabaseConfigured && user.id) {
+      AuthRepository.updateUserProfile(user.id, user).catch((err) => {
+        console.warn('Failed to update user profile in Supabase:', err);
+      });
+    }
   };
 
+  const contextValue = React.useMemo(
+    () => ({
+      isAuthenticated,
+      isLoadingAuth,
+      currentUser,
+      users,
+      login,
+      loginWithPassword,
+      signUpWithPassword,
+      logout,
+      setCurrentUser,
+      refreshProfiles,
+    }),
+    [isAuthenticated, isLoadingAuth, currentUser, users]
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        isAuthenticated,
-        isLoadingAuth,
-        currentUser,
-        users,
-        login,
-        loginWithPassword,
-        signUpWithPassword,
-        logout,
-        setCurrentUser,
-        refreshProfiles,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

@@ -38,10 +38,22 @@ app.get("/api/health", (req, res) => {
 // API Endpoints: Gemini AI Intelligence
 // ==========================================
 
-// 1. AI Idea Generator & Trend Grounding (using Search Grounding)
+// Helper to sanitize Gemini response text
+function sanitizeJsonString(text: string): string {
+  if (!text) return "{}";
+  const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  return cleaned;
+}
+
+// 1. AI Idea Generator & Trend Grounding
 app.post("/api/gemini/ideate", async (req, res) => {
   try {
-    const { brandName, brandIndustry, territoryName, territoryObjective, deliverableFormat, count = 3 } = req.body;
+    const brandName = req.body.brandName || "Marca General";
+    const brandIndustry = req.body.brandIndustry || req.body.industry || "Audiovisual";
+    const territoryName = req.body.territoryName || req.body.territory || "Lifestyle & Storytelling";
+    const territoryObjective = req.body.territoryObjective || req.body.briefPrompt || "Generar engagement y conversión";
+    const deliverableFormat = req.body.deliverableFormat || "Video Vertical 9:16 (Reels/TikTok)";
+    const count = req.body.count || 3;
 
     if (!process.env.GEMINI_API_KEY) {
       return res.status(503).json({
@@ -51,10 +63,10 @@ app.post("/api/gemini/ideate", async (req, res) => {
 
     const prompt = `Eres el Director Creativo Senior de CineFlow Studio.
 Genera ${count} conceptos creativos audiovisuales innovadores y de alto impacto para la siguiente marca y territorio:
-- Marca: ${brandName || "Marca General"} (${brandIndustry || "Audiovisual"})
-- Territorio de Comunicación: ${territoryName || "Lifestyle & Storytelling"}
-- Objetivo del Territorio: ${territoryObjective || "Generar engagement y conversión"}
-- Formato Audiovisual: ${deliverableFormat || "Video Vertical 9:16 (Reels/TikTok)"}
+- Marca: ${brandName} (${brandIndustry})
+- Territorio de Comunicación: ${territoryName}
+- Objetivo del Territorio: ${territoryObjective}
+- Formato Audiovisual: ${deliverableFormat}
 
 Para cada idea incluye:
 1. Título llamativo
@@ -83,7 +95,7 @@ Responde en formato JSON estructurado con el array "ideas":
       },
     });
 
-    const responseText = response.text || "{}";
+    const responseText = sanitizeJsonString(response.text || "{}");
     const parsed = JSON.parse(responseText);
     res.json(parsed);
   } catch (error: any) {
@@ -92,10 +104,15 @@ Responde en formato JSON estructurado con el array "ideas":
   }
 });
 
-// 2. AI Technical Guide Auto-Compiler (using Thinking Mode)
+// 2. AI Technical Guide Auto-Compiler
 app.post("/api/gemini/technical-guide", async (req, res) => {
   try {
-    const { title, brandName, territoryName, format, shootLocation, equipmentAvailable } = req.body;
+    const title = req.body.title || req.body.deliverable?.title || "Comercial de Marca";
+    const brandName = req.body.brandName || req.body.deliverable?.brandName || "Cliente";
+    const territoryName = req.body.territoryName || req.body.deliverable?.territoryName || "General";
+    const format = req.body.format || req.body.deliverable?.format || "9:16 Vertical UHD";
+    const shootLocation = req.body.shootLocation || req.body.styleNotes || "Estudio / Exterior";
+    const equipmentAvailable = req.body.equipmentAvailable || req.body.deliverable?.equipmentReservedIds || [];
 
     if (!process.env.GEMINI_API_KEY) {
       return res.status(503).json({
@@ -105,12 +122,12 @@ app.post("/api/gemini/technical-guide", async (req, res) => {
 
     const prompt = `Eres el Director de Fotografía (DP) y Supervisor Técnico Audiovisual de CineFlow Studio.
 Construye una GUÍA TÉCNICA AUDIOVISUAL RIGUROSA para el siguiente entregable:
-- Título del Entregable: ${title || "Comercial de Marca"}
-- Marca: ${brandName || "Cliente"}
-- Territorio: ${territoryName || "General"}
-- Formato de Entrega: ${format || "9:16 Vertical UHD"}
-- Locación de Rodaje: ${shootLocation || "Estudio / Exterior"}
-- Equipos en Inventario disponibles: ${JSON.stringify(equipmentAvailable || [])}
+- Título del Entregable: ${title}
+- Marca: ${brandName}
+- Territorio: ${territoryName}
+- Formato de Entrega: ${format}
+- Locación de Rodaje: ${shootLocation}
+- Equipos en Inventario disponibles: ${JSON.stringify(equipmentAvailable)}
 
 Estructura la respuesta en JSON con:
 {
@@ -136,7 +153,7 @@ Estructura la respuesta en JSON con:
       },
     });
 
-    const responseText = response.text || "{}";
+    const responseText = sanitizeJsonString(response.text || "{}");
     const parsed = JSON.parse(responseText);
     res.json(parsed);
   } catch (error: any) {
@@ -148,7 +165,10 @@ Estructura la respuesta en JSON con:
 // 3. AI Change Request Evaluator (T-3 Policy & Impact Analysis)
 app.post("/api/gemini/evaluate-change", async (req, res) => {
   try {
-    const { deliverableTitle, publishDate, changeDescription, changeCategory } = req.body;
+    const deliverableTitle = req.body.deliverableTitle || req.body.deliverable?.title || "Entregable";
+    const publishDate = req.body.publishDate || req.body.deliverable?.publishDate || new Date().toISOString().split('T')[0];
+    const changeDescription = req.body.changeDescription || req.body.changeRequest?.description || "Ajuste general";
+    const changeCategory = req.body.changeCategory || req.body.changeRequest?.category || "visual";
 
     if (!process.env.GEMINI_API_KEY) {
       return res.status(503).json({
@@ -186,7 +206,7 @@ Genera un dictamen técnico en JSON:
       },
     });
 
-    const responseText = response.text || "{}";
+    const responseText = sanitizeJsonString(response.text || "{}");
     const parsed = JSON.parse(responseText);
     res.json(parsed);
   } catch (error: any) {

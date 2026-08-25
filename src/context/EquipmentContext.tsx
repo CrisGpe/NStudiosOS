@@ -208,23 +208,26 @@ export const EquipmentProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return { isAvailable: true };
   };
 
+  const contextValue = React.useMemo(
+    () => ({
+      equipment,
+      createEquipment,
+      updateEquipment,
+      deleteEquipment,
+      reservations,
+      checkEquipmentCollision,
+      createEquipmentReservation,
+      cancelEquipmentReservation,
+      collaboratorSchedules,
+      updateCollaboratorSchedule,
+      checkCollaboratorAvailability,
+      refreshEquipmentFromSupabase,
+    }),
+    [equipment, reservations, collaboratorSchedules]
+  );
+
   return (
-    <EquipmentContext.Provider
-      value={{
-        equipment,
-        createEquipment,
-        updateEquipment,
-        deleteEquipment,
-        reservations,
-        checkEquipmentCollision,
-        createEquipmentReservation,
-        cancelEquipmentReservation,
-        collaboratorSchedules,
-        updateCollaboratorSchedule,
-        checkCollaboratorAvailability,
-        refreshEquipmentFromSupabase,
-      }}
-    >
+    <EquipmentContext.Provider value={contextValue}>
       {children}
     </EquipmentContext.Provider>
   );

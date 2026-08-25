@@ -149,6 +149,7 @@ export const useApp = () => {
       action: 'sandbox' | 'production' | 't3' | 'drive' | 'lead',
       brandId?: string
     ): boolean => {
+      if (!auth.currentUser) return false;
       // Global roles always have full permissions
       if (auth.currentUser.role === 'webadmin' || auth.currentUser.role === 'director' || auth.currentUser.role === 'colaborador') {
         return true;

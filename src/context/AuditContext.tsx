@@ -73,7 +73,9 @@ export const AuditProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Async persist to Supabase
     if (isSupabaseConfigured) {
-      AuditRepository.addAuditLog(action, details, userId, entityType, entityId, userName, userRole);
+      AuditRepository.addAuditLog(action, details, userId, entityType, entityId, userName, userRole).catch((err) => {
+        console.warn('Audit log write error:', err);
+      });
     }
   };
 
@@ -82,15 +84,18 @@ export const AuditProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     window.location.reload();
   };
 
+  const contextValue = React.useMemo(
+    () => ({
+      auditLogs,
+      addAuditLog,
+      refreshAuditLogs,
+      resetSystemData,
+    }),
+    [auditLogs]
+  );
+
   return (
-    <AuditContext.Provider
-      value={{
-        auditLogs,
-        addAuditLog,
-        refreshAuditLogs,
-        resetSystemData,
-      }}
-    >
+    <AuditContext.Provider value={contextValue}>
       {children}
     </AuditContext.Provider>
   );

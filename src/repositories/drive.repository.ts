@@ -49,6 +49,23 @@ export const DriveVaultRepository = {
     return newAcc;
   },
 
+  async updateAccount(id: string, updates: Partial<DriveAccount>): Promise<void> {
+    if (!isSupabaseConfigured) return;
+    const payload: any = {};
+    if (updates.name !== undefined) payload.name = updates.name;
+    if (updates.email !== undefined) payload.email = updates.email;
+    if (updates.type !== undefined) payload.type = updates.type;
+    if (updates.quotaTotalGB !== undefined) payload.quota_total_gb = updates.quotaTotalGB;
+    if (updates.quotaUsedGB !== undefined) payload.quota_used_gb = updates.quotaUsedGB;
+    if (updates.rootFolderId !== undefined) payload.root_folder_id = updates.rootFolderId;
+    if (updates.isConnected !== undefined) payload.is_connected = updates.isConnected;
+    if (updates.status !== undefined) payload.status = updates.status;
+    if (updates.lastSyncedAt !== undefined) payload.last_synced_at = updates.lastSyncedAt;
+
+    const { error } = await supabase.from('drive_accounts').update(payload).eq('id', id);
+    if (error) console.error('Error updating drive account in Supabase:', error);
+  },
+
   async deleteAccount(id: string): Promise<boolean> {
     if (!isSupabaseConfigured) return true;
     const { error } = await supabase.from('drive_accounts').delete().eq('id', id);

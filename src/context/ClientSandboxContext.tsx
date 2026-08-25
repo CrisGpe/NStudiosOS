@@ -89,7 +89,7 @@ export const ClientSandboxProvider: React.FC<{ children: React.ReactNode }> = ({
           ? {
               ...i,
               status: 'converted_to_deliverable' as const,
-              convertedToDeliverableId: targetDelId,
+              convertedDeliverableId: targetDelId,
               updatedAt: new Date().toISOString().split('T')[0],
             }
           : i
@@ -143,18 +143,21 @@ export const ClientSandboxProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const contextValue = React.useMemo(
+    () => ({
+      sandboxIdeas,
+      createSandboxIdea,
+      updateSandboxIdea,
+      deleteSandboxIdea,
+      convertSandboxIdeaToDeliverable,
+      generateAIBriefForSandboxIdea,
+      refreshSandboxFromSupabase,
+    }),
+    [sandboxIdeas]
+  );
+
   return (
-    <ClientSandboxContext.Provider
-      value={{
-        sandboxIdeas,
-        createSandboxIdea,
-        updateSandboxIdea,
-        deleteSandboxIdea,
-        convertSandboxIdeaToDeliverable,
-        generateAIBriefForSandboxIdea,
-        refreshSandboxFromSupabase,
-      }}
-    >
+    <ClientSandboxContext.Provider value={contextValue}>
       {children}
     </ClientSandboxContext.Provider>
   );

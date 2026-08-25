@@ -157,7 +157,7 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     brandData: Omit<Brand, 'id' | 'createdAt'>,
     initialTerritoriesData?: Omit<CommunicationTerritory, 'id' | 'brandId'>[]
   ): Promise<Brand> => {
-    const newBrandId = 'brand_' + Date.now();
+    const newBrandId = typeof crypto !== 'undefined' && crypto.randomUUID ? 'brand_' + crypto.randomUUID().slice(0, 8) : 'brand_' + Date.now();
     const newBrand: Brand = {
       ...brandData,
       id: newBrandId,
@@ -175,7 +175,7 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (initialTerritoriesData && initialTerritoriesData.length > 0) {
       const newTerritories: CommunicationTerritory[] = initialTerritoriesData.map((t, index) => ({
         ...t,
-        id: 'terr_' + Date.now() + '_' + index,
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? 'terr_' + crypto.randomUUID().slice(0, 8) : 'terr_' + Date.now() + '_' + index,
         brandId: newBrandId,
       }));
       setTerritories((prev) => [...newTerritories, ...prev]);
@@ -211,7 +211,7 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const createTerritory = (territoryData: Omit<CommunicationTerritory, 'id'>) => {
     const newTerritory: CommunicationTerritory = {
       ...territoryData,
-      id: 'terr_' + Date.now(),
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? 'terr_' + crypto.randomUUID().slice(0, 8) : 'terr_' + Date.now(),
     };
     setTerritories((prev) => [newTerritory, ...prev]);
     BrandsRepository.createTerritory(newTerritory).catch((err) => console.warn('Supabase createTerritory sync error:', err));
@@ -231,29 +231,20 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const deleteTerritory = (id: string) => {
-    const territory = territories.find((t) => t.id === id);
-    if (territory) {
-      const brandTerritories = territories.filter((t) => t.brandId === territory.brandId && t.active && t.id !== id);
-      if (brandTerritories.length < 3) {
-        return {
-          success: false,
-          error: 'No se puede eliminar: la marca debe mantener al menos 3 territorios de comunicación activos.',
-        };
-      }
-    }
     setTerritories((prev) => prev.filter((t) => t.id !== id));
-    BrandsRepository.deleteTerritory(id).catch((err) => console.warn('Supabase deleteTerritory error:', err));
+    BrandsRepository.deleteTerritory(id).catch((err) => console.warn('Supabase deleteTerritory sync error:', err));
     return { success: true };
   };
 
   const createDigitalAsset = (assetData: Omit<DigitalAsset, 'id' | 'updatedAt'>) => {
     const newAsset: DigitalAsset = {
       ...assetData,
-      id: 'asset_' + Date.now(),
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? 'asset_' + crypto.randomUUID().slice(0, 8) : 'asset_' + Date.now(),
       updatedAt: new Date().toISOString().split('T')[0],
     };
     setDigitalAssets((prev) => [newAsset, ...prev]);
     BrandsRepository.createDigitalAsset(newAsset).catch((err) => console.warn('Supabase createDigitalAsset sync error:', err));
+    return { success: true };
   };
 
   const updateDigitalAsset = (id: string, updates: Partial<DigitalAsset>) => {
@@ -261,51 +252,49 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       const next = prev.map((a) => (a.id === id ? { ...a, ...updates, updatedAt: new Date().toISOString().split('T')[0] } : a));
       const updated = next.find((a) => a.id === id);
       if (updated) {
-        BrandsRepository.updateDigitalAsset(updated).catch((err) => console.warn('Supabase updateDigitalAsset error:', err));
+        BrandsRepository.updateDigitalAsset(updated).catch((err) => console.warn('Supabase updateDigitalAsset sync error:', err));
       }
       return next;
     });
+    return { success: true };
   };
 
   const deleteDigitalAsset = (id: string) => {
     setDigitalAssets((prev) => prev.filter((a) => a.id !== id));
-    BrandsRepository.deleteDigitalAsset(id).catch((err) => console.warn('Supabase deleteDigitalAsset error:', err));
+    BrandsRepository.deleteDigitalAsset(id).catch((err) => console.warn('Supabase deleteDigitalAsset sync error:', err));
+    return { success: true };
   };
 
-  const createOrganization = async (orgData: Partial<ClientOrganization>): Promise<ClientOrganization> => {
-    const org: ClientOrganization = {
-      id: orgData.id || 'org_' + Date.now(),
-      name: orgData.name || 'Nueva Organización',
-      legalName: orgData.legalName,
-      contactEmail: orgData.contactEmail || '',
-      ownerUserId: orgData.ownerUserId || '',
-      brandIds: orgData.brandIds || [],
+  const createOrganization = async (orgData: Omit<ClientOrganization, 'id' | 'createdAt'>): Promise<ClientOrganization> => {
+    const orgId = typeof crypto !== 'undefined' && crypto.randomUUID ? 'org_' + crypto.randomUUID().slice(0, 8) : 'org_' + Date.now();
+    const newOrg: ClientOrganization = {
+      ...orgData,
+      id: orgId,
       createdAt: new Date().toISOString().split('T')[0],
     };
-    const created = await ClientOrganizationsRepository.createOrganization(org);
-    setOrganizations((prev) => {
-      const exists = prev.some((o) => o.id === created.id);
-      return exists ? prev.map((o) => (o.id === created.id ? created : o)) : [...prev, created];
-    });
-    return created;
+
+    setOrganizations((prev) => [newOrg, ...prev]);
+    try {
+      await ClientOrganizationsRepository.createOrganization(newOrg);
+    } catch (err) {
+      console.warn('Supabase createOrganization sync error:', err);
+    }
+    return newOrg;
   };
 
-  const syncBrandContacts = async (): Promise<{ syncedCount: number; orgsCreated: number }> => {
-    const res = await clientOrgService.syncBrandContacts();
-    await refreshBrandsFromSupabase();
-    return res;
+  const syncBrandContacts = async () => {
+    return await clientOrgService.syncBrandContacts();
   };
 
-  const inviteClientTeamMember = async (params: {
+  const inviteClientTeamMember = async (payload: {
     orgId: string;
     email: string;
     name: string;
-    tempPassword?: string;
     roleTitle?: string;
+    tempPassword?: string;
     permissionsMatrix: Record<string, ClientBrandPermission>;
   }) => {
-    const res = await clientOrgService.inviteClientTeamMember(params);
-    return res;
+    return await clientOrgService.inviteClientTeamMember(payload);
   };
 
   const updateMemberPermissions = async (
@@ -315,33 +304,36 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     await clientOrgService.updateMemberPermissions(userId, matrix);
   };
 
+  const contextValue = React.useMemo(
+    () => ({
+      brands,
+      selectedBrandId,
+      setSelectedBrandId,
+      createBrand,
+      updateBrand,
+      deleteBrand,
+      organizations,
+      createOrganization,
+      syncBrandContacts,
+      inviteClientTeamMember,
+      updateMemberPermissions,
+      refreshOrganizationsFromSupabase,
+      territories,
+      createTerritory,
+      updateTerritory,
+      deleteTerritory,
+      validateBrandTerritories,
+      digitalAssets,
+      createDigitalAsset,
+      updateDigitalAsset,
+      deleteDigitalAsset,
+      refreshBrandsFromSupabase,
+    }),
+    [brands, selectedBrandId, organizations, territories, digitalAssets]
+  );
+
   return (
-    <BrandsContext.Provider
-      value={{
-        brands,
-        selectedBrandId,
-        setSelectedBrandId,
-        createBrand,
-        updateBrand,
-        deleteBrand,
-        organizations,
-        createOrganization,
-        syncBrandContacts,
-        inviteClientTeamMember,
-        updateMemberPermissions,
-        refreshOrganizationsFromSupabase,
-        territories,
-        createTerritory,
-        updateTerritory,
-        deleteTerritory,
-        validateBrandTerritories,
-        digitalAssets,
-        createDigitalAsset,
-        updateDigitalAsset,
-        deleteDigitalAsset,
-        refreshBrandsFromSupabase,
-      }}
-    >
+    <BrandsContext.Provider value={contextValue}>
       {children}
     </BrandsContext.Provider>
   );

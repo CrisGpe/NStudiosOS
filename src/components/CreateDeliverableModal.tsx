@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Film, X, Plus } from 'lucide-react';
-import { Brand, CommunicationTerritory, UserProfile, DeliverableType, DeliverablePriority } from '../types';
+import { Brand, CommunicationTerritory, UserProfile, DeliverableType, DeliverablePriority, Deliverable } from '../types';
 import { useToast } from '../context/ToastContext';
 
 interface CreateDeliverableModalProps {
   brands: Brand[];
   territories: CommunicationTerritory[];
   users: UserProfile[];
-  createDeliverable: (data: any) => void;
+  createDeliverable: (data: Partial<Deliverable> & { title: string; brandId: string; territoryId: string }) => Deliverable | void;
   onClose: () => void;
 }
 

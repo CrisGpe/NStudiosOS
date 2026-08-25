@@ -144,6 +144,7 @@ export const AuthRepository = {
     if (updates.assignedBrandIds !== undefined) payload.assigned_brand_ids = updates.assignedBrandIds;
     if (updates.clientOrganizationId !== undefined) payload.client_organization_id = updates.clientOrganizationId;
     if (updates.clientRole !== undefined) payload.client_role = updates.clientRole;
+    if (updates.clientPermissionsMatrix !== undefined) payload.client_permissions_matrix = updates.clientPermissionsMatrix;
     if (updates.schedule !== undefined) payload.schedule = updates.schedule;
     if (updates.preferences !== undefined) payload.preferences = updates.preferences;
 

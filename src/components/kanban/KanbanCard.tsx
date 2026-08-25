@@ -1,5 +1,5 @@
 import React from 'react';
-import { Deliverable, DeliverablePriority, Brand, CommunicationTerritory, UserProfile } from '../../types';
+import { Deliverable, DeliverablePhase, DeliverablePriority, Brand, CommunicationTerritory, UserProfile } from '../../types';
 import { Palette, Video, Calendar, FolderOpen, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { KANBAN_COLUMNS } from './constants';
 
@@ -12,11 +12,11 @@ interface KanbanCardProps {
   colId: string;
   isClient: boolean;
   setSelectedDeliverable: (item: Deliverable) => void;
-  moveDeliverablePhase: (id: string, phase: any) => void;
+  moveDeliverablePhase: (id: string, phase: DeliverablePhase) => void;
   calculateDaysToPublish: (date: string) => number;
 }
 
-export const KanbanCard: React.FC<KanbanCardProps> = ({
+export const KanbanCard: React.FC<KanbanCardProps> = React.memo(({
   item,
   brand,
   territory,
@@ -177,4 +177,4 @@ export const KanbanCard: React.FC<KanbanCardProps> = ({
       </div>
     </div>
   );
-};
+});

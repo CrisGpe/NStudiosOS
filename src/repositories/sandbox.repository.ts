@@ -5,7 +5,7 @@ export const ClientSandboxRepository = {
   async fetchIdeas(): Promise<ClientIdeaSandboxItem[]> {
     if (!isSupabaseConfigured) return [];
     try {
-      const { data, error } = await supabase.from('sandbox_ideas').select('*');
+      const { data, error } = await supabase.from('client_sandbox_ideas').select('*');
       if (error || !data) return [];
 
       return data.map((row: any) => ({
@@ -34,7 +34,7 @@ export const ClientSandboxRepository = {
   async createIdea(idea: ClientIdeaSandboxItem): Promise<ClientIdeaSandboxItem> {
     if (!isSupabaseConfigured) return idea;
 
-    const { error } = await supabase.from('sandbox_ideas').insert({
+    const { error } = await supabase.from('client_sandbox_ideas').insert({
       id: idea.id,
       brand_id: idea.brandId,
       title: idea.title,
@@ -60,7 +60,7 @@ export const ClientSandboxRepository = {
     if (!isSupabaseConfigured) return idea;
 
     const { error } = await supabase
-      .from('sandbox_ideas')
+      .from('client_sandbox_ideas')
       .update({
         brand_id: idea.brandId,
         title: idea.title,
@@ -84,7 +84,7 @@ export const ClientSandboxRepository = {
 
   async deleteIdea(id: string): Promise<boolean> {
     if (!isSupabaseConfigured) return true;
-    const { error } = await supabase.from('sandbox_ideas').delete().eq('id', id);
+    const { error } = await supabase.from('client_sandbox_ideas').delete().eq('id', id);
     return !error;
   },
 };

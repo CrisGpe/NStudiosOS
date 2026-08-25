@@ -1,6 +1,7 @@
 import React from 'react';
-import { Deliverable, Brand, CommunicationTerritory, UserProfile } from '../../types';
+import { Deliverable, DeliverablePhase, Brand, CommunicationTerritory, UserProfile } from '../../types';
 import { KanbanCard } from './KanbanCard';
+import { KanbanColumnConfig } from './constants';
 
 const MACRO_PHASE_INFO = {
   pre_produccion: {
@@ -18,7 +19,7 @@ const MACRO_PHASE_INFO = {
 };
 
 interface KanbanColumnProps {
-  col: any;
+  col: KanbanColumnConfig;
   colIdx: number;
   columnItems: Deliverable[];
   brands: Brand[];
@@ -27,7 +28,7 @@ interface KanbanColumnProps {
   isGraphicMode: boolean;
   isClient: boolean;
   setSelectedDeliverable: (item: Deliverable) => void;
-  moveDeliverablePhase: (id: string, phase: any) => void;
+  moveDeliverablePhase: (id: string, phase: DeliverablePhase) => void;
   calculateDaysToPublish: (date: string) => number;
 }
 

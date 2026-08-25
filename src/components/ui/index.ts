@@ -6,3 +6,4 @@ export * from './Card';
 export * from './Badge';
 export * from './Table';
 export * from './Tabs';
+export * from './InlineDeleteConfirm';

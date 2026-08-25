@@ -1,6 +1,85 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
 import { Deliverable, DeliverablePhase, TechnicalGuide, ChangeRequest } from '../types';
 
+// DB CHECK constraint mappers
+function mapPhaseToDB(phase: DeliverablePhase): string {
+  switch (phase) {
+    case 'ideacion':
+      return 'ideacion_co_creativa';
+    case 'guia_tecnica':
+      return 'guia_tecnica_av';
+    case 'produccion':
+      return 'en_rodaje';
+    case 'calendarizacion':
+    case 'post_produccion':
+    case 'aprobacion_cliente':
+    case 'publicado':
+      return phase;
+    case 'cancelado':
+    default:
+      return 'post_produccion';
+  }
+}
+
+function mapPhaseFromDB(dbPhase: string): DeliverablePhase {
+  switch (dbPhase) {
+    case 'ideacion_co_creativa':
+      return 'ideacion';
+    case 'guia_tecnica_av':
+      return 'guia_tecnica';
+    case 'en_rodaje':
+      return 'produccion';
+    case 'calendarizacion':
+    case 'post_produccion':
+    case 'aprobacion_cliente':
+    case 'publicado':
+    case 'cancelado':
+      return dbPhase as DeliverablePhase;
+    default:
+      return 'ideacion';
+  }
+}
+
+function mapPriorityToDB(priority: string): string {
+  switch (priority) {
+    case 'low':
+      return 'baja';
+    case 'medium':
+      return 'media';
+    case 'high':
+      return 'alta';
+    case 'urgent':
+      return 'urgente';
+    case 'baja':
+    case 'media':
+    case 'alta':
+    case 'urgente':
+      return priority;
+    default:
+      return 'media';
+  }
+}
+
+function mapPriorityFromDB(dbPriority: string): 'low' | 'medium' | 'high' | 'urgent' {
+  switch (dbPriority) {
+    case 'baja':
+      return 'low';
+    case 'media':
+      return 'medium';
+    case 'alta':
+      return 'high';
+    case 'urgente':
+      return 'urgent';
+    case 'low':
+    case 'medium':
+    case 'high':
+    case 'urgent':
+      return dbPriority;
+    default:
+      return 'medium';
+  }
+}
+
 export const DeliverablesRepository = {
   async fetchDeliverables(): Promise<Deliverable[]> {
     if (!isSupabaseConfigured) return [];
@@ -16,9 +95,9 @@ export const DeliverablesRepository = {
         territoryId: row.territory_id,
         campaignId: row.campaign_id,
         assigneeId: row.assignee_id,
-        phase: row.phase as DeliverablePhase,
+        phase: mapPhaseFromDB(row.phase),
         deliverableType: row.deliverable_type || 'audiovisual',
-        priority: row.priority || 'medium',
+        priority: mapPriorityFromDB(row.priority),
         format: row.format || '9:16 UHD',
         conceptHook: row.concept_hook,
         description: row.description || '',
@@ -62,9 +141,9 @@ export const DeliverablesRepository = {
       territory_id: deliverable.territoryId,
       campaign_id: deliverable.campaignId,
       assignee_id: deliverable.assigneeId,
-      phase: deliverable.phase,
+      phase: mapPhaseToDB(deliverable.phase),
       deliverable_type: deliverable.deliverableType,
-      priority: deliverable.priority,
+      priority: mapPriorityToDB(deliverable.priority),
       format: deliverable.format,
       concept_hook: deliverable.conceptHook,
       description: deliverable.description,
@@ -99,9 +178,9 @@ export const DeliverablesRepository = {
         territory_id: deliverable.territoryId,
         campaign_id: deliverable.campaignId,
         assignee_id: deliverable.assigneeId,
-        phase: deliverable.phase,
+        phase: mapPhaseToDB(deliverable.phase),
         deliverable_type: deliverable.deliverableType,
-        priority: deliverable.priority,
+        priority: mapPriorityToDB(deliverable.priority),
         format: deliverable.format,
         concept_hook: deliverable.conceptHook,
         description: deliverable.description,
@@ -127,7 +206,7 @@ export const DeliverablesRepository = {
   async updatePhase(id: string, phase: DeliverablePhase, extraUpdates?: Partial<Deliverable>) {
     if (!isSupabaseConfigured) return;
     const payload: any = {
-      phase,
+      phase: mapPhaseToDB(phase),
       updated_at: new Date().toISOString().split('T')[0],
     };
     if (extraUpdates) {

@@ -268,23 +268,26 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return newProposal;
   };
 
+  const contextValue = React.useMemo(
+    () => ({
+      deliverables,
+      selectedDeliverable,
+      setSelectedDeliverable,
+      createDeliverable,
+      updateDeliverable,
+      deleteDeliverable,
+      moveDeliverablePhase,
+      updateTechnicalGuide,
+      submitChangeRequest,
+      respondToChangeRequest,
+      createClientDeliverableProposal,
+      refreshDeliverablesFromSupabase,
+    }),
+    [deliverables, selectedDeliverable]
+  );
+
   return (
-    <DeliverablesContext.Provider
-      value={{
-        deliverables,
-        selectedDeliverable,
-        setSelectedDeliverable,
-        createDeliverable,
-        updateDeliverable,
-        deleteDeliverable,
-        moveDeliverablePhase,
-        updateTechnicalGuide,
-        submitChangeRequest,
-        respondToChangeRequest,
-        createClientDeliverableProposal,
-        refreshDeliverablesFromSupabase,
-      }}
-    >
+    <DeliverablesContext.Provider value={contextValue}>
       {children}
     </DeliverablesContext.Provider>
   );

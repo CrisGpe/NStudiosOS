@@ -84,19 +84,19 @@ export const BrandsRepository = {
   async fetchTerritories(): Promise<CommunicationTerritory[]> {
     if (!isSupabaseConfigured) return [];
     try {
-      const { data, error } = await supabase.from('territories').select('*');
+      const { data, error } = await supabase.from('communication_territories').select('*');
       if (error || !data) return [];
 
       return data.map((row: any) => ({
         id: row.id,
         brandId: row.brand_id,
         name: row.name,
-        description: row.description,
-        objective: row.objective,
+        description: row.description || '',
+        objective: row.objective || '',
         contentPillars: row.content_pillars || [],
-        targetAudience: row.target_audience,
+        targetAudience: row.target_audience || '',
         active: row.active ?? true,
-        colorTag: row.color_tag,
+        colorTag: row.color_tag || row.color || '#6366f1',
       }));
     } catch {
       return [];
@@ -106,7 +106,7 @@ export const BrandsRepository = {
   async createTerritory(territory: CommunicationTerritory): Promise<CommunicationTerritory> {
     if (!isSupabaseConfigured) return territory;
 
-    const { error } = await supabase.from('territories').insert({
+    const { error } = await supabase.from('communication_territories').insert({
       id: territory.id,
       brand_id: territory.brandId,
       name: territory.name,
@@ -115,7 +115,7 @@ export const BrandsRepository = {
       content_pillars: territory.contentPillars,
       target_audience: territory.targetAudience,
       active: territory.active,
-      color_tag: territory.colorTag,
+      color: territory.colorTag,
     });
     if (error) console.error('Error inserting territory to Supabase:', error);
     return territory;
@@ -125,7 +125,7 @@ export const BrandsRepository = {
     if (!isSupabaseConfigured) return territory;
 
     const { error } = await supabase
-      .from('territories')
+      .from('communication_territories')
       .update({
         brand_id: territory.brandId,
         name: territory.name,
@@ -134,7 +134,7 @@ export const BrandsRepository = {
         content_pillars: territory.contentPillars,
         target_audience: territory.targetAudience,
         active: territory.active,
-        color_tag: territory.colorTag,
+        color: territory.colorTag,
       })
       .eq('id', territory.id);
     if (error) console.error('Error updating territory in Supabase:', error);
@@ -143,7 +143,7 @@ export const BrandsRepository = {
 
   async deleteTerritory(id: string): Promise<boolean> {
     if (!isSupabaseConfigured) return true;
-    const { error } = await supabase.from('territories').delete().eq('id', id);
+    const { error } = await supabase.from('communication_territories').delete().eq('id', id);
     return !error;
   },
 

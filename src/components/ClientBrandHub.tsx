@@ -56,8 +56,8 @@ export const ClientBrandHub: React.FC = () => {
 
   const brand = brands.find((b) => b.id === activeBrandId) || allowedBrands[0] || brands[0];
   const userOrg = organizations.find((o) => o.id === currentUser.clientOrganizationId) ||
-    organizations.find((o) => o.brandIds.includes(brand?.id || '')) ||
-    organizations[0];
+    organizations.find((o) => (brand?.id && o.brandIds.includes(brand.id)) || (brand?.clientOrganizationId && o.id === brand.clientOrganizationId)) ||
+    (currentUser.role === 'webadmin' || currentUser.role === 'director' ? organizations[0] : undefined);
 
   const brandTerritories = territories.filter((t) => t.brandId === brand?.id && t.active);
   const brandIdeas = sandboxIdeas.filter((i) => i.brandId === brand?.id);

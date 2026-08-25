@@ -178,6 +178,9 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const updateDriveAccount = (id: string, updates: Partial<DriveAccount>) => {
     setDriveAccounts((prev) => prev.map((a) => (a.id === id ? { ...a, ...updates } : a)));
+    DriveVaultRepository.updateAccount(id, updates).catch((err) =>
+      console.warn('Supabase updateDriveAccount sync error:', err)
+    );
   };
 
   const syncDriveAccount = async (id: string) => {
@@ -234,30 +237,33 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   };
 
+  const contextValue = React.useMemo(
+    () => ({
+      driveAccounts,
+      driveFolders,
+      driveFiles,
+      selectedDriveAccountId,
+      setSelectedDriveAccountId,
+      selectedFolderId,
+      setSelectedFolderId,
+      activePreviewFile,
+      setActivePreviewFile,
+      createDriveAccount,
+      deleteDriveAccount,
+      createDriveFolder,
+      createDriveFile,
+      deleteDriveFile,
+      deleteDriveFolder,
+      updateDriveAccount,
+      syncDriveAccount,
+      generateBrandDriveTreeAndDocs,
+      refreshDriveFromSupabase,
+    }),
+    [driveAccounts, driveFolders, driveFiles, selectedDriveAccountId, selectedFolderId, activePreviewFile]
+  );
+
   return (
-    <DriveVaultContext.Provider
-      value={{
-        driveAccounts,
-        driveFolders,
-        driveFiles,
-        selectedDriveAccountId,
-        setSelectedDriveAccountId,
-        selectedFolderId,
-        setSelectedFolderId,
-        activePreviewFile,
-        setActivePreviewFile,
-        createDriveAccount,
-        deleteDriveAccount,
-        createDriveFolder,
-        createDriveFile,
-        deleteDriveFile,
-        deleteDriveFolder,
-        updateDriveAccount,
-        syncDriveAccount,
-        generateBrandDriveTreeAndDocs,
-        refreshDriveFromSupabase,
-      }}
-    >
+    <DriveVaultContext.Provider value={contextValue}>
       {children}
     </DriveVaultContext.Provider>
   );

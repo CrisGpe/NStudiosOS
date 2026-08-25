@@ -31,7 +31,6 @@ export const ClientOrganizationsRepository = {
       legal_name: org.legalName,
       contact_email: org.contactEmail,
       owner_user_id: org.ownerUserId,
-      brand_ids: org.brandIds,
       created_at: org.createdAt,
     });
     if (error) console.error('Error inserting client organization in Supabase:', error);
@@ -41,13 +40,26 @@ export const ClientOrganizationsRepository = {
   async fetchTeamMembers(orgId?: string) {
     if (!isSupabaseConfigured) return [];
     try {
-      let query = supabase.from('client_team_members').select('*');
+      let query = supabase.from('users_profiles').select('*');
       if (orgId) {
-        query = query.eq('organization_id', orgId);
+        query = query.eq('client_organization_id', orgId);
+      } else {
+        query = query.not('client_organization_id', 'is', null);
       }
       const { data, error } = await query;
       if (error || !data) return [];
-      return data;
+      return data.map((row: any) => ({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        role: row.role,
+        roleTitle: row.role_title,
+        avatar: row.avatar,
+        clientOrganizationId: row.client_organization_id,
+        clientRole: row.client_role,
+        clientPermissionsMatrix: row.client_permissions_matrix || {},
+        assignedBrandIds: row.assigned_brand_ids || [],
+      }));
     } catch {
       return [];
     }
@@ -56,8 +68,8 @@ export const ClientOrganizationsRepository = {
   async updateMemberPermissions(memberId: string, permissionsMatrix: Record<string, ClientBrandPermission>) {
     if (!isSupabaseConfigured) return;
     const { error } = await supabase
-      .from('client_team_members')
-      .update({ permissions_matrix: permissionsMatrix })
+      .from('users_profiles')
+      .update({ client_permissions_matrix: permissionsMatrix })
       .eq('id', memberId);
     if (error) console.error('Error updating member permissions in Supabase:', error);
   },
