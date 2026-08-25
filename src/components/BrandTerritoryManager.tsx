@@ -29,6 +29,7 @@ import { InlineDeleteConfirm } from './ui/InlineDeleteConfirm';
 export const BrandTerritoryManager: React.FC = () => {
   const {
     brands,
+    organizations,
     territories,
     digitalAssets,
     createTerritory,
@@ -214,6 +215,7 @@ export const BrandTerritoryManager: React.FC = () => {
         {brands.map((brand) => {
           const isSelected = brand.id === currentBrand?.id;
           const terrStatus = validateBrandTerritories(brand.id);
+          const brandOrg = organizations.find((o) => o.id === brand.clientOrganizationId || o.brandIds.includes(brand.id));
 
           return (
             <button
@@ -231,13 +233,21 @@ export const BrandTerritoryManager: React.FC = () => {
                 style={{ backgroundColor: brand.primaryColor }}
               />
 
-              <div className="flex items-center gap-2 mb-1.5 pt-0.5">
+              <div className="flex items-center gap-2 mb-1 pt-0.5 min-w-0">
                 <img
                   src={brand.logo}
                   alt={brand.name}
-                  className="w-6 h-6 rounded-md object-cover ring-1 ring-slate-200"
+                  className="w-6 h-6 rounded-md object-cover ring-1 ring-slate-200 shrink-0"
                 />
-                <span className="font-bold text-xs text-slate-900 truncate">{brand.name}</span>
+                <div className="min-w-0 flex-1">
+                  <span className="font-bold text-xs text-slate-900 truncate block">{brand.name}</span>
+                  {brandOrg && (
+                    <span className="text-[9px] text-indigo-600 font-semibold truncate block flex items-center gap-0.5">
+                      <Building2 className="w-2.5 h-2.5 shrink-0" />
+                      <span className="truncate">{brandOrg.name}</span>
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-100">
@@ -265,34 +275,42 @@ export const BrandTerritoryManager: React.FC = () => {
       </div>
 
       {/* Current Brand Active Header */}
-      {currentBrand && (
-        <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-2xs space-y-4">
-          
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <img
-                src={currentBrand.logo}
-                alt={currentBrand.name}
-                className="w-12 h-12 rounded-xl object-cover ring-1 ring-slate-200 shadow-2xs"
-              />
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-slate-900">{currentBrand.name}</h2>
-                  <span
-                    className="w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: currentBrand.primaryColor }}
-                    title="Color de Marca"
-                  />
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
-                    {currentBrand.industry}
-                  </span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-0.5 italic font-serif">"{currentBrand.slogan}"</p>
-                <div className="text-[10px] text-slate-500 mt-0.5">
-                  Contacto: <span className="text-slate-700 font-medium">{currentBrand.contactPerson}</span> ({currentBrand.contactEmail})
+      {currentBrand && (() => {
+        const activeOrg = organizations.find((o) => o.id === currentBrand.clientOrganizationId || o.brandIds.includes(currentBrand.id));
+        return (
+          <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-2xs space-y-4">
+            
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <img
+                  src={currentBrand.logo}
+                  alt={currentBrand.name}
+                  className="w-12 h-12 rounded-xl object-cover ring-1 ring-slate-200 shadow-2xs"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-slate-900">{currentBrand.name}</h2>
+                    <span
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: currentBrand.primaryColor }}
+                      title="Color de Marca"
+                    />
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
+                      {currentBrand.industry}
+                    </span>
+                    {activeOrg && (
+                      <span className="text-[10px] px-2 py-0.2 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold flex items-center gap-1">
+                        <Building2 className="w-3 h-3" />
+                        <span>Holding: {activeOrg.name}</span>
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5 italic font-serif">"{currentBrand.slogan}"</p>
+                  <div className="text-[10px] text-slate-500 mt-0.5">
+                    Contacto: <span className="text-slate-700 font-medium">{currentBrand.contactPerson}</span> ({currentBrand.contactEmail})
+                  </div>
                 </div>
               </div>
-            </div>
 
             {/* Strict Territory Validation Badge */}
             <div
@@ -536,7 +554,8 @@ export const BrandTerritoryManager: React.FC = () => {
           )}
 
         </div>
-      )}
+        );
+      })()}
 
       {/* Modal: Crear / Editar Territorio */}
       {isTerritoryModalOpen && (

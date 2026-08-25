@@ -13,7 +13,7 @@ import { CommunicationTerritory } from '../types';
 const TERRITORY_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
 
 export const CreateBrandModal: React.FC = () => {
-  const { isCreateBrandModalOpen, setIsCreateBrandModalOpen, createBrand, setSelectedBrandId } = useApp();
+  const { isCreateBrandModalOpen, setIsCreateBrandModalOpen, createBrand, setSelectedBrandId, organizations } = useApp();
 
   const [name, setName] = useState('');
   const [industry, setIndustry] = useState('');
@@ -21,6 +21,7 @@ export const CreateBrandModal: React.FC = () => {
   const [primaryColor, setPrimaryColor] = useState('#4f46e5');
   const [contactPerson, setContactPerson] = useState('');
   const [contactEmail, setContactEmail] = useState('');
+  const [selectedOrgId, setSelectedOrgId] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
 
   const [territoriesList, setTerritoriesList] = useState<
@@ -123,6 +124,7 @@ export const CreateBrandModal: React.FC = () => {
           contactPerson: contactPerson.trim(),
           contactEmail: contactEmail.trim(),
           logo: `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(name.trim())}`,
+          clientOrganizationId: selectedOrgId || undefined,
         },
         initialTerrs
       );
@@ -276,6 +278,24 @@ export const CreateBrandModal: React.FC = () => {
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                Holding / Grupo Empresarial (Opcional)
+              </label>
+              <select
+                value={selectedOrgId}
+                onChange={(e) => setSelectedOrgId(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all cursor-pointer"
+              >
+                <option value="">-- Marca Independiente (Sin Holding) --</option>
+                {organizations.map((org) => (
+                  <option key={org.id} value={org.id}>
+                    🏢 {org.name} ({org.brandIds.length} marcas vinculadas)
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

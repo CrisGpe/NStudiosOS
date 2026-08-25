@@ -25,6 +25,7 @@ export const ClientBrandHub: React.FC = () => {
   const {
     currentUser,
     brands,
+    organizations,
     selectedBrandId,
     setSelectedBrandId,
     territories,
@@ -54,6 +55,10 @@ export const ClientBrandHub: React.FC = () => {
     : (allowedBrands[0]?.id || brands[0]?.id || 'brd_apex');
 
   const brand = brands.find((b) => b.id === activeBrandId) || allowedBrands[0] || brands[0];
+  const userOrg = organizations.find((o) => o.id === currentUser.clientOrganizationId) ||
+    organizations.find((o) => o.brandIds.includes(brand?.id || '')) ||
+    organizations[0];
+
   const brandTerritories = territories.filter((t) => t.brandId === brand?.id && t.active);
   const brandIdeas = sandboxIdeas.filter((i) => i.brandId === brand?.id);
   const brandDeliverables = deliverables.filter((d) => d.brandId === brand?.id);
@@ -113,8 +118,89 @@ export const ClientBrandHub: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 text-slate-800">
+    <div className="space-y-3.5 text-slate-800">
       
+      {/* Top Holding Context & Brand Cards Selector */}
+      {allowedBrands.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs space-y-2.5">
+          {userOrg && (
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200">
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-900">
+                      {userOrg.name}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.2 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-mono font-semibold">
+                      {allowedBrands.length} {allowedBrands.length === 1 ? 'Unidad de Negocio' : 'Unidades de Negocio'}
+                    </span>
+                  </div>
+                  <span className="text-[10.5px] text-slate-500">
+                    Selecciona una marca para gestionar su Sandbox de Ideas, Territorios y Documentos
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setActiveSubTab('organization')}
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 cursor-pointer bg-indigo-50 hover:bg-indigo-100/70 px-2.5 py-1 rounded-lg border border-indigo-200/60"
+              >
+                <span>Gestión de Equipo & Permisos</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Brand Cards Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            {allowedBrands.map((b) => {
+              const isSelected = b.id === brand.id;
+              const bIdeasCount = sandboxIdeas.filter((i) => i.brandId === b.id).length;
+              const bTerrCount = territories.filter((t) => t.brandId === b.id && t.active).length;
+
+              return (
+                <button
+                  key={b.id}
+                  onClick={() => setSelectedBrandId(b.id)}
+                  className={`p-2.5 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer ${
+                    isSelected
+                      ? 'bg-white border-indigo-600 ring-2 ring-indigo-500/25 shadow-xs'
+                      : 'bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 shadow-2xs'
+                  }`}
+                >
+                  {/* Brand Color Header line */}
+                  <div
+                    className="absolute top-0 left-0 right-0 h-1"
+                    style={{ backgroundColor: b.primaryColor }}
+                  />
+
+                  <div className="flex items-center gap-2 mb-1.5 pt-0.5 min-w-0">
+                    <img
+                      src={b.logo}
+                      alt={b.name}
+                      className="w-6 h-6 rounded-md object-cover ring-1 ring-slate-200 shrink-0"
+                    />
+                    <span className={`text-xs truncate ${isSelected ? 'font-extrabold text-slate-900' : 'font-bold text-slate-700'}`}>
+                      {b.name}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[9.5px] text-slate-500 pt-1 border-t border-slate-100">
+                    <span className="font-medium">{bTerrCount} Territorios</span>
+                    <span className={`px-1.5 py-0.2 rounded-full font-mono font-bold ${bIdeasCount > 0 ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-slate-50 text-slate-500'}`}>
+                      {bIdeasCount} {bIdeasCount === 1 ? 'idea' : 'ideas'}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Brand Hero Masthead */}
       <div
         className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs relative overflow-hidden"
@@ -136,26 +222,6 @@ export const ClientBrandHub: React.FC = () => {
               <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">
                 {brand.name}
               </h1>
-
-              {/* Brand Switcher Selector */}
-              {allowedBrands.length > 1 && (
-                <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200 shadow-2xs">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                    Cambiar Marca:
-                  </span>
-                  <select
-                    value={brand.id}
-                    onChange={(e) => setSelectedBrandId(e.target.value)}
-                    className="bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-900 py-0.5 px-2 focus:outline-hidden cursor-pointer"
-                  >
-                    {allowedBrands.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
             </div>
 
             <p className="text-xs text-slate-600 italic">
