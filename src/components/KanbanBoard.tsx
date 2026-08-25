@@ -5,7 +5,6 @@ import { CreateDeliverableModal } from './CreateDeliverableModal';
 import {
   KanbanProcessToggle,
   KanbanFilters,
-  KanbanMacroPhaseHeader,
   KanbanColumn,
   KANBAN_COLUMNS
 } from './kanban';
@@ -74,7 +73,7 @@ export const KanbanBoard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {isClient && (
         <div className="bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-slate-900/50 border border-indigo-500/30 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-2xs">
           <div className="flex items-center gap-3">
@@ -129,8 +128,6 @@ export const KanbanBoard: React.FC = () => {
         setIsCreateClientDeliverableModalOpen={setIsCreateClientDeliverableModalOpen}
         setIsCreateModalOpen={setIsCreateModalOpen}
       />
-
-      <KanbanMacroPhaseHeader deliverableTypeFilter={deliverableTypeFilter} />
 
       <div className="overflow-x-auto pb-2">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 min-w-[1450px]">
