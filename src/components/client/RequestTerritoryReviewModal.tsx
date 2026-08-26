@@ -4,7 +4,8 @@ import { Brand, CommunicationTerritory } from '../../types';
 
 interface RequestTerritoryReviewModalProps {
   brand: Brand;
-  territories: CommunicationTerritory[];
+  territories?: CommunicationTerritory[];
+  existingTerritories?: CommunicationTerritory[];
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: {
@@ -19,13 +20,20 @@ interface RequestTerritoryReviewModalProps {
 
 export const RequestTerritoryReviewModal: React.FC<RequestTerritoryReviewModalProps> = ({
   brand,
-  territories,
+  territories = [],
+  existingTerritories = [],
   isOpen,
   onClose,
   onSubmit,
 }) => {
+  const activeTerritories = (existingTerritories && existingTerritories.length > 0)
+    ? existingTerritories
+    : (territories || []);
+
   const [requestType, setRequestType] = useState<'propose_new' | 'modify_existing'>('propose_new');
-  const [existingTerritoryId, setExistingTerritoryId] = useState(territories[0]?.id || '');
+  const [existingTerritoryId, setExistingTerritoryId] = useState(
+    (activeTerritories.length > 0 && activeTerritories[0]?.id) ? activeTerritories[0].id : ''
+  );
   const [territoryName, setTerritoryName] = useState('');
   const [motive, setMotive] = useState('');
   const [notes, setNotes] = useState('');
@@ -38,7 +46,7 @@ export const RequestTerritoryReviewModal: React.FC<RequestTerritoryReviewModalPr
 
     const finalName =
       requestType === 'modify_existing'
-        ? territories.find((t) => t.id === existingTerritoryId)?.name || 'Territorio'
+        ? activeTerritories.find((t) => t.id === existingTerritoryId)?.name || 'Territorio'
         : territoryName.trim();
 
     if (!finalName) return;
