@@ -40,12 +40,18 @@ export const BrandTerritoryManager: React.FC = () => {
     updateDigitalAsset,
     deleteDigitalAsset,
     currentUser,
+    selectedOrgId,
+    setSelectedOrgId,
+    selectedBrandId,
+    setSelectedBrandId,
     toast,
     openAiModalWithContext,
     setIsCreateBrandModalOpen,
   } = useApp();
 
-  const [activeBrandId, setActiveBrandId] = useState<string>(brands[0]?.id || '');
+  const [activeBrandId, setActiveBrandId] = useState<string>(
+    (selectedBrandId && selectedBrandId !== 'all') ? selectedBrandId : (brands[0]?.id || '')
+  );
   const [activeSubTab, setActiveSubTab] = useState<'territories' | 'assets'>('territories');
 
   // Territory Modal State
@@ -66,7 +72,12 @@ export const BrandTerritoryManager: React.FC = () => {
   const [assetUrl, setAssetUrl] = useState('');
   const [assetNotes, setAssetNotes] = useState('');
 
-  const currentBrand = brands.find((b) => b.id === activeBrandId) || brands[0];
+  // Filter brands based on selected organization/holding
+  const displayedBrands = selectedOrgId === 'all'
+    ? brands
+    : brands.filter((b) => b.clientOrganizationId === selectedOrgId || organizations.find((o) => o.id === selectedOrgId)?.brandIds.includes(b.id));
+
+  const currentBrand = brands.find((b) => b.id === (selectedBrandId && selectedBrandId !== 'all' ? selectedBrandId : activeBrandId)) || displayedBrands[0] || brands[0];
   const brandTerritories = territories.filter((t) => t.brandId === currentBrand?.id);
   const brandAssets = digitalAssets.filter((a) => a.brandId === currentBrand?.id);
   const validationStatus = validateBrandTerritories(currentBrand?.id);
@@ -210,9 +221,71 @@ export const BrandTerritoryManager: React.FC = () => {
   return (
     <div className="space-y-4">
       
-      {/* Brand Horizontal Carousel / Selector - High Density */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2.5">
-        {brands.map((brand) => {
+      {/* Level 1: Client / Holding Selector Pills */}
+      {currentUser.role !== 'cliente' && organizations.length > 0 && (
+        <div className="bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl p-3 shadow-[0_4px_12px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 font-mono flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Cliente / Holding Activo:</span>
+            </span>
+            <span className="text-[11px] text-slate-400 font-medium">
+              {displayedBrands.length} {displayedBrands.length === 1 ? 'marca en cartera' : 'marcas en cartera'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            <button
+              type="button"
+              onClick={() => setSelectedOrgId('all')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
+                selectedOrgId === 'all'
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold shadow-[0_4px_12px_rgba(79,70,229,0.3),inset_0_1px_2px_rgba(255,255,255,0.4)] scale-[1.02]'
+                  : 'bg-slate-100/90 hover:bg-slate-200 text-slate-700 border border-slate-200/80 shadow-2xs'
+              }`}
+            >
+              Todos los Clientes ({brands.length})
+            </button>
+
+            {organizations.map((org) => {
+              const isSelected = selectedOrgId === org.id;
+              const orgBrandsCount = brands.filter((b) => b.clientOrganizationId === org.id || org.brandIds.includes(b.id)).length;
+
+              return (
+                <button
+                  type="button"
+                  key={org.id}
+                  onClick={() => {
+                    setSelectedOrgId(org.id);
+                    const orgBrands = brands.filter((b) => b.clientOrganizationId === org.id || org.brandIds.includes(b.id));
+                    if (orgBrands.length > 0 && !orgBrands.some((b) => b.id === currentBrand?.id)) {
+                      setActiveBrandId(orgBrands[0].id);
+                      setSelectedBrandId(orgBrands[0].id);
+                    }
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold shrink-0 flex items-center gap-1.5 transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold shadow-[0_4px_12px_rgba(79,70,229,0.3),inset_0_1px_2px_rgba(255,255,255,0.4)] scale-[1.02]'
+                      : 'bg-slate-100/90 hover:bg-slate-200 text-slate-700 border border-slate-200/80 shadow-2xs'
+                  }`}
+                >
+                  <Building2 className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-indigo-600'}`} />
+                  <span>{org.name}</span>
+                  <span className={`text-[9.5px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                    isSelected ? 'bg-white/25 text-white shadow-inner' : 'bg-slate-200/80 text-slate-700 shadow-2xs'
+                  }`}>
+                    {orgBrandsCount}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Level 2: Brands Cards Grid of Selected Client */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+        {displayedBrands.map((brand) => {
           const isSelected = brand.id === currentBrand?.id;
           const terrStatus = validateBrandTerritories(brand.id);
           const brandOrg = organizations.find((o) => o.id === brand.clientOrganizationId || o.brandIds.includes(brand.id));
@@ -220,10 +293,13 @@ export const BrandTerritoryManager: React.FC = () => {
           return (
             <button
               key={brand.id}
-              onClick={() => setActiveBrandId(brand.id)}
-              className={`p-2.5 rounded-lg border text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer ${
+              onClick={() => {
+                setActiveBrandId(brand.id);
+                setSelectedBrandId(brand.id);
+              }}
+              className={`p-2.5 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer ${
                 isSelected
-                  ? 'bg-white border-blue-600 ring-1 ring-blue-500 shadow-xs'
+                  ? 'bg-white border-indigo-600 ring-2 ring-indigo-500/25 shadow-[0_4px_12px_rgba(79,70,229,0.15)]'
                   : 'bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 shadow-2xs'
               }`}
             >
@@ -233,16 +309,18 @@ export const BrandTerritoryManager: React.FC = () => {
                 style={{ backgroundColor: brand.primaryColor }}
               />
 
-              <div className="flex items-center gap-2 mb-1 pt-0.5 min-w-0">
+              <div className="flex items-center gap-2 mb-1.5 pt-0.5 min-w-0">
                 <img
                   src={brand.logo}
                   alt={brand.name}
                   className="w-6 h-6 rounded-md object-cover ring-1 ring-slate-200 shrink-0"
                 />
                 <div className="min-w-0 flex-1">
-                  <span className="font-bold text-xs text-slate-900 truncate block">{brand.name}</span>
-                  {brandOrg && (
-                    <span className="text-[9px] text-indigo-600 font-semibold truncate block flex items-center gap-0.5">
+                  <span className={`text-xs truncate block ${isSelected ? 'font-extrabold text-slate-900' : 'font-bold text-slate-800'}`}>
+                    {brand.name}
+                  </span>
+                  {brandOrg && selectedOrgId === 'all' && (
+                    <span className="text-[9px] text-indigo-600 font-semibold truncate block flex items-center gap-0.5 mt-0.5">
                       <Building2 className="w-2.5 h-2.5 shrink-0" />
                       <span className="truncate">{brandOrg.name}</span>
                     </span>
@@ -266,7 +344,7 @@ export const BrandTerritoryManager: React.FC = () => {
         {(currentUser.role === 'webadmin' || currentUser.role === 'director') && (
           <button
             onClick={() => setIsCreateBrandModalOpen(true)}
-            className="p-2.5 rounded-lg border border-dashed border-indigo-300 hover:border-indigo-500 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-700 font-semibold text-xs flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+            className="p-2.5 rounded-xl border border-dashed border-indigo-300 hover:border-indigo-500 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-700 font-semibold text-xs flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
           >
             <Plus className="w-5 h-5 text-indigo-600" />
             <span>+ Nueva Marca</span>

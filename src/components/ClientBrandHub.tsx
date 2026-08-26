@@ -29,6 +29,8 @@ export const ClientBrandHub: React.FC = () => {
     currentUser,
     brands,
     organizations,
+    selectedOrgId,
+    setSelectedOrgId,
     selectedBrandId,
     setSelectedBrandId,
     territories,
@@ -52,7 +54,11 @@ export const ClientBrandHub: React.FC = () => {
   const isClientRole = currentUser.role === 'cliente';
   const allowedBrands = isClientRole && currentUser.assignedBrandIds && currentUser.assignedBrandIds.length > 0
     ? brands.filter((b) => currentUser.assignedBrandIds!.includes(b.id))
-    : brands;
+    : isClientRole && currentUser.clientOrganizationId
+    ? brands.filter((b) => b.clientOrganizationId === currentUser.clientOrganizationId || organizations.find((o) => o.id === currentUser.clientOrganizationId)?.brandIds.includes(b.id))
+    : (selectedOrgId === 'all'
+      ? brands
+      : brands.filter((b) => b.clientOrganizationId === selectedOrgId || organizations.find((o) => o.id === selectedOrgId)?.brandIds.includes(b.id)));
 
   // Active brand resolution
   const activeBrandId = (selectedBrandId && selectedBrandId !== 'all' && allowedBrands.some((b) => b.id === selectedBrandId))
@@ -62,7 +68,7 @@ export const ClientBrandHub: React.FC = () => {
   const brand = brands.find((b) => b.id === activeBrandId) || allowedBrands[0] || brands[0];
   const userOrg = organizations.find((o) => o.id === currentUser.clientOrganizationId) ||
     organizations.find((o) => (brand?.id && o.brandIds.includes(brand.id)) || (brand?.clientOrganizationId && o.id === brand.clientOrganizationId)) ||
-    (currentUser.role === 'webadmin' || currentUser.role === 'director' ? organizations[0] : undefined);
+    (selectedOrgId !== 'all' ? organizations.find((o) => o.id === selectedOrgId) : organizations[0]);
 
   const brandTerritories = territories.filter((t) => t.brandId === brand?.id && t.active);
   const brandIdeas = sandboxIdeas.filter((i) => i.brandId === brand?.id);
@@ -137,7 +143,68 @@ export const ClientBrandHub: React.FC = () => {
   return (
     <div className="space-y-3.5 text-slate-800">
       
-      {/* Top Holding Context & Brand Cards Selector */}
+      {/* Level 1: Client / Holding Selector Pills (For Director / Agency WebAdmin) */}
+      {!isClientRole && organizations.length > 0 && (
+        <div className="bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl p-3 shadow-[0_4px_12px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 font-mono flex items-center gap-1.5">
+              <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Cliente / Holding Activo:</span>
+            </span>
+            <span className="text-[11px] text-slate-400 font-medium">
+              {allowedBrands.length} {allowedBrands.length === 1 ? 'marca en cartera' : 'marcas en cartera'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            <button
+              type="button"
+              onClick={() => setSelectedOrgId('all')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
+                selectedOrgId === 'all'
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold shadow-[0_4px_12px_rgba(79,70,229,0.3),inset_0_1px_2px_rgba(255,255,255,0.4)] scale-[1.02]'
+                  : 'bg-slate-100/90 hover:bg-slate-200 text-slate-700 border border-slate-200/80 shadow-2xs'
+              }`}
+            >
+              Todos los Clientes ({brands.length})
+            </button>
+
+            {organizations.map((org) => {
+              const isSelected = selectedOrgId === org.id;
+              const orgBrandsCount = brands.filter((b) => b.clientOrganizationId === org.id || org.brandIds.includes(b.id)).length;
+
+              return (
+                <button
+                  type="button"
+                  key={org.id}
+                  onClick={() => {
+                    setSelectedOrgId(org.id);
+                    const orgBrands = brands.filter((b) => b.clientOrganizationId === org.id || org.brandIds.includes(b.id));
+                    if (orgBrands.length > 0 && !orgBrands.some((b) => b.id === brand.id)) {
+                      setSelectedBrandId(orgBrands[0].id);
+                    }
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold shrink-0 flex items-center gap-1.5 transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold shadow-[0_4px_12px_rgba(79,70,229,0.3),inset_0_1px_2px_rgba(255,255,255,0.4)] scale-[1.02]'
+                      : 'bg-slate-100/90 hover:bg-slate-200 text-slate-700 border border-slate-200/80 shadow-2xs'
+                  }`}
+                >
+                  <Building2 className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-indigo-600'}`} />
+                  <span>{org.name}</span>
+                  <span className={`text-[9.5px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                    isSelected ? 'bg-white/25 text-white shadow-inner' : 'bg-slate-200/80 text-slate-700 shadow-2xs'
+                  }`}>
+                    {orgBrandsCount}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Top Holding Context Header & Level 2: Brand Cards Selector */}
       {allowedBrands.length > 0 && (
         <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs space-y-2.5">
           {userOrg && (
@@ -152,7 +219,7 @@ export const ClientBrandHub: React.FC = () => {
                       {userOrg.name}
                     </span>
                     <span className="text-[10px] px-2 py-0.2 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-mono font-semibold">
-                      {allowedBrands.length} {allowedBrands.length === 1 ? 'Unidad de Negocio' : 'Unidades de Negocio'}
+                      {allowedBrands.length} {allowedBrands.length === 1 ? 'Marca' : 'Marcas'}
                     </span>
                   </div>
                   <span className="text-[10.5px] text-slate-500">
@@ -171,7 +238,7 @@ export const ClientBrandHub: React.FC = () => {
             </div>
           )}
 
-          {/* Brand Cards Grid */}
+          {/* Level 2: Brand Cards Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
             {allowedBrands.map((b) => {
               const isSelected = b.id === brand.id;
@@ -184,7 +251,7 @@ export const ClientBrandHub: React.FC = () => {
                   onClick={() => setSelectedBrandId(b.id)}
                   className={`p-2.5 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer ${
                     isSelected
-                      ? 'bg-white border-indigo-600 ring-2 ring-indigo-500/25 shadow-xs'
+                      ? 'bg-white border-indigo-600 ring-2 ring-indigo-500/25 shadow-[0_4px_12px_rgba(79,70,229,0.15)]'
                       : 'bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 shadow-2xs'
                   }`}
                 >
