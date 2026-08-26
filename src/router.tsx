@@ -5,19 +5,47 @@ import { AppLayout } from './components/AppLayout';
 import { RouteErrorBoundary } from './components/RouteErrorBoundary';
 import { useApp } from './context/AppContext';
 
-// Lazy loaded page components
-const LoginPage = React.lazy(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
-const KanbanPage = React.lazy(() => import('./pages/KanbanPage').then((m) => ({ default: m.KanbanPage })));
-const CampaignsPage = React.lazy(() => import('./pages/CampaignsPage').then((m) => ({ default: m.CampaignsPage })));
-const DriveVaultPage = React.lazy(() => import('./pages/DriveVaultPage').then((m) => ({ default: m.DriveVaultPage })));
-const BrandTerritoryPage = React.lazy(() => import('./pages/BrandTerritoryPage').then((m) => ({ default: m.BrandTerritoryPage })));
-const EquipmentPage = React.lazy(() => import('./pages/EquipmentPage').then((m) => ({ default: m.EquipmentPage })));
-const DualCalendarPage = React.lazy(() => import('./pages/DualCalendarPage').then((m) => ({ default: m.DualCalendarPage })));
-const AdminPage = React.lazy(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
-const OperationsPage = React.lazy(() => import('./pages/OperationsPage').then((m) => ({ default: m.OperationsPage })));
-const ClientHubPage = React.lazy(() => import('./pages/ClientHubPage').then((m) => ({ default: m.ClientHubPage })));
-const SystemSpecsPage = React.lazy(() => import('./pages/SystemSpecsPage').then((m) => ({ default: m.SystemSpecsPage })));
-const MobileCompanionPage = React.lazy(() => import('./pages/MobileCompanionPage').then((m) => ({ default: m.MobileCompanionPage })));
+// Resilient Lazy Loading that auto-reloads on new Vercel deployments
+function lazyWithRetry<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>
+) {
+  return React.lazy(async () => {
+    const pageHasBeenRefreshed = sessionStorage.getItem('page-refreshed-for-chunk');
+
+    try {
+      const component = await factory();
+      sessionStorage.removeItem('page-refreshed-for-chunk');
+      return component;
+    } catch (error: any) {
+      const isChunkError =
+        error?.message?.includes('Failed to fetch dynamically imported module') ||
+        error?.message?.includes('Importing a module script failed') ||
+        error?.message?.includes('dynamically imported module') ||
+        error?.name === 'ChunkLoadError';
+
+      if (isChunkError && !pageHasBeenRefreshed) {
+        sessionStorage.setItem('page-refreshed-for-chunk', 'true');
+        window.location.reload();
+        return new Promise<{ default: T }>(() => {}); // Suspend while reload occurs
+      }
+      throw error;
+    }
+  });
+}
+
+// Lazy loaded page components with auto-retry
+const LoginPage = lazyWithRetry(() => import('./pages/LoginPage').then((m) => ({ default: m.LoginPage })));
+const KanbanPage = lazyWithRetry(() => import('./pages/KanbanPage').then((m) => ({ default: m.KanbanPage })));
+const CampaignsPage = lazyWithRetry(() => import('./pages/CampaignsPage').then((m) => ({ default: m.CampaignsPage })));
+const DriveVaultPage = lazyWithRetry(() => import('./pages/DriveVaultPage').then((m) => ({ default: m.DriveVaultPage })));
+const BrandTerritoryPage = lazyWithRetry(() => import('./pages/BrandTerritoryPage').then((m) => ({ default: m.BrandTerritoryPage })));
+const EquipmentPage = lazyWithRetry(() => import('./pages/EquipmentPage').then((m) => ({ default: m.EquipmentPage })));
+const DualCalendarPage = lazyWithRetry(() => import('./pages/DualCalendarPage').then((m) => ({ default: m.DualCalendarPage })));
+const AdminPage = lazyWithRetry(() => import('./pages/AdminPage').then((m) => ({ default: m.AdminPage })));
+const OperationsPage = lazyWithRetry(() => import('./pages/OperationsPage').then((m) => ({ default: m.OperationsPage })));
+const ClientHubPage = lazyWithRetry(() => import('./pages/ClientHubPage').then((m) => ({ default: m.ClientHubPage })));
+const SystemSpecsPage = lazyWithRetry(() => import('./pages/SystemSpecsPage').then((m) => ({ default: m.SystemSpecsPage })));
+const MobileCompanionPage = lazyWithRetry(() => import('./pages/MobileCompanionPage').then((m) => ({ default: m.MobileCompanionPage })));
 
 const IndexRedirect: React.FC = () => {
   const { currentUser } = useApp();
