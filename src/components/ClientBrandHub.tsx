@@ -19,12 +19,16 @@ import {
   ShieldCheck,
   Lock,
   Send,
+  Folder,
+  ChevronRight,
+  ArrowLeft,
 } from 'lucide-react';
 import { ClientOrganizationTeamManager } from './client/ClientOrganizationTeamManager';
 import { CreateSandboxIdeaModal } from './client/CreateSandboxIdeaModal';
 import { RequestTerritoryReviewModal } from './client/RequestTerritoryReviewModal';
 import { deriveOrganizationsFromBrands } from '../context/BrandsContext';
 import { ClientOrganization } from '../types';
+import { CreateHoldingModal } from './CreateHoldingModal';
 
 export const ClientBrandHub: React.FC = () => {
   const {
@@ -47,24 +51,32 @@ export const ClientBrandHub: React.FC = () => {
     setActiveTab,
     addAuditLog,
     toast,
+    setIsCreateBrandModalOpen,
   } = useApp();
 
   const { driveFiles, setActivePreviewFile } = useDriveVaultContext();
   const { digitalAssets } = useBrandsContext();
 
+  const [navLevel, setNavLevel] = useState<'holdings' | 'brands' | 'detail'>('detail');
+  const [isCreateHoldingModalOpen, setIsCreateHoldingModalOpen] = useState(false);
+
   // Effective organizations (guaranteed non-empty)
   const effectiveOrgs: ClientOrganization[] =
     organizations.length > 0 ? organizations : deriveOrganizationsFromBrands(brands);
 
-  // Determine allowed brands for this user
   const isClientRole = currentUser.role === 'cliente';
+  const currentOrg = effectiveOrgs.find((o) => o.id === (isClientRole ? currentUser.clientOrganizationId : selectedOrgId)) || effectiveOrgs[0];
+
+  // Determine allowed brands for this user / holding
   const allowedBrands = isClientRole && currentUser.assignedBrandIds && currentUser.assignedBrandIds.length > 0
     ? brands.filter((b) => currentUser.assignedBrandIds!.includes(b.id))
     : isClientRole && currentUser.clientOrganizationId
-    ? brands.filter((b) => b.clientOrganizationId === currentUser.clientOrganizationId || effectiveOrgs.find((o) => o.id === currentUser.clientOrganizationId)?.brandIds.includes(b.id))
+    ? brands.filter((b) => b.clientOrganizationId === currentUser.clientOrganizationId || currentOrg?.brandIds.includes(b.id))
     : (selectedOrgId === 'all'
       ? brands
-      : brands.filter((b) => b.clientOrganizationId === selectedOrgId || effectiveOrgs.find((o) => o.id === selectedOrgId)?.brandIds.includes(b.id)));
+      : (brands.filter((b) => b.clientOrganizationId === selectedOrgId || currentOrg?.brandIds.includes(b.id)).length > 0
+        ? brands.filter((b) => b.clientOrganizationId === selectedOrgId || currentOrg?.brandIds.includes(b.id))
+        : brands));
 
   // Active brand resolution
   const activeBrandId = (selectedBrandId && selectedBrandId !== 'all' && allowedBrands.some((b) => b.id === selectedBrandId))
@@ -74,7 +86,7 @@ export const ClientBrandHub: React.FC = () => {
   const brand = brands.find((b) => b.id === activeBrandId) || allowedBrands[0] || brands[0];
   const userOrg = effectiveOrgs.find((o) => o.id === currentUser.clientOrganizationId) ||
     effectiveOrgs.find((o) => (brand?.id && o.brandIds.includes(brand.id)) || (brand?.clientOrganizationId && o.id === brand.clientOrganizationId)) ||
-    (selectedOrgId !== 'all' ? effectiveOrgs.find((o) => o.id === selectedOrgId) : effectiveOrgs[0]);
+    currentOrg;
 
   const brandTerritories = territories.filter((t) => t.brandId === brand?.id && t.active);
   const brandIdeas = sandboxIdeas.filter((i) => i.brandId === brand?.id);
@@ -130,653 +142,762 @@ export const ClientBrandHub: React.FC = () => {
 
   const handleTriggerAi = async (ideaId: string) => {
     setIsGeneratingAi(ideaId);
-    await generateAIBriefForSandboxIdea(ideaId);
-    setIsGeneratingAi(null);
+    try {
+      await generateAIBriefForSandboxIdea(ideaId);
+      toast.success('¡Propuesta técnica generada con Inteligencia Artificial!');
+    } catch {
+      toast.error('Error al generar la propuesta con IA.');
+    } finally {
+      setIsGeneratingAi(null);
+    }
   };
 
   const handleConvertToDeliverable = (ideaId: string) => {
+    if (!canClientPerform('production', brand?.id)) {
+      toast.error('No tienes permisos para enviar ideas al pipeline de producción.');
+      return;
+    }
     convertSandboxIdeaToDeliverable(ideaId);
+    toast.success('¡Idea transformada en Entregable activo en el Pipeline!');
   };
 
-  if (!brand) {
+  if (!brand && allowedBrands.length === 0) {
     return (
-      <div className="p-8 bg-white border border-slate-200 rounded-2xl text-center text-slate-500">
-        No se encontró información de marca disponible.
+      <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center space-y-4 max-w-lg mx-auto my-12 shadow-sm">
+        <Building2 className="w-12 h-12 text-slate-400 mx-auto" />
+        <h2 className="text-xl font-bold text-slate-900">Sin Marcas Asignadas</h2>
+        <p className="text-sm text-slate-500">
+          No tienes acceso a ninguna marca en este momento. Contacta al administrador del sistema.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="space-y-3.5 text-slate-800">
-      
-      {/* Level 1: Client / Holding Selector Pills (For Director / Agency WebAdmin) */}
-      {!isClientRole && effectiveOrgs.length > 0 && (
-        <div className="bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl p-3 shadow-[0_4px_12px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 font-mono flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Cliente / Holding Activo:</span>
-            </span>
-            <span className="text-[11px] text-slate-400 font-medium">
-              {allowedBrands.length} {allowedBrands.length === 1 ? 'marca en cartera' : 'marcas en cartera'}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+      {/* 🧭 Top Drive-Vault Breadcrumbs Bar */}
+      {!isClientRole && (
+        <div className="flex flex-wrap items-center justify-between gap-2 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl p-2.5 shadow-2xs">
+          <div className="flex items-center gap-1.5 text-xs font-semibold overflow-x-auto no-scrollbar">
             <button
               type="button"
-              onClick={() => setSelectedOrgId('all')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
-                selectedOrgId === 'all'
-                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold shadow-[0_4px_12px_rgba(79,70,229,0.3),inset_0_1px_2px_rgba(255,255,255,0.4)] scale-[1.02]'
-                  : 'bg-slate-100/90 hover:bg-slate-200 text-slate-700 border border-slate-200/80 shadow-2xs'
+              onClick={() => {
+                setSelectedOrgId('all');
+                setNavLevel('holdings');
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                navLevel === 'holdings'
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
               }`}
             >
-              Todos los Clientes ({brands.length})
+              <Folder className="w-3.5 h-3.5" />
+              <span>Holdings & Clientes ({effectiveOrgs.length})</span>
             </button>
 
-            {effectiveOrgs.map((org) => {
-              const isSelected = selectedOrgId === org.id;
-              const orgBrandsCount = brands.filter((b) => b.clientOrganizationId === org.id || org.brandIds.includes(b.id)).length;
-
-              return (
+            {currentOrg && (
+              <>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
                 <button
                   type="button"
-                  key={org.id}
                   onClick={() => {
-                    setSelectedOrgId(org.id);
-                    const orgBrands = brands.filter((b) => b.clientOrganizationId === org.id || org.brandIds.includes(b.id));
-                    if (orgBrands.length > 0 && !orgBrands.some((b) => b.id === brand.id)) {
-                      setSelectedBrandId(orgBrands[0].id);
-                    }
+                    setSelectedOrgId(currentOrg.id);
+                    setNavLevel('brands');
                   }}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold shrink-0 flex items-center gap-1.5 transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold shadow-[0_4px_12px_rgba(79,70,229,0.3),inset_0_1px_2px_rgba(255,255,255,0.4)] scale-[1.02]'
-                      : 'bg-slate-100/90 hover:bg-slate-200 text-slate-700 border border-slate-200/80 shadow-2xs'
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                    navLevel === 'brands'
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                   }`}
                 >
-                  <Building2 className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-indigo-600'}`} />
-                  <span>{org.name}</span>
-                  <span className={`text-[9.5px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-                    isSelected ? 'bg-white/25 text-white shadow-inner' : 'bg-slate-200/80 text-slate-700 shadow-2xs'
-                  }`}>
-                    {orgBrandsCount}
+                  <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>{currentOrg.name}</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200/80 text-slate-700 font-mono font-bold">
+                    {allowedBrands.length}
                   </span>
                 </button>
-              );
-            })}
+              </>
+            )}
+
+            {navLevel === 'detail' && brand && (
+              <>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-900 font-bold border border-slate-200/80">
+                  <img
+                    src={brand.logo}
+                    alt={brand.name}
+                    className="w-4 h-4 rounded-md object-cover ring-1 ring-slate-200"
+                  />
+                  <span>{brand.name}</span>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            {navLevel === 'holdings' && (currentUser.role === 'webadmin' || currentUser.role === 'director') && (
+              <button
+                onClick={() => setIsCreateHoldingModalOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold shadow-xs hover:shadow-md cursor-pointer transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Nuevo Holding</span>
+              </button>
+            )}
+
+            {navLevel === 'brands' && (currentUser.role === 'webadmin' || currentUser.role === 'director') && (
+              <button
+                onClick={() => setIsCreateBrandModalOpen(true)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xs font-bold shadow-xs hover:shadow-md cursor-pointer transition-all"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Nueva Marca</span>
+              </button>
+            )}
+
+            {navLevel === 'detail' && (
+              <button
+                onClick={() => setNavLevel('brands')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Ver todas las marcas del holding</span>
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      {/* Top Holding Context Header & Level 2: Brand Cards Selector */}
-      {allowedBrands.length > 0 && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs space-y-2.5">
-          {userOrg && (
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-200">
-                  <Building2 className="w-4 h-4" />
+      {/* 📁 VIEW LEVEL 1: Holdings Directory */}
+      {navLevel === 'holdings' && !isClientRole && (
+        <div className="space-y-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <Folder className="w-5 h-5 text-indigo-600" />
+                <span>Holdings & Cuentas de Cliente</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Selecciona una organización matriz para entrar a sus Sandboxes de Marca y Co-Creación
+              </p>
+            </div>
+            {(currentUser.role === 'webadmin' || currentUser.role === 'director') && (
+              <button
+                onClick={() => setIsCreateHoldingModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold flex items-center gap-1.5 hover:bg-indigo-700 transition-all cursor-pointer shadow-xs"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Crear Nuevo Holding</span>
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {effectiveOrgs.map((org) => {
+              const orgBrands = brands.filter((b) => b.clientOrganizationId === org.id || org.brandIds.includes(b.id));
+
+              return (
+                <div
+                  key={org.id}
+                  onClick={() => {
+                    setSelectedOrgId(org.id);
+                    setNavLevel('brands');
+                  }}
+                  className="bg-white hover:bg-slate-50/80 border border-slate-200 hover:border-indigo-300 rounded-2xl p-5 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden"
+                >
+                  <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 group-hover:scale-105 transition-transform">
+                        <Building2 className="w-6 h-6" />
+                      </div>
+                      <span className="px-2.5 py-1 rounded-full bg-slate-100 group-hover:bg-indigo-50 text-slate-700 group-hover:text-indigo-700 text-xs font-mono font-bold border border-slate-200">
+                        {orgBrands.length} {orgBrands.length === 1 ? 'Marca' : 'Marcas'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h3 className="font-extrabold text-slate-900 text-base group-hover:text-indigo-600 transition-colors">
+                        {org.name}
+                      </h3>
+                      {org.contactEmail && (
+                        <span className="text-[11px] text-slate-500 block font-mono mt-0.5">
+                          ✉️ {org.contactEmail}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 font-mono block mb-1.5">
+                        Marcas del holding:
+                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {orgBrands.map((b) => (
+                          <div
+                            key={b.id}
+                            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-700"
+                          >
+                            <img src={b.logo} alt="" className="w-3.5 h-3.5 rounded object-cover" />
+                            <span>{b.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 mt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600 group-hover:translate-x-0.5 transition-transform">
+                    <span>Entrar al Sandbox del Holding</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Create Holding Action Card */}
+            {(currentUser.role === 'webadmin' || currentUser.role === 'director') && (
+              <div
+                onClick={() => setIsCreateHoldingModalOpen(true)}
+                className="bg-indigo-50/40 hover:bg-indigo-50/80 border-2 border-dashed border-indigo-200 hover:border-indigo-400 rounded-2xl p-6 flex flex-col items-center justify-center text-center gap-3 transition-all cursor-pointer group min-h-[200px]"
+              >
+                <div className="p-3.5 rounded-2xl bg-white text-indigo-600 shadow-xs group-hover:scale-110 transition-transform">
+                  <Plus className="w-6 h-6" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900">
-                      {userOrg.name}
-                    </span>
-                    <span className="text-[10px] px-2 py-0.2 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-mono font-semibold">
-                      {allowedBrands.length} {allowedBrands.length === 1 ? 'Marca' : 'Marcas'}
-                    </span>
-                  </div>
-                  <span className="text-[10.5px] text-slate-500">
-                    Selecciona una marca para gestionar su Sandbox de Ideas, Territorios y Documentos
-                  </span>
+                  <h4 className="font-extrabold text-sm text-indigo-900">
+                    + Registrar Nuevo Holding
+                  </h4>
+                  <p className="text-xs text-indigo-600/80 mt-1 max-w-xs">
+                    Crea una nueva organización para co-crear con sus marcas
+                  </p>
                 </div>
               </div>
+            )}
+          </div>
+        </div>
+      )}
 
-              <button
-                onClick={() => setActiveSubTab('organization')}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 cursor-pointer bg-indigo-50 hover:bg-indigo-100/70 px-2.5 py-1 rounded-lg border border-indigo-200/60"
-              >
-                <span>Gestión de Equipo & Permisos</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+      {/* 🌿 VIEW LEVEL 2: Brands Directory within Selected Holding */}
+      {navLevel === 'brands' && !isClientRole && (
+        <div className="space-y-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900 leading-tight">
+                  {currentOrg?.name} — Marcas en Sandbox
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Selecciona una marca para abrir su espacio de ideas, territorios y documentos
+                </p>
+              </div>
             </div>
-          )}
 
-          {/* Level 2: Brand Cards Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setNavLevel('holdings')}
+                className="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-bold transition-all cursor-pointer"
+              >
+                ← Cambiar de Holding
+              </button>
+              {(currentUser.role === 'webadmin' || currentUser.role === 'director') && (
+                <button
+                  onClick={() => setIsCreateBrandModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold flex items-center gap-1.5 hover:bg-indigo-700 transition-all cursor-pointer shadow-xs"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Nueva Marca en {currentOrg?.name}</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {allowedBrands.map((b) => {
-              const isSelected = b.id === brand.id;
               const bIdeasCount = sandboxIdeas.filter((i) => i.brandId === b.id).length;
               const bTerrCount = territories.filter((t) => t.brandId === b.id && t.active).length;
 
               return (
-                <button
+                <div
                   key={b.id}
-                  onClick={() => setSelectedBrandId(b.id)}
-                  className={`p-2.5 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between cursor-pointer ${
-                    isSelected
-                      ? 'bg-white border-indigo-600 ring-2 ring-indigo-500/25 shadow-[0_4px_12px_rgba(79,70,229,0.15)]'
-                      : 'bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 shadow-2xs'
-                  }`}
+                  onClick={() => {
+                    setSelectedBrandId(b.id);
+                    setNavLevel('detail');
+                  }}
+                  className="bg-white hover:bg-slate-50 border border-slate-200 hover:border-indigo-400 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden"
                 >
-                  {/* Brand Color Header line */}
                   <div
-                    className="absolute top-0 left-0 right-0 h-1"
+                    className="absolute top-0 left-0 right-0 h-1.5"
                     style={{ backgroundColor: b.primaryColor }}
                   />
 
-                  <div className="flex items-center gap-2 mb-1.5 pt-0.5 min-w-0">
-                    <img
-                      src={b.logo}
-                      alt={b.name}
-                      className="w-6 h-6 rounded-md object-cover ring-1 ring-slate-200 shrink-0"
-                    />
-                    <span className={`text-xs truncate ${isSelected ? 'font-extrabold text-slate-900' : 'font-bold text-slate-700'}`}>
-                      {b.name}
-                    </span>
+                  <div className="space-y-3 pt-1">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={b.logo}
+                        alt={b.name}
+                        className="w-10 h-10 rounded-xl object-cover ring-2 ring-slate-100 shadow-2xs shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-extrabold text-sm text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
+                          {b.name}
+                        </h3>
+                        <span className="text-[11px] text-slate-400 truncate block">
+                          {b.industry}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-[11px]">
+                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 border border-slate-100">
+                        <span className="text-slate-500 font-medium">Ideas</span>
+                        <span className="font-mono font-bold text-purple-700">{bIdeasCount}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-1.5 rounded-lg bg-slate-50 border border-slate-100">
+                        <span className="text-slate-500 font-medium">Territorios</span>
+                        <span className="font-mono font-bold text-indigo-700">{bTerrCount}</span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-[9.5px] text-slate-500 pt-1 border-t border-slate-100">
-                    <span className="font-medium">{bTerrCount} Territorios</span>
-                    <span className={`px-1.5 py-0.2 rounded-full font-mono font-bold ${bIdeasCount > 0 ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-slate-50 text-slate-500'}`}>
-                      {bIdeasCount} {bIdeasCount === 1 ? 'idea' : 'ideas'}
-                    </span>
+                  <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600 group-hover:translate-x-0.5 transition-transform">
+                    <span>Abrir Sandbox de Marca</span>
+                    <ChevronRight className="w-4 h-4" />
                   </div>
-                </button>
+                </div>
               );
             })}
+
+            {/* Add Brand Card */}
+            {(currentUser.role === 'webadmin' || currentUser.role === 'director') && (
+              <div
+                onClick={() => setIsCreateBrandModalOpen(true)}
+                className="bg-indigo-50/40 hover:bg-indigo-50/80 border-2 border-dashed border-indigo-200 hover:border-indigo-400 rounded-2xl p-5 flex flex-col items-center justify-center text-center gap-2.5 transition-all cursor-pointer group min-h-[170px]"
+              >
+                <div className="p-3 rounded-2xl bg-white text-indigo-600 shadow-xs group-hover:scale-110 transition-transform">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-xs text-indigo-900">
+                    + Nueva Marca
+                  </h4>
+                  <p className="text-[11px] text-indigo-600/80 mt-0.5">
+                    Añadir marca comercial
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Brand Hero Masthead */}
-      <div
-        className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs relative overflow-hidden"
-        style={{ borderTop: `4px solid ${brand.primaryColor}` }}
-      >
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span
-                className="w-3 h-3 rounded-full shadow-xs"
-                style={{ backgroundColor: brand.primaryColor }}
-              />
-              <span className="text-[11px] font-mono uppercase font-bold tracking-wider text-slate-500">
-                Portal de Marca & Co-Creación • {brand.industry}
+      {/* 🔍 VIEW LEVEL 3: Brand Detail Sandbox Workspace */}
+      {(navLevel === 'detail' || isClientRole) && (
+        <div className="space-y-3.5">
+          {/* Sister Brands Quick-Switcher Bar (within the same holding) */}
+          {allowedBrands.length > 1 && (
+            <div className="bg-white/80 backdrop-blur-md border border-slate-200/80 rounded-2xl p-2 shadow-2xs flex items-center gap-2 overflow-x-auto no-scrollbar">
+              <span className="text-[10.5px] font-bold text-slate-400 uppercase font-mono px-2 shrink-0">
+                Marcas de {userOrg?.name || currentOrg?.name}:
               </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">
-                {brand.name}
-              </h1>
-            </div>
-
-            <p className="text-xs text-slate-600 italic">
-              "{brand.slogan || 'Innovación y excelencia en producción de contenido'}"
-            </p>
-          </div>
-
-          {/* Quick Metrics */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-center min-w-[95px] shadow-2xs">
-              <span className="text-[10px] text-slate-500 font-bold block uppercase">En Pipeline</span>
-              <span className="text-lg font-extrabold font-mono text-indigo-600">
-                {brandDeliverables.length}
-              </span>
-            </div>
-
-            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-center min-w-[95px] shadow-2xs">
-              <span className="text-[10px] text-slate-500 font-bold block uppercase">En Sandbox</span>
-              <span className="text-lg font-extrabold font-mono text-purple-600">
-                {brandIdeas.length}
-              </span>
-            </div>
-
-            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-center min-w-[95px] shadow-2xs">
-              <span className="text-[10px] text-slate-500 font-bold block uppercase">Campañas</span>
-              <span className="text-lg font-extrabold font-mono text-rose-600">
-                {brandCampaigns.length}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Sub-Navigation Tabs */}
-        <div className="flex items-center gap-2 pt-4 mt-4 border-t border-slate-100 text-xs">
-          <button
-            onClick={() => setActiveSubTab('sandbox')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
-              activeSubTab === 'sandbox'
-                ? 'bg-indigo-600 text-white shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Lightbulb className="w-3.5 h-3.5" />
-            <span>Sandbox Co-Creativo & Ideas ({brandIdeas.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveSubTab('identity')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
-              activeSubTab === 'identity'
-                ? 'bg-indigo-600 text-white shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Compass className="w-3.5 h-3.5" />
-            <span>Identidad & Territorios ({brandTerritories.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveSubTab('drive')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
-              activeSubTab === 'drive'
-                ? 'bg-indigo-600 text-white shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <HardDrive className="w-3.5 h-3.5" />
-            <span>Documentos Oficiales Drive ({brandDocs.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveSubTab('organization')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-semibold transition-all cursor-pointer ${
-              activeSubTab === 'organization'
-                ? 'bg-indigo-600 text-white shadow-2xs font-bold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <Building2 className="w-3.5 h-3.5" />
-            <span>🏢 Mi Organización & Equipo</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ========================================================
-          TAB 1: SANDBOX CO-CREATIVO & BÓVEDA DE IDEAS
-          ======================================================== */}
-      {activeSubTab === 'sandbox' && (
-        <div className="space-y-4">
-          
-          {/* Header & Add Button */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
-            <div>
-              <h3 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-purple-600" />
-                <span>Bóveda de Ideas, Tendencias & Referencias de {brand.name}</span>
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Guarda enlaces de TikTok, Reels, audios o notas espontáneas. Cuando estés listo, transfórmalas en entregables con 1 clic.
-              </p>
-            </div>
-
-            {canClientPerform('sandbox', brand.id) ? (
-              <button
-                onClick={() => setShowCreateIdeaModal(true)}
-                className="btn-primary"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ Nueva Idea / Referencia</span>
-              </button>
-            ) : (
-              <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 flex items-center gap-1.5">
-                <Lock className="w-3.5 h-3.5 text-slate-400" />
-                <span>Solo Lectura (Pre-prod)</span>
-              </span>
-            )}
-          </div>
-
-          {/* Ideas Grid */}
-          {brandIdeas.length === 0 ? (
-            <div className="p-12 text-center bg-white border border-dashed border-slate-300 rounded-2xl space-y-3">
-              <Lightbulb className="w-10 h-10 text-amber-500 mx-auto" />
-              <h4 className="font-bold text-slate-800 text-sm">Tu Sandbox de Ideas está vacío</h4>
-              <p className="text-xs text-slate-500 max-w-md mx-auto">
-                Utiliza este espacio para guardar ideas sin presión técnica. Puedes agregar enlaces de inspiración o notas rápidas.
-              </p>
-              <button
-                onClick={() => setShowCreateIdeaModal(true)}
-                className="btn-primary mx-auto"
-              >
-                + Crear Primera Idea
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {brandIdeas.map((idea) => {
-                const territory = territories.find((t) => t.id === idea.targetTerritoryId);
-                const isConverted = idea.status === 'converted_to_deliverable';
-
+              {allowedBrands.map((b) => {
+                const isSelected = b.id === brand.id;
                 return (
-                  <div
-                    key={idea.id}
-                    className={`bg-white border rounded-2xl p-4 shadow-2xs flex flex-col justify-between space-y-3 transition-all relative ${
-                      isConverted
-                        ? 'border-emerald-200 bg-emerald-50/20'
-                        : 'border-slate-200 hover:border-indigo-400 hover:shadow-md'
+                  <button
+                    key={b.id}
+                    onClick={() => setSelectedBrandId(b.id)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                      isSelected
+                        ? 'bg-slate-900 text-white shadow-xs scale-[1.02]'
+                        : 'bg-slate-100 hover:bg-slate-200/80 text-slate-700 border border-slate-200/70'
                     }`}
                   >
-                    <div className="space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-                          {idea.formatSuggested || 'Idea / Concepto'}
-                        </span>
-
-                        {isConverted ? (
-                          <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>En Pipeline</span>
-                          </span>
-                        ) : (
-                          <button
-                            onClick={() => deleteSandboxIdea(idea.id)}
-                            className="text-slate-400 hover:text-rose-600 p-1 rounded-lg transition-colors cursor-pointer"
-                            title="Eliminar idea"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-
-                      <h4 className="font-bold text-slate-900 text-xs leading-snug">
-                        {idea.title}
-                      </h4>
-
-                      <p className="text-xs text-slate-600 leading-relaxed line-clamp-3">
-                        {idea.notes}
-                      </p>
-
-                      {/* Territory Badge */}
-                      {territory && (
-                        <div className="flex items-center gap-1 text-[10.5px] text-slate-600 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-200">
-                          <Target className="w-3 h-3 text-indigo-600" />
-                          <span>Territorio: <strong className="text-slate-900">{territory.name}</strong></span>
-                        </div>
-                      )}
-
-                      {/* Reference URLs */}
-                      {idea.referenceUrls && idea.referenceUrls.length > 0 && (
-                        <div className="space-y-1 pt-1 border-t border-slate-100">
-                          <span className="text-[10px] text-slate-500 font-bold uppercase block">
-                            Referencias ({idea.referenceUrls.length})
-                          </span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {idea.referenceUrls.map((url, uIdx) => (
-                              <a
-                                key={uIdx}
-                                href={url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-indigo-50 text-[10px] font-mono text-indigo-700 border border-slate-200 flex items-center gap-1 max-w-[200px] truncate transition-colors"
-                              >
-                                <Link className="w-2.5 h-2.5" />
-                                <span className="truncate">{url.replace('https://', '')}</span>
-                              </a>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* AI Brief Suggestion Box */}
-                      {idea.aiGeneratedBrief && (
-                        <div className="p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-100 text-[11px] space-y-1">
-                          <div className="flex items-center gap-1 text-indigo-700 font-bold text-[10px]">
-                            <Sparkles className="w-3 h-3" />
-                            <span>Hook Sugerido (0-3s):</span>
-                          </div>
-                          <p className="text-indigo-950 italic font-medium">
-                            "{idea.aiGeneratedBrief.hook}"
-                          </p>
-                          <p className="text-[10px] text-slate-600 pt-0.5">
-                            {idea.aiGeneratedBrief.narrativeAngle}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Footer Actions */}
-                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                      {!idea.aiGeneratedBrief ? (
-                        <button
-                          onClick={() => handleTriggerAi(idea.id)}
-                          disabled={isGeneratingAi === idea.id}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 text-[10.5px] font-semibold border border-purple-200 cursor-pointer shadow-2xs transition-colors"
-                        >
-                          <Sparkles className={`w-3 h-3 ${isGeneratingAi === idea.id ? 'animate-spin' : ''}`} />
-                          <span>{isGeneratingAi === idea.id ? 'Optimizando...' : 'Brand Strategist IA'}</span>
-                        </button>
-                      ) : (
-                        <span className="text-[10px] text-slate-500 font-mono">
-                          Optimizado por IA
-                        </span>
-                      )}
-
-                      {!isConverted ? (
-                        <button
-                          onClick={() => handleConvertToDeliverable(idea.id)}
-                          className="btn-primary py-1 px-2.5 text-xs"
-                        >
-                          <span>🚀 Enviar al Pipeline</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => setActiveTab('kanban')}
-                          className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
-                        >
-                          <span>Ver en Kanban</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-
-                  </div>
+                    <img src={b.logo} alt="" className="w-4 h-4 rounded-md object-cover" />
+                    <span>{b.name}</span>
+                  </button>
                 );
               })}
             </div>
           )}
 
-        </div>
-      )}
-
-      {/* ========================================================
-          TAB 2: IDENTIDAD VISUAL & TERRITORIOS ACTIVOS
-          ======================================================== */}
-      {activeSubTab === 'identity' && (
-        <div className="space-y-4">
-          
-          {/* Identity Card */}
-          <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-            <h3 className="font-bold text-slate-900 text-xs flex items-center gap-2">
-              <Compass className="w-4 h-4 text-indigo-600" />
-              <span>Manual de Identidad & ADN de {brand.name}</span>
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1 shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-500 uppercase">Paleta Cromática Primaria</span>
-                <div className="flex items-center gap-2 pt-1">
-                  <div
-                    className="w-8 h-8 rounded-lg shadow-2xs ring-1 ring-slate-200"
-                    style={{ backgroundColor: brand.primaryColor }}
-                  />
-                  <div>
-                    <span className="font-bold font-mono block text-slate-900">{brand.primaryColor}</span>
-                    <span className="text-[10px] text-slate-500">Color Primario Oficial</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1 shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-500 uppercase">Contacto de Cuentas</span>
-                <div className="pt-1">
-                  <span className="font-bold text-slate-900 block">{brand.contactPerson}</span>
-                  <span className="text-[11px] text-slate-500 font-mono">{brand.contactEmail}</span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1 shadow-2xs">
-                <span className="text-[10px] font-bold text-slate-500 uppercase">Canales Digitales</span>
-                <div className="pt-1 font-mono text-[11px] text-indigo-700 font-semibold">
-                  {brandAssets.length} activos vinculados
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Territories Table & Cards */}
-          <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
+          {/* Active Brand Header & Counter Badges */}
+          <div
+            className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3"
+            style={{ borderTop: `4px solid ${brand.primaryColor}` }}
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                  <Target className="w-4 h-4 text-emerald-600" />
-                  <span>Territorios de Comunicación Activos ({brandTerritories.length})</span>
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Pilares temáticos aprobados que guían la creación de guiones y piezas audiovisuales.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowTerritoryReviewModal(true)}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs border border-emerald-200 shadow-2xs flex items-center gap-1.5 cursor-pointer transition-colors"
-                  title="Propón un nuevo pilar de comunicación o solicita ajustes a los existentes"
-                >
-                  <Send className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Solicitar Revisión / Proponer Territorio</span>
-                </button>
-                <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
-                  Regla ≥ 3 Cumplida
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {brandTerritories.map((terr, idx) => (
-                <div
-                  key={terr.id}
-                  className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 shadow-2xs"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono font-bold text-indigo-700">
-                      Territorio #{idx + 1}
+              <div className="flex items-center gap-3">
+                <img
+                  src={brand.logo}
+                  alt={brand.name}
+                  className="w-12 h-12 rounded-xl object-cover ring-2 ring-slate-100 shadow-2xs"
+                />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-slate-400 font-bold">
+                      Portal de Marca & Co-Creación • {brand.industry}
                     </span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
                   </div>
-
-                  <h4 className="font-bold text-xs text-slate-900">
-                    {terr.name}
-                  </h4>
-
-                  <p className="text-[11px] text-slate-600 leading-relaxed">
-                    {terr.objective}
-                  </p>
-
-                  <div className="pt-2 border-t border-slate-200 space-y-1 text-[10px]">
-                    <span className="text-slate-500 font-bold block uppercase">Audiencia:</span>
-                    <span className="text-slate-800">{terr.targetAudience}</span>
-                  </div>
+                  <h1 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                    <span>{brand.name}</span>
+                    <span
+                      className="w-2.5 h-2.5 rounded-full inline-block"
+                      style={{ backgroundColor: brand.primaryColor }}
+                    />
+                  </h1>
+                  {brand.slogan && (
+                    <p className="text-xs text-slate-500 italic mt-0.5">"{brand.slogan}"</p>
+                  )}
                 </div>
-              ))}
+              </div>
+
+              {/* Counters */}
+              <div className="flex items-center gap-2 text-xs">
+                <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block font-mono">En Pipeline</span>
+                  <span className="font-extrabold text-slate-900">{brandDeliverables.length}</span>
+                </div>
+                <div className="px-3 py-1.5 rounded-xl bg-purple-50 border border-purple-200 text-center">
+                  <span className="text-[10px] uppercase font-bold text-purple-600 block font-mono">En Sandbox</span>
+                  <span className="font-extrabold text-purple-700">{brandIdeas.length}</span>
+                </div>
+                <div className="px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-center">
+                  <span className="text-[10px] uppercase font-bold text-indigo-600 block font-mono">Campañas</span>
+                  <span className="font-extrabold text-indigo-700">{brandCampaigns.length}</span>
+                </div>
+              </div>
             </div>
-          </div>
 
-        </div>
-      )}
-
-      {/* ========================================================
-          TAB 3: DOCUMENTOS OFICIALES EN GOOGLE DRIVE
-          ======================================================== */}
-      {activeSubTab === 'drive' && (
-        <div className="space-y-4">
-          
-          <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-            <h3 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-              <HardDrive className="w-4 h-4 text-cyan-600" />
-              <span>Documentos Oficiales Generados en Google Workspace</span>
-            </h3>
-            <p className="text-xs text-slate-500">
-              Documentos maestros generados por el motor Folder-as-Code de la agencia vinculados a tu cuenta.
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {brandDocs.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 flex flex-col justify-between hover:border-indigo-400 hover:shadow-md transition-all shadow-2xs"
+            {/* Navigation Tabs */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100">
+              <div className="flex items-center gap-1.5 text-xs font-semibold overflow-x-auto no-scrollbar">
+                <button
+                  onClick={() => setActiveSubTab('sandbox')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                    activeSubTab === 'sandbox'
+                      ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
                 >
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <FileText className="w-5 h-5 text-indigo-600" />
-                      <span className="text-[9px] font-mono text-slate-500">{doc.sizeFormatted}</span>
-                    </div>
+                  <Lightbulb className="w-3.5 h-3.5" />
+                  <span>Sandbox Co-Creativo & Ideas ({brandIdeas.length})</span>
+                </button>
 
-                    <h4 className="font-bold text-xs text-slate-900">
-                      {doc.name}
-                    </h4>
+                <button
+                  onClick={() => setActiveSubTab('identity')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                    activeSubTab === 'identity'
+                      ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <Target className="w-3.5 h-3.5" />
+                  <span>Identidad & Territorios ({brandTerritories.length})</span>
+                </button>
 
-                    {doc.generatedDocument && (
-                      <p className="text-xs text-slate-600">
-                        {doc.generatedDocument.title}
-                      </p>
-                    )}
-                  </div>
+                <button
+                  onClick={() => setActiveSubTab('drive')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                    activeSubTab === 'drive'
+                      ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <HardDrive className="w-3.5 h-3.5" />
+                  <span>Documentos Oficiales Drive ({brandDocs.length})</span>
+                </button>
 
-                  <div className="pt-2.5 border-t border-slate-200 flex items-center justify-between">
-                    <button
-                      onClick={() => setActivePreviewFile(doc)}
-                      className="btn-primary py-1 px-2.5 text-xs"
-                    >
-                      Previsualizar
-                    </button>
+                <button
+                  onClick={() => setActiveSubTab('organization')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                    activeSubTab === 'organization'
+                      ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>Mi Organización & Equipo</span>
+                </button>
+              </div>
 
-                    <a
-                      href={doc.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
-                      title="Abrir en Google Drive"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  </div>
-                </div>
-              ))}
+              {activeSubTab === 'sandbox' && (
+                <button
+                  onClick={() => setShowCreateIdeaModal(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs cursor-pointer transition-all"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>+ Nueva Idea / Referencia</span>
+                </button>
+              )}
             </div>
           </div>
 
+          {/* SubTab 1: Sandbox Co-Creativo */}
+          {activeSubTab === 'sandbox' && (
+            <div className="space-y-3">
+              {brandIdeas.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center space-y-3 shadow-2xs">
+                  <div className="p-3 bg-amber-50 text-amber-500 rounded-full w-12 h-12 mx-auto flex items-center justify-center">
+                    <Lightbulb className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-bold text-slate-800 text-sm">Tu Sandbox de Ideas está vacío</h3>
+                  <p className="text-xs text-slate-500 max-w-md mx-auto">
+                    Utiliza este espacio para guardar ideas sin presión técnica. Puedes agregar enlaces de inspiración o notas rápidas.
+                  </p>
+                  <button
+                    onClick={() => setShowCreateIdeaModal(true)}
+                    className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-xs hover:bg-indigo-700 transition-all cursor-pointer"
+                  >
+                    + Crear Primera Idea
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {brandIdeas.map((idea) => {
+                    const ideaTerr = territories.find((t) => t.id === idea.targetTerritoryId);
+                    return (
+                      <div
+                        key={idea.id}
+                        className="bg-white border border-slate-200 hover:border-indigo-300 rounded-2xl p-4 shadow-2xs space-y-3 flex flex-col justify-between transition-all"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="font-bold text-slate-900 text-sm leading-tight">{idea.title}</h4>
+                            <button
+                              onClick={() => deleteSandboxIdea(idea.id)}
+                              className="text-slate-300 hover:text-rose-600 transition-colors p-1"
+                              title="Eliminar idea"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          {idea.notes && <p className="text-xs text-slate-600 line-clamp-3">{idea.notes}</p>}
+
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {ideaTerr && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold flex items-center gap-1">
+                                <Target className="w-2.5 h-2.5" />
+                                {ideaTerr.name}
+                              </span>
+                            )}
+                            {idea.formatSuggested && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-mono">
+                                {idea.formatSuggested}
+                              </span>
+                            )}
+                          </div>
+
+                          {idea.referenceUrls && idea.referenceUrls.length > 0 && (
+                            <div className="pt-2 border-t border-slate-100 space-y-1">
+                              <span className="text-[10px] uppercase font-bold text-slate-400 font-mono block">
+                                Referencias:
+                              </span>
+                              {idea.referenceUrls.map((url, idx) => (
+                                <a
+                                  key={idx}
+                                  href={url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[11px] text-indigo-600 hover:underline flex items-center gap-1 truncate block"
+                                >
+                                  <Link className="w-3 h-3 shrink-0" />
+                                  <span className="truncate">{url}</span>
+                                </a>
+                              ))}
+                            </div>
+                          )}
+
+                          {idea.aiGeneratedBrief && (
+                            <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-200 text-xs text-purple-900 space-y-1">
+                              <span className="font-bold flex items-center gap-1 text-purple-700 text-[11px]">
+                                <Sparkles className="w-3.5 h-3.5" /> Propuesta IA Generada
+                              </span>
+                              <p className="text-[11px] leading-relaxed text-purple-950">{idea.aiGeneratedBrief ? (idea.aiGeneratedBrief.narrativeAngle || idea.aiGeneratedBrief.hook) : ''}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                          <button
+                            onClick={() => handleTriggerAi(idea.id)}
+                            disabled={isGeneratingAi === idea.id}
+                            className="text-[11px] font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>{isGeneratingAi === idea.id ? 'Generando...' : 'Optimizar con IA'}</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleConvertToDeliverable(idea.id)}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-2xs cursor-pointer transition-all"
+                          >
+                            <span>Enviar a Producción</span>
+                            <ArrowRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SubTab 2: Identidad & Territorios */}
+          {activeSubTab === 'identity' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
+                      <Target className="w-4 h-4 text-indigo-600" />
+                      <span>Territorios de Comunicación Activos ({brandTerritories.length})</span>
+                    </h3>
+                    <button
+                      onClick={() => setShowTerritoryReviewModal(true)}
+                      className="text-xs font-bold text-indigo-600 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Send className="w-3 h-3" /> Proponer Ajuste / Nuevo Territorio
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {brandTerritories.map((t) => (
+                      <div key={t.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full"
+                            style={{ backgroundColor: t.colorTag || brand.primaryColor }}
+                          />
+                          <h4 className="font-bold text-slate-900 text-sm">{t.name}</h4>
+                        </div>
+                        <p className="text-xs text-slate-600">{t.description}</p>
+                        {t.contentPillars && t.contentPillars.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-1">
+                            {t.contentPillars.map((p, i) => (
+                              <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono">
+                                {p}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Digital Assets Sidebar */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
+                  <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
+                    <Compass className="w-4 h-4 text-indigo-600" />
+                    <span>Activos Digitales ({brandAssets.length})</span>
+                  </h3>
+                  <div className="space-y-2">
+                    {brandAssets.map((asset) => (
+                      <a
+                        key={asset.id}
+                        href={asset.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50 hover:bg-indigo-50 hover:border-indigo-200 transition-all group"
+                      >
+                        <div>
+                          <span className="font-bold text-xs text-slate-900 block group-hover:text-indigo-600">
+                            {asset.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono uppercase">
+                            {asset.type}
+                          </span>
+                        </div>
+                        <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-600" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SubTab 3: Documentos Oficiales Drive */}
+          {activeSubTab === 'drive' && (
+            <div className="space-y-3">
+              {brandDocs.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center space-y-2 shadow-2xs">
+                  <HardDrive className="w-8 h-8 text-slate-300 mx-auto" />
+                  <h3 className="font-bold text-slate-800 text-sm">No hay documentos cargados en Drive Vault</h3>
+                  <p className="text-xs text-slate-500">
+                    Los entregables, manuales y contratos oficiales aparecerán aquí sincronizados con Google Drive.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {brandDocs.map((doc) => (
+                    <div
+                      key={doc.id}
+                      onClick={() => setActivePreviewFile(doc)}
+                      className="bg-white border border-slate-200 hover:border-indigo-400 rounded-2xl p-4 shadow-2xs flex items-center justify-between cursor-pointer group transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 rounded-xl bg-blue-50 text-blue-600 group-hover:scale-105 transition-transform">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <span className="font-bold text-xs text-slate-900 block group-hover:text-indigo-600 truncate max-w-[180px]">
+                            {doc.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {doc.sizeFormatted || 'Drive Vault'}
+                          </span>
+                        </div>
+                      </div>
+                      <ExternalLink className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SubTab 4: Mi Organización & Equipo */}
+          {activeSubTab === 'organization' && userOrg && (
+            <ClientOrganizationTeamManager organizationId={userOrg.id} />
+          )}
         </div>
       )}
 
-      {/* ========================================================
-          TAB 4: MI ORGANIZACIÓN & EQUIPO (HOLDING / MULTI-MARCA)
-          ======================================================== */}
-      {activeSubTab === 'organization' && (
-        <ClientOrganizationTeamManager />
+      {/* Modals */}
+      {brand && (
+        <>
+          <CreateSandboxIdeaModal
+            isOpen={showCreateIdeaModal}
+            onClose={() => setShowCreateIdeaModal(false)}
+            brand={brand}
+            territories={brandTerritories}
+            onSubmit={handleCreateIdeaFromModal}
+          />
+          <RequestTerritoryReviewModal
+            isOpen={showTerritoryReviewModal}
+            onClose={() => setShowTerritoryReviewModal(false)}
+            brand={brand}
+            existingTerritories={brandTerritories}
+            onSubmit={handleRequestTerritoryReview}
+          />
+        </>
       )}
 
-      {/* Modal 1: Create Idea in 2 Steps */}
-      <CreateSandboxIdeaModal
-        brand={brand}
-        territories={brandTerritories}
-        isOpen={showCreateIdeaModal}
-        onClose={() => setShowCreateIdeaModal(false)}
-        onSubmit={handleCreateIdeaFromModal}
+      {/* Create Holding Modal */}
+      <CreateHoldingModal
+        isOpen={isCreateHoldingModalOpen}
+        onClose={() => setIsCreateHoldingModalOpen(false)}
+        onHoldingCreated={(newOrgId) => {
+          setSelectedOrgId(newOrgId);
+          setNavLevel('brands');
+        }}
       />
-
-      {/* Modal 2: Request Territory Revision */}
-      <RequestTerritoryReviewModal
-        brand={brand}
-        territories={brandTerritories}
-        isOpen={showTerritoryReviewModal}
-        onClose={() => setShowTerritoryReviewModal(false)}
-        onSubmit={handleRequestTerritoryReview}
-      />
-
     </div>
   );
 };
