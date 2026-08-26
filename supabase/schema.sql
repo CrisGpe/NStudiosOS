@@ -193,6 +193,18 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 14. CLIENT ORGANIZATIONS (HOLDINGS) TABLE
+CREATE TABLE IF NOT EXISTS public.client_organizations (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    legal_name TEXT,
+    contact_email TEXT,
+    owner_user_id TEXT,
+    brand_ids JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ==============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ==============================================================================
@@ -208,6 +220,7 @@ ALTER TABLE public.drive_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.drive_folders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.drive_files ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.client_sandbox_ideas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.client_organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- Public read policies for authenticated / demo app access
@@ -220,10 +233,16 @@ CREATE POLICY "Allow public read equipment" ON public.hardware_equipment FOR SEL
 CREATE POLICY "Allow public read drive_files" ON public.drive_files FOR SELECT USING (true);
 CREATE POLICY "Allow public read drive_folders" ON public.drive_folders FOR SELECT USING (true);
 CREATE POLICY "Allow public read client_sandbox_ideas" ON public.client_sandbox_ideas FOR SELECT USING (true);
+CREATE POLICY "Allow public read client_organizations" ON public.client_organizations FOR SELECT USING (true);
+CREATE POLICY "Allow public read audit_logs" ON public.audit_logs FOR SELECT USING (true);
 
 -- Insert & Update policies
 CREATE POLICY "Allow public insert client_sandbox_ideas" ON public.client_sandbox_ideas FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update client_sandbox_ideas" ON public.client_sandbox_ideas FOR UPDATE USING (true);
+CREATE POLICY "Allow public insert client_organizations" ON public.client_organizations FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update client_organizations" ON public.client_organizations FOR UPDATE USING (true);
+CREATE POLICY "Allow public delete client_organizations" ON public.client_organizations FOR DELETE USING (true);
+CREATE POLICY "Allow public insert audit_logs" ON public.audit_logs FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public insert drive_files" ON public.drive_files FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update deliverables" ON public.deliverables FOR UPDATE USING (true);
 
