@@ -5,7 +5,7 @@ import { Film, Lock, Mail, User, ArrowRight, AlertCircle, KeyRound, Building2 } 
 import { UserRole } from '../types';
 
 export const LoginView: React.FC = () => {
-  const { users, brands, login, loginWithPassword, signUpWithPassword, isLoadingAuth } = useApp();
+  const { currentUser, users, brands, login, loginWithPassword, signUpWithPassword, isLoadingAuth } = useApp();
   const navigate = useNavigate();
 
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -16,7 +16,10 @@ export const LoginView: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showDemoSelector, setShowDemoSelector] = useState(false);
 
-  const isMobileScreen = typeof window !== 'undefined' && window.innerWidth < 768;
+  const isMobileScreen = typeof window !== 'undefined' && (
+    window.innerWidth < 768 ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  );
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,10 +41,15 @@ export const LoginView: React.FC = () => {
         await signUpWithPassword(email, password, name, 'cliente');
       }
 
+      const isClientUser =
+        authMode === 'signup' ||
+        email.toLowerCase().includes('cliente') ||
+        currentUser?.role === 'cliente';
+
       if (isMobileScreen) {
         navigate('/mobile');
       } else {
-        navigate(authMode === 'signup' ? '/client/hub' : '/kanban');
+        navigate(isClientUser ? '/client/hub' : '/kanban');
       }
     } catch (err: any) {
       console.error('Auth error:', err);

@@ -49,7 +49,10 @@ const MobileCompanionPage = lazyWithRetry(() => import('./pages/MobileCompanionP
 
 const IndexRedirect: React.FC = () => {
   const { currentUser } = useApp();
-  const isMobileScreen = typeof window !== 'undefined' && window.innerWidth < 768;
+  const isMobileScreen = typeof window !== 'undefined' && (
+    window.innerWidth < 768 ||
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  );
 
   if (isMobileScreen) {
     return <Navigate to="/mobile" replace />;
