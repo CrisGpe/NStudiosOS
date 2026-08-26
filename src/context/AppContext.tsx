@@ -125,6 +125,8 @@ export const useApp = () => {
     brands: brands.brands,
     selectedBrandId: brands.selectedBrandId,
     setSelectedBrandId: brands.setSelectedBrandId,
+    selectedOrgId: brands.selectedOrgId,
+    setSelectedOrgId: brands.setSelectedOrgId,
     createBrand: brands.createBrand,
     updateBrand: brands.updateBrand,
     deleteBrand: brands.deleteBrand,

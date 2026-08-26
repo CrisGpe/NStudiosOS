@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { useDriveVaultContext } from '../context/DriveVaultContext';
 import {
   Calendar as CalendarIcon,
   Video,
@@ -11,12 +12,16 @@ import {
   Camera,
   Layers,
   Sparkles,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { Deliverable } from '../types';
+import { ImportPreCalendarModal } from './calendar/ImportPreCalendarModal';
 
 export const DualCalendar: React.FC = () => {
   const {
+    currentUser,
     deliverables,
+    createDeliverable,
     brands,
     territories,
     selectedBrandId,
@@ -24,11 +29,16 @@ export const DualCalendar: React.FC = () => {
     setSelectedDeliverable,
     equipment,
     reservations,
+    addAuditLog,
+    toast,
   } = useApp();
+
+  const { driveFiles } = useDriveVaultContext();
 
   const [viewMode, setViewMode] = useState<'dual' | 'production' | 'publishing'>('dual');
   const [currentYear, setCurrentYear] = useState<number>(() => new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState<number>(() => new Date().getMonth());
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const monthNames = [
     'Enero',
@@ -106,6 +116,22 @@ export const DualCalendar: React.FC = () => {
     return eventsByDate.get(dateStr) || { prodEvents: [], pubEvents: [] };
   };
 
+  const handleBatchImport = (newItems: Array<Partial<Deliverable> & { title: string; brandId: string; territoryId: string; publishDate: string }>) => {
+    newItems.forEach((item) => {
+      createDeliverable(item);
+    });
+    addAuditLog(
+      'PRE_CALENDARIO_IMPORTADO',
+      `Importación masiva de ${newItems.length} entregables desde Drive Vault a fase Ideación/Pre-producción`,
+      currentUser.id,
+      'deliverable',
+      selectedBrandId || 'all',
+      currentUser.name,
+      currentUser.role
+    );
+    toast.success(`¡Éxito! Se han creado ${newItems.length} entregables en fase Ideación y se han indexado en el calendario.`);
+  };
+
   return (
     <div className="space-y-4">
       
@@ -168,23 +194,36 @@ export const DualCalendar: React.FC = () => {
           </button>
         </div>
 
-        {/* Month Navigation */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handlePrevMonth}
-            className="p-1.5 rounded-md bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
-          >
-            <ChevronLeft className="w-3.5 h-3.5" />
-          </button>
-          <span className="font-bold text-xs text-slate-800 min-w-[120px] text-center">
-            {monthNames[currentMonth]} {currentYear}
-          </span>
-          <button
-            onClick={handleNextMonth}
-            className="p-1.5 rounded-md bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
-          >
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+        {/* Actions: Pre-Calendar Loader & Month Navigation */}
+        <div className="flex flex-wrap items-center gap-2">
+          {currentUser.role !== 'cliente' && (
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200 shadow-2xs transition-all cursor-pointer"
+              title="Importar cronograma de entregables desde una hoja de cálculo del Vault"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Cargar Pre-calendario</span>
+            </button>
+          )}
+
+          <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
+            <button
+              onClick={handlePrevMonth}
+              className="p-1 rounded-md bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+            <span className="font-bold text-xs text-slate-800 min-w-[110px] text-center">
+              {monthNames[currentMonth]} {currentYear}
+            </span>
+            <button
+              onClick={handleNextMonth}
+              className="p-1 rounded-md bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors cursor-pointer"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
       </div>
@@ -341,6 +380,17 @@ export const DualCalendar: React.FC = () => {
           })}
         </div>
       </div>
+
+      {/* Pre-Calendar Import Modal */}
+      <ImportPreCalendarModal
+        brand={brands.find((b) => b.id === selectedBrandId)}
+        allBrands={brands}
+        territories={territories}
+        vaultFiles={driveFiles}
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onImportBatch={handleBatchImport}
+      />
 
     </div>
   );

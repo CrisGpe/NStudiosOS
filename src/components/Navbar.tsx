@@ -26,6 +26,9 @@ export const Navbar: React.FC = () => {
     brands,
     selectedBrandId,
     setSelectedBrandId,
+    selectedOrgId,
+    setSelectedOrgId,
+    organizations,
     searchQuery,
     setSearchQuery,
     logout,
@@ -227,29 +230,82 @@ export const Navbar: React.FC = () => {
             </div>
           </div>
 
-          {/* Brand Filter Selector (for non-clients) */}
+          {/* 2-Level Hierarchical Selector: Client (Holding) ➔ Brand */}
           {currentUser.role !== 'cliente' ? (
-            <div className="hidden lg:flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-2xs hover:border-slate-300 transition-all">
-              <Building2 className="w-3.5 h-3.5 text-indigo-600" />
-              <select
-                value={selectedBrandId}
-                onChange={(e) => setSelectedBrandId(e.target.value)}
-                className="bg-transparent border-none text-xs text-slate-800 font-medium focus:outline-none cursor-pointer pr-1"
-              >
-                <option value="all">Todas las Marcas (6 en Demo)</option>
-                {brands.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name}
-                  </option>
-                ))}
-              </select>
+            <div className="hidden lg:flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl p-1 shadow-2xs">
+              {/* Level 1: Client / Organization Dropdown */}
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 rounded-lg">
+                <Building2 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <select
+                  value={selectedOrgId}
+                  onChange={(e) => {
+                    const orgId = e.target.value;
+                    setSelectedOrgId(orgId);
+                    if (orgId !== 'all') {
+                      const orgBrands = brands.filter((b) => b.clientOrganizationId === orgId || organizations.find((o) => o.id === orgId)?.brandIds.includes(b.id));
+                      if (orgBrands.length > 0 && (!selectedBrandId || selectedBrandId === 'all' || !orgBrands.some((b) => b.id === selectedBrandId))) {
+                        setSelectedBrandId(orgBrands[0].id);
+                      }
+                    }
+                  }}
+                  className="bg-transparent border-none text-xs text-slate-800 font-semibold focus:outline-none cursor-pointer pr-1 max-w-[140px] truncate"
+                  title="Filtrar por Cliente / Holding"
+                >
+                  <option value="all">Todos los Clientes</option>
+                  {organizations.map((org) => (
+                    <option key={org.id} value={org.id}>
+                      {org.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Level 2: Brand Dropdown (filtered by selected organization) */}
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 rounded-lg">
+                <span className="text-slate-300 font-light">/</span>
+                <select
+                  value={selectedBrandId}
+                  onChange={(e) => setSelectedBrandId(e.target.value)}
+                  className="bg-transparent border-none text-xs text-slate-800 font-medium focus:outline-none cursor-pointer pr-1 max-w-[150px] truncate"
+                  title="Filtrar por Marca"
+                >
+                  <option value="all">Todas las Marcas</option>
+                  {(selectedOrgId === 'all'
+                    ? brands
+                    : brands.filter((b) => b.clientOrganizationId === selectedOrgId || organizations.find((o) => o.id === selectedOrgId)?.brandIds.includes(b.id))
+                  ).map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           ) : (
-            <div className="hidden lg:flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-xs shadow-2xs">
-              <span className="w-2.5 h-2.5 rounded-full ring-2 ring-emerald-500/20" style={{ backgroundColor: brands.find((b) => b.id === selectedBrandId)?.primaryColor || '#10b981' }} />
-              <span className="font-semibold text-emerald-900">
-                {brands.find((b) => b.id === selectedBrandId)?.name || 'Tu Marca'}
-              </span>
+            <div className="hidden lg:flex items-center gap-1.5 bg-emerald-50 border border-emerald-200 rounded-xl p-1 text-xs shadow-2xs">
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-white border border-emerald-200 rounded-lg">
+                <Building2 className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                <span className="font-bold text-emerald-950 max-w-[120px] truncate">
+                  {organizations.find((o) => o.id === currentUser.clientOrganizationId)?.name || 'Mi Organización'}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-white border border-emerald-200 rounded-lg">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: brands.find((b) => b.id === selectedBrandId)?.primaryColor || '#10b981' }} />
+                <select
+                  value={selectedBrandId}
+                  onChange={(e) => setSelectedBrandId(e.target.value)}
+                  className="bg-transparent border-none text-xs text-slate-800 font-medium focus:outline-none cursor-pointer pr-1"
+                >
+                  {(currentUser.assignedBrandIds && currentUser.assignedBrandIds.length > 0
+                    ? brands.filter((b) => currentUser.assignedBrandIds?.includes(b.id))
+                    : brands
+                  ).map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           )}
 

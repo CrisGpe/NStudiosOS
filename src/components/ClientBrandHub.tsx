@@ -18,8 +18,11 @@ import {
   Building2,
   ShieldCheck,
   Lock,
+  Send,
 } from 'lucide-react';
 import { ClientOrganizationTeamManager } from './client/ClientOrganizationTeamManager';
+import { CreateSandboxIdeaModal } from './client/CreateSandboxIdeaModal';
+import { RequestTerritoryReviewModal } from './client/RequestTerritoryReviewModal';
 
 export const ClientBrandHub: React.FC = () => {
   const {
@@ -38,6 +41,8 @@ export const ClientBrandHub: React.FC = () => {
     generateAIBriefForSandboxIdea,
     canClientPerform,
     setActiveTab,
+    addAuditLog,
+    toast,
   } = useApp();
 
   const { driveFiles, setActivePreviewFile } = useDriveVaultContext();
@@ -67,36 +72,48 @@ export const ClientBrandHub: React.FC = () => {
   const brandAssets = digitalAssets.filter((a) => a.brandId === brand?.id);
 
   const [activeSubTab, setActiveSubTab] = useState<'sandbox' | 'identity' | 'drive' | 'organization'>('sandbox');
-  const [isAddingIdea, setIsAddingIdea] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newNotes, setNewNotes] = useState('');
-  const [newTerritoryId, setNewTerritoryId] = useState(brandTerritories[0]?.id || '');
-  const [newFormat, setNewFormat] = useState('9:16 Vertical Reel (45s)');
-  const [newUrls, setNewUrls] = useState('');
+  const [showCreateIdeaModal, setShowCreateIdeaModal] = useState(false);
+  const [showTerritoryReviewModal, setShowTerritoryReviewModal] = useState(false);
   const [isGeneratingAi, setIsGeneratingAi] = useState<string | null>(null);
 
-  const handleCreateIdea = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim() || !newNotes.trim() || !brand) return;
-
-    const urls = newUrls
-      .split('\n')
-      .map((u) => u.trim())
-      .filter((u) => u.length > 0);
-
+  const handleCreateIdeaFromModal = (data: {
+    brandId: string;
+    title: string;
+    notes: string;
+    targetTerritoryId?: string;
+    formatSuggested: string;
+    referenceUrls: string[];
+    ideaType: 'campaign' | 'video' | 'graphic';
+  }) => {
     createSandboxIdea({
-      brandId: brand.id,
-      title: newTitle.trim(),
-      notes: newNotes.trim(),
-      targetTerritoryId: newTerritoryId || undefined,
-      formatSuggested: newFormat,
-      referenceUrls: urls,
+      brandId: data.brandId,
+      title: data.title,
+      notes: data.notes,
+      targetTerritoryId: data.targetTerritoryId,
+      formatSuggested: data.formatSuggested,
+      referenceUrls: data.referenceUrls,
     });
+    toast.success('¡Idea guardada exitosamente en el Sandbox de la marca!');
+  };
 
-    setNewTitle('');
-    setNewNotes('');
-    setNewUrls('');
-    setIsAddingIdea(false);
+  const handleRequestTerritoryReview = (data: {
+    brandId: string;
+    requestType: 'propose_new' | 'modify_existing';
+    territoryName: string;
+    existingTerritoryId?: string;
+    motive: string;
+    notes: string;
+  }) => {
+    addAuditLog(
+      'SOLICITUD_REVISION_TERRITORIO',
+      `Solicitud de ${data.requestType === 'propose_new' ? 'nuevo territorio' : 'ajuste de territorio'} (${data.territoryName}): Motivo: ${data.motive}`,
+      currentUser.id,
+      'brand',
+      data.brandId,
+      currentUser.name,
+      currentUser.role
+    );
+    toast.success('Tu propuesta ha sido enviada al Director Creativo de la agencia para su revisión.');
   };
 
   const handleTriggerAi = async (ideaId: string) => {
@@ -326,11 +343,11 @@ export const ClientBrandHub: React.FC = () => {
 
             {canClientPerform('sandbox', brand.id) ? (
               <button
-                onClick={() => setIsAddingIdea(!isAddingIdea)}
+                onClick={() => setShowCreateIdeaModal(true)}
                 className="btn-primary"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>{isAddingIdea ? 'Cerrar Formulario' : '+ Nueva Idea / Referencia'}</span>
+                <span>+ Nueva Idea / Referencia</span>
               </button>
             ) : (
               <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 flex items-center gap-1.5">
@@ -339,99 +356,6 @@ export const ClientBrandHub: React.FC = () => {
               </span>
             )}
           </div>
-
-          {/* New Idea Inline Form */}
-          {isAddingIdea && (
-            <form
-              onSubmit={handleCreateIdea}
-              className="bg-white border border-indigo-200 rounded-2xl p-4 shadow-sm space-y-3 animate-in fade-in"
-            >
-              <h4 className="font-bold text-xs text-indigo-700">
-                Añadir Idea al Sandbox
-              </h4>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Título o Concepto Clave *</label>
-                  <input
-                    type="text"
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="Ej: Video estilo POV de noche con ropa reflectiva"
-                    required
-                    className="input-impeccable"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Territorio Estratégico Asociado</label>
-                  <select
-                    value={newTerritoryId}
-                    onChange={(e) => setNewTerritoryId(e.target.value)}
-                    className="input-impeccable cursor-pointer"
-                  >
-                    {brandTerritories.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1 text-xs">Descripción / Notas de la Idea *</label>
-                <textarea
-                  value={newNotes}
-                  onChange={(e) => setNewNotes(e.target.value)}
-                  placeholder="¿Qué te gustaría ver en esta pieza? Describe la vibra, la música, el producto protagonista o el mensaje."
-                  rows={3}
-                  required
-                  className="input-impeccable"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Formato Sugerido</label>
-                  <input
-                    type="text"
-                    value={newFormat}
-                    onChange={(e) => setNewFormat(e.target.value)}
-                    placeholder="Ej: 9:16 Vertical Reel (45s)"
-                    className="input-impeccable font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Links de Referencia (TikTok, Reels, YouTube - 1 por línea)</label>
-                  <textarea
-                    value={newUrls}
-                    onChange={(e) => setNewUrls(e.target.value)}
-                    placeholder="https://tiktok.com/@...&#10;https://instagram.com/reel/..."
-                    rows={2}
-                    className="input-impeccable font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddingIdea(false)}
-                  className="btn-secondary"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                >
-                  Guardar en Sandbox
-                </button>
-              </div>
-            </form>
-          )}
 
           {/* Ideas Grid */}
           {brandIdeas.length === 0 ? (
@@ -442,7 +366,7 @@ export const ClientBrandHub: React.FC = () => {
                 Utiliza este espacio para guardar ideas sin presión técnica. Puedes agregar enlaces de inspiración o notas rápidas.
               </p>
               <button
-                onClick={() => setIsAddingIdea(true)}
+                onClick={() => setShowCreateIdeaModal(true)}
                 className="btn-primary mx-auto"
               >
                 + Crear Primera Idea
@@ -632,7 +556,7 @@ export const ClientBrandHub: React.FC = () => {
 
           {/* Territories Table & Cards */}
           <div className="bg-white p-4.5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
                   <Target className="w-4 h-4 text-emerald-600" />
@@ -643,9 +567,19 @@ export const ClientBrandHub: React.FC = () => {
                 </p>
               </div>
 
-              <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                Regla ≥ 3 Cumplida
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowTerritoryReviewModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs border border-emerald-200 shadow-2xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                  title="Propón un nuevo pilar de comunicación o solicita ajustes a los existentes"
+                >
+                  <Send className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Solicitar Revisión / Proponer Territorio</span>
+                </button>
+                <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 border border-slate-200">
+                  Regla ≥ 3 Cumplida
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -751,6 +685,24 @@ export const ClientBrandHub: React.FC = () => {
       {activeSubTab === 'organization' && (
         <ClientOrganizationTeamManager />
       )}
+
+      {/* Modal 1: Create Idea in 2 Steps */}
+      <CreateSandboxIdeaModal
+        brand={brand}
+        territories={brandTerritories}
+        isOpen={showCreateIdeaModal}
+        onClose={() => setShowCreateIdeaModal(false)}
+        onSubmit={handleCreateIdeaFromModal}
+      />
+
+      {/* Modal 2: Request Territory Revision */}
+      <RequestTerritoryReviewModal
+        brand={brand}
+        territories={brandTerritories}
+        isOpen={showTerritoryReviewModal}
+        onClose={() => setShowTerritoryReviewModal(false)}
+        onSubmit={handleRequestTerritoryReview}
+      />
 
     </div>
   );

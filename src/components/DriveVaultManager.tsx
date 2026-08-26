@@ -55,6 +55,49 @@ export const DriveVaultManager: React.FC = () => {
   const [uploadFileType, setUploadFileType] = useState<DriveFileType>('video');
   const [uploadFileSize, setUploadFileSize] = useState('250 MB');
   const [uploadFileUrl, setUploadFileUrl] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDropFile = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      setUploadFileName(file.name);
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      setUploadFileSize(`${sizeMB} MB`);
+      
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      if (['mp4', 'mov', 'mkv', 'avi', 'prores'].includes(ext || '')) {
+        setUploadFileType('video');
+      } else if (['mp3', 'wav', 'aac', 'flac'].includes(ext || '')) {
+        setUploadFileType('audio');
+      } else if (['pdf', 'docx', 'xlsx', 'csv', 'txt'].includes(ext || '')) {
+        setUploadFileType('document');
+      } else {
+        setUploadFileType('archive');
+      }
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setUploadFileName(file.name);
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      setUploadFileSize(`${sizeMB} MB`);
+      
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      if (['mp4', 'mov', 'mkv', 'avi', 'prores'].includes(ext || '')) {
+        setUploadFileType('video');
+      } else if (['mp3', 'wav', 'aac', 'flac'].includes(ext || '')) {
+        setUploadFileType('audio');
+      } else if (['pdf', 'docx', 'xlsx', 'csv', 'txt'].includes(ext || '')) {
+        setUploadFileType('document');
+      } else {
+        setUploadFileType('archive');
+      }
+    }
+  };
 
   const fallbackAccount: DriveAccount = {
     id: 'acc_default',
@@ -401,6 +444,19 @@ export const DriveVaultManager: React.FC = () => {
                           title={brand.name}
                         />
                       )}
+                      
+                      {/* Open Folder in Google Drive (External Link) */}
+                      <a
+                        href={(fld as any).url || `https://drive.google.com/drive/folders/${fld.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all opacity-0 group-hover:opacity-100"
+                        title="Abrir carpeta en Google Drive (Nueva Pestaña)"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+
                       {currentUser.role !== 'cliente' && !fld.isSystemGenerated && (
                         <div onClick={(e) => e.stopPropagation()} className="opacity-0 group-hover:opacity-100 transition-all">
                           <InlineDeleteConfirm
@@ -665,6 +721,40 @@ export const DriveVaultManager: React.FC = () => {
               </button>
             </div>
             <form onSubmit={handleUploadSubmit} className="space-y-3.5 text-xs">
+              {/* Drag and Drop Zone */}
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDropFile}
+                onClick={() => document.getElementById('vault-file-input')?.click()}
+                className={`p-4 rounded-2xl border-2 border-dashed text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
+                  isDragging
+                    ? 'border-indigo-600 bg-indigo-50/80 scale-[1.01]'
+                    : 'border-slate-300 bg-slate-50/60 hover:bg-slate-100/60 hover:border-slate-400'
+                }`}
+              >
+                <input
+                  id="vault-file-input"
+                  type="file"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                />
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center">
+                  <UploadCloud className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="font-bold text-slate-800 block text-xs">
+                    Arrastra y suelta tu archivo aquí, o <span className="text-indigo-600 underline">haz clic para examinar</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-mono">
+                    Videos (ProRes/H.265), Audios 32-bit, Hojas de cálculo, Documentos
+                  </span>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Marca de Destino *</label>
                 <select

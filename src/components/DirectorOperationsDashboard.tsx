@@ -14,6 +14,7 @@ import {
 
 export const DirectorOperationsDashboard: React.FC = () => {
   const {
+    currentUser,
     users,
     brands,
     equipment,
@@ -22,6 +23,7 @@ export const DirectorOperationsDashboard: React.FC = () => {
     checkCollaboratorAvailability,
     setSelectedDeliverable,
     setIsDeliverableDetailModalOpen,
+    setActiveTab,
   } = useApp();
 
   const [togglingUserId, setTogglingUserId] = useState<string | null>(null);
@@ -30,9 +32,12 @@ export const DirectorOperationsDashboard: React.FC = () => {
   const hardwareUtilizationRate =
     equipment.length > 0 ? Math.round((activeReservationsCount / equipment.length) * 100) : 0;
 
-  const teamCollaborators = users.filter(
-    (u) => u.role === 'colaborador' || u.role === 'director' || u.role === 'webadmin'
-  );
+  // Filter collaborators: Only show WebAdmin user if current user is WebAdmin
+  const teamCollaborators = users.filter((u) => {
+    if (u.role === 'cliente') return false;
+    if (u.role === 'webadmin' && currentUser.role !== 'webadmin') return false;
+    return true;
+  });
 
   // Pending T-3 approvals
   const pendingApprovals = deliverables.filter(
@@ -90,6 +95,15 @@ export const DirectorOperationsDashboard: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          {currentUser.role === 'webadmin' && (
+            <button
+              onClick={() => setActiveTab('admin')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold text-xs border border-purple-200 shadow-2xs transition-colors cursor-pointer"
+            >
+              <span>Panel WebAdmin</span>
+            </button>
+          )}
+
           <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold shadow-2xs">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             <span>Estudio en Operación Activa</span>

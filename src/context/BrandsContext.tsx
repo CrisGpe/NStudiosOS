@@ -9,6 +9,8 @@ export interface BrandsContextType {
   brands: Brand[];
   selectedBrandId: string;
   setSelectedBrandId: (id: string) => void;
+  selectedOrgId: string;
+  setSelectedOrgId: (id: string) => void;
   createBrand: (
     brand: Omit<Brand, 'id' | 'createdAt'>,
     initialTerritories?: Omit<CommunicationTerritory, 'id' | 'brandId'>[]
@@ -57,6 +59,7 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   });
 
   const [selectedBrandId, setSelectedBrandId] = useState<string>('');
+  const [selectedOrgId, setSelectedOrgId] = useState<string>('all');
 
   const [territories, setTerritories] = useState<CommunicationTerritory[]>(() => {
     try {
@@ -309,6 +312,8 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       brands,
       selectedBrandId,
       setSelectedBrandId,
+      selectedOrgId,
+      setSelectedOrgId,
       createBrand,
       updateBrand,
       deleteBrand,
@@ -329,7 +334,7 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       deleteDigitalAsset,
       refreshBrandsFromSupabase,
     }),
-    [brands, selectedBrandId, organizations, territories, digitalAssets]
+    [brands, selectedBrandId, selectedOrgId, organizations, territories, digitalAssets]
   );
 
   return (
