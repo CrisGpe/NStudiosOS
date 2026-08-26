@@ -14,11 +14,11 @@ export const DriveVaultRepository = {
         name: row.name,
         email: row.email,
         type: row.type || 'corporate_workspace',
-        quotaTotalGB: Number(row.quota_total_gb) || 200,
-        quotaUsedGB: Number(row.quota_used_gb) || 0,
-        rootFolderId: row.root_folder_id,
-        isConnected: row.is_connected ?? true,
-        lastSyncedAt: row.last_synced_at || new Date().toISOString(),
+        quotaTotalGB: row.storage_quota_bytes ? Math.round(Number(row.storage_quota_bytes) / (1024 * 1024 * 1024)) : (Number(row.quota_total_gb) || 200),
+        quotaUsedGB: row.storage_used_bytes ? Math.round(Number(row.storage_used_bytes) / (1024 * 1024 * 1024)) : (Number(row.quota_used_gb) || 0),
+        rootFolderId: row.root_folder_id || 'root',
+        isConnected: row.service_account_connected ?? row.is_connected ?? true,
+        lastSyncedAt: row.last_sync_at || row.last_synced_at || new Date().toISOString(),
         status: row.status || 'active',
       }));
     } catch {
@@ -33,19 +33,21 @@ export const DriveVaultRepository = {
 
     if (!isSupabaseConfigured) return newAcc;
 
-    const { error } = await supabase.from('drive_accounts').insert({
-      id: newAcc.id,
-      name: newAcc.name,
-      email: newAcc.email,
-      type: newAcc.type,
-      quota_total_gb: newAcc.quotaTotalGB,
-      quota_used_gb: newAcc.quotaUsedGB,
-      root_folder_id: newAcc.rootFolderId,
-      is_connected: newAcc.isConnected,
-      last_synced_at: newAcc.lastSyncedAt,
-      status: newAcc.status,
-    });
-    if (error) console.error('Error inserting drive account in Supabase:', error);
+    try {
+      const { error } = await supabase.from('drive_accounts').insert({
+        id: newAcc.id,
+        name: newAcc.name,
+        email: newAcc.email,
+        storage_quota_bytes: (newAcc.quotaTotalGB || 200) * 1024 * 1024 * 1024,
+        storage_used_bytes: (newAcc.quotaUsedGB || 0) * 1024 * 1024 * 1024,
+        status: newAcc.status || 'connected',
+        service_account_connected: newAcc.isConnected ?? true,
+        last_sync_at: newAcc.lastSyncedAt,
+      });
+      if (error) console.warn('Supabase createAccount notice:', error.message);
+    } catch (err) {
+      console.warn('Supabase createAccount catch:', err);
+    }
     return newAcc;
   },
 
@@ -54,22 +56,30 @@ export const DriveVaultRepository = {
     const payload: any = {};
     if (updates.name !== undefined) payload.name = updates.name;
     if (updates.email !== undefined) payload.email = updates.email;
-    if (updates.type !== undefined) payload.type = updates.type;
-    if (updates.quotaTotalGB !== undefined) payload.quota_total_gb = updates.quotaTotalGB;
-    if (updates.quotaUsedGB !== undefined) payload.quota_used_gb = updates.quotaUsedGB;
-    if (updates.rootFolderId !== undefined) payload.root_folder_id = updates.rootFolderId;
-    if (updates.isConnected !== undefined) payload.is_connected = updates.isConnected;
+    if (updates.quotaTotalGB !== undefined) payload.storage_quota_bytes = updates.quotaTotalGB * 1024 * 1024 * 1024;
+    if (updates.quotaUsedGB !== undefined) payload.storage_used_bytes = updates.quotaUsedGB * 1024 * 1024 * 1024;
+    if (updates.isConnected !== undefined) payload.service_account_connected = updates.isConnected;
     if (updates.status !== undefined) payload.status = updates.status;
-    if (updates.lastSyncedAt !== undefined) payload.last_synced_at = updates.lastSyncedAt;
+    if (updates.lastSyncedAt !== undefined) payload.last_sync_at = updates.lastSyncedAt;
 
-    const { error } = await supabase.from('drive_accounts').update(payload).eq('id', id);
-    if (error) console.error('Error updating drive account in Supabase:', error);
+    if (Object.keys(payload).length > 0) {
+      try {
+        const { error } = await supabase.from('drive_accounts').update(payload).eq('id', id);
+        if (error) console.warn('Supabase updateAccount notice:', error.message);
+      } catch (err) {
+        console.warn('Supabase updateAccount catch:', err);
+      }
+    }
   },
 
   async deleteAccount(id: string): Promise<boolean> {
     if (!isSupabaseConfigured) return true;
-    const { error } = await supabase.from('drive_accounts').delete().eq('id', id);
-    return !error;
+    try {
+      const { error } = await supabase.from('drive_accounts').delete().eq('id', id);
+      return !error;
+    } catch {
+      return false;
+    }
   },
 
   // FOLDERS
@@ -83,11 +93,11 @@ export const DriveVaultRepository = {
         id: row.id,
         accountId: row.account_id,
         name: row.name,
-        path: row.path,
-        parentFolderId: row.parent_folder_id,
+        path: row.path || `/${row.name}`,
+        parentFolderId: row.parent_id || row.parent_folder_id,
         brandId: row.brand_id,
         itemCount: Number(row.item_count) || 0,
-        isSystemGenerated: row.is_system_generated ?? false,
+        isSystemGenerated: row.is_system_folder ?? row.is_system_generated ?? false,
         createdAt: row.created_at || new Date().toISOString().split('T')[0],
       }));
     } catch {
@@ -98,28 +108,30 @@ export const DriveVaultRepository = {
   async createFolder(folder: DriveFolder): Promise<DriveFolder> {
     if (!isSupabaseConfigured) return folder;
 
-    const { error } = await supabase.from('drive_folders').insert({
-      id: folder.id,
-      account_id: folder.accountId,
-      name: folder.name,
-      path: folder.path,
-      parent_folder_id: folder.parentFolderId,
-      brand_id: folder.brandId,
-      item_count: folder.itemCount,
-      is_system_generated: folder.isSystemGenerated,
-      created_at: folder.createdAt,
-    });
-    if (error) console.error('Error inserting folder to Supabase:', error);
+    try {
+      const { error } = await supabase.from('drive_folders').insert({
+        id: folder.id,
+        account_id: folder.accountId || null,
+        brand_id: folder.brandId || null,
+        name: folder.name,
+        parent_id: folder.parentFolderId || null,
+        is_system_folder: folder.isSystemGenerated ?? false,
+      });
+      if (error) console.warn('Supabase createFolder notice:', error.message);
+    } catch (err) {
+      console.warn('Supabase createFolder catch:', err);
+    }
     return folder;
   },
 
   async deleteFolder(id: string): Promise<boolean> {
     if (!isSupabaseConfigured) return true;
-    // 1. Delete all contained files
-    await supabase.from('drive_files').delete().eq('folder_id', id);
-    // 2. Delete folder
-    const { error } = await supabase.from('drive_folders').delete().eq('id', id);
-    return !error;
+    try {
+      const { error } = await supabase.from('drive_folders').delete().eq('id', id);
+      return !error;
+    } catch {
+      return false;
+    }
   },
 
   // FILES
@@ -131,24 +143,23 @@ export const DriveVaultRepository = {
 
       return data.map((row: any) => ({
         id: row.id,
-        accountId: row.account_id || '',
+        accountId: row.account_id,
         folderId: row.folder_id,
         brandId: row.brand_id,
+        campaignId: row.campaign_id,
         deliverableId: row.deliverable_id,
         name: row.name,
-        type: row.type,
-        mimeType: row.mime_type || 'application/octet-stream',
+        type: row.type || 'document',
+        mimeType: row.mime_type,
+        sizeFormatted: row.size_formatted,
         sizeBytes: Number(row.size_bytes) || 0,
-        sizeFormatted: row.size_formatted || '0 MB',
         url: row.url,
         previewUrl: row.preview_url,
         proxyUrl: row.proxy_url,
         isOriginalMaster: row.is_original_master ?? false,
-        technicalSpecs: row.technical_specs,
-        generatedDocument: row.generated_document,
-        uploadedByName: row.uploaded_by_name || 'Sistema',
-        createdAt: row.created_at || new Date().toISOString().split('T')[0],
-        updatedAt: row.updated_at || new Date().toISOString().split('T')[0],
+        uploadedByName: 'Nataraja Studio OS',
+        createdAt: row.created_at ? row.created_at.split('T')[0] : '2026-01-01',
+        updatedAt: row.updated_at ? row.updated_at.split('T')[0] : '2026-01-01',
       }));
     } catch {
       return [];
@@ -158,34 +169,38 @@ export const DriveVaultRepository = {
   async createFile(file: DriveFile): Promise<DriveFile> {
     if (!isSupabaseConfigured) return file;
 
-    const { error } = await supabase.from('drive_files').insert({
-      id: file.id,
-      account_id: file.accountId,
-      folder_id: file.folderId,
-      brand_id: file.brandId,
-      deliverable_id: file.deliverableId,
-      name: file.name,
-      type: file.type,
-      mime_type: file.mimeType,
-      size_bytes: file.sizeBytes,
-      size_formatted: file.sizeFormatted,
-      url: file.url,
-      preview_url: file.previewUrl,
-      proxy_url: file.proxyUrl,
-      is_original_master: file.isOriginalMaster,
-      technical_specs: file.technicalSpecs,
-      generated_document: file.generatedDocument,
-      uploaded_by_name: file.uploadedByName,
-      created_at: file.createdAt,
-      updated_at: file.updatedAt,
-    });
-    if (error) console.error('Error inserting drive file in Supabase:', error);
+    try {
+      const { error } = await supabase.from('drive_files').insert({
+        id: file.id,
+        account_id: file.accountId || null,
+        folder_id: file.folderId || null,
+        brand_id: file.brandId || null,
+        campaign_id: file.campaignId || null,
+        deliverable_id: file.deliverableId || null,
+        name: file.name,
+        type: file.type,
+        mime_type: file.mimeType || 'text/plain',
+        size_formatted: file.sizeFormatted,
+        size_bytes: file.sizeBytes,
+        url: file.url || 'https://drive.google.com',
+        preview_url: file.previewUrl || null,
+        proxy_url: file.proxyUrl || null,
+        is_original_master: file.isOriginalMaster || false,
+      });
+      if (error) console.warn('Supabase createFile notice:', error.message);
+    } catch (err) {
+      console.warn('Supabase createFile catch:', err);
+    }
     return file;
   },
 
   async deleteFile(id: string): Promise<boolean> {
     if (!isSupabaseConfigured) return true;
-    const { error } = await supabase.from('drive_files').delete().eq('id', id);
-    return !error;
+    try {
+      const { error } = await supabase.from('drive_files').delete().eq('id', id);
+      return !error;
+    } catch {
+      return false;
+    }
   },
 };
