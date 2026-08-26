@@ -151,38 +151,7 @@ export const SidebarNav: React.FC = () => {
       {/* Main Nav Content */}
       <div className="flex-1 overflow-y-auto p-3 space-y-4 no-scrollbar">
         
-        {/* Brand Selector for non-clients */}
-        {!isCollapsed && currentUser.role !== 'cliente' && (
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block px-1">
-              Marca Activa
-            </label>
-            <select
-              value={selectedBrandId}
-              onChange={(e) => setSelectedBrandId(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 hover:border-slate-300 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all cursor-pointer"
-            >
-              <option value="all">Todas las Marcas (Global)</option>
-              {brands.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name} ({b.industry})
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
 
-        {/* Client Brand Badge */}
-        {!isCollapsed && currentUser.role === 'cliente' && (
-          <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs shadow-2xs">
-            <span className="text-[9px] font-bold text-emerald-700 block uppercase tracking-wider">
-              Organización
-            </span>
-            <span className="font-bold text-emerald-950 truncate block mt-0.5">
-              {brands.find((b) => b.id === selectedBrandId)?.name || 'Tu Marca'}
-            </span>
-          </div>
-        )}
 
         {/* Search input in expanded view */}
         {!isCollapsed && (
