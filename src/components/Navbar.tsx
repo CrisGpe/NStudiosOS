@@ -282,7 +282,7 @@ export const Navbar: React.FC = () => {
                     const orgId = e.target.value;
                     setSelectedOrgId(orgId);
                     if (orgId !== 'all') {
-                      const orgBrands = brands.filter((b) => b.clientOrganizationId === orgId || organizations.find((o) => o.id === orgId)?.brandIds.includes(b.id));
+                      const orgBrands = (brands || []).filter((b) => b.clientOrganizationId === orgId || (organizations.find((o) => o.id === orgId)?.brandIds || []).includes(b.id));
                       if (orgBrands.length > 0 && (!selectedBrandId || selectedBrandId === 'all' || !orgBrands.some((b) => b.id === selectedBrandId))) {
                         setSelectedBrandId(orgBrands[0].id);
                       }
@@ -292,7 +292,7 @@ export const Navbar: React.FC = () => {
                   title="Filtrar por Cliente / Holding"
                 >
                   <option value="all">Todos los Clientes</option>
-                  {organizations.map((org) => (
+                  {(organizations || []).map((org) => (
                     <option key={org.id} value={org.id}>
                       {org.name}
                     </option>
@@ -311,8 +311,8 @@ export const Navbar: React.FC = () => {
                 >
                   <option value="all">Todas las Marcas</option>
                   {(selectedOrgId === 'all'
-                    ? brands
-                    : brands.filter((b) => b.clientOrganizationId === selectedOrgId || organizations.find((o) => o.id === selectedOrgId)?.brandIds.includes(b.id))
+                    ? (brands || [])
+                    : (brands || []).filter((b) => b.clientOrganizationId === selectedOrgId || (organizations.find((o) => o.id === selectedOrgId)?.brandIds || []).includes(b.id))
                   ).map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name}

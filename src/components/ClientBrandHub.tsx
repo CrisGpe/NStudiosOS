@@ -71,11 +71,11 @@ export const ClientBrandHub: React.FC = () => {
   const allowedBrands = isClientRole && currentUser.assignedBrandIds && currentUser.assignedBrandIds.length > 0
     ? brands.filter((b) => currentUser.assignedBrandIds!.includes(b.id))
     : isClientRole && currentUser.clientOrganizationId
-    ? brands.filter((b) => b.clientOrganizationId === currentUser.clientOrganizationId || currentOrg?.brandIds.includes(b.id))
+    ? brands.filter((b) => b.clientOrganizationId === currentUser.clientOrganizationId || (currentOrg?.brandIds || []).includes(b.id))
     : (selectedOrgId === 'all'
       ? brands
-      : (brands.filter((b) => b.clientOrganizationId === selectedOrgId || currentOrg?.brandIds.includes(b.id)).length > 0
-        ? brands.filter((b) => b.clientOrganizationId === selectedOrgId || currentOrg?.brandIds.includes(b.id))
+      : (brands.filter((b) => b.clientOrganizationId === selectedOrgId || (currentOrg?.brandIds || []).includes(b.id)).length > 0
+        ? brands.filter((b) => b.clientOrganizationId === selectedOrgId || (currentOrg?.brandIds || []).includes(b.id))
         : brands));
 
   // Active brand resolution
@@ -88,12 +88,12 @@ export const ClientBrandHub: React.FC = () => {
     effectiveOrgs.find((o) => (brand?.id && o.brandIds?.includes(brand.id)) || (brand?.clientOrganizationId && o.id === brand.clientOrganizationId)) ||
     currentOrg;
 
-  const brandTerritories = territories.filter((t) => t.brandId === brand?.id && t.active);
-  const brandIdeas = sandboxIdeas.filter((i) => i.brandId === brand?.id);
-  const brandDeliverables = deliverables.filter((d) => d.brandId === brand?.id);
-  const brandCampaigns = campaigns.filter((c) => c.brandId === brand?.id);
-  const brandDocs = driveFiles.filter((f) => f.brandId === brand?.id && f.type === 'document');
-  const brandAssets = digitalAssets.filter((a) => a.brandId === brand?.id);
+  const brandTerritories = (territories || []).filter((t) => t.brandId === brand?.id && t.active);
+  const brandIdeas = (sandboxIdeas || []).filter((i) => i.brandId === brand?.id);
+  const brandDeliverables = (deliverables || []).filter((d) => d.brandId === brand?.id);
+  const brandCampaigns = (campaigns || []).filter((c) => c.brandId === brand?.id);
+  const brandDocs = (driveFiles || []).filter((f) => f.brandId === brand?.id && f.type === 'document');
+  const brandAssets = (digitalAssets || []).filter((a) => a.brandId === brand?.id);
 
   const [activeSubTab, setActiveSubTab] = useState<'sandbox' | 'identity' | 'drive' | 'organization'>('sandbox');
   const [showCreateIdeaModal, setShowCreateIdeaModal] = useState(false);
@@ -307,7 +307,7 @@ export const ClientBrandHub: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {effectiveOrgs.map((org) => {
-              const orgBrands = brands.filter((b) => b.clientOrganizationId === org.id || org.brandIds.includes(b.id));
+              const orgBrands = brands.filter((b) => b.clientOrganizationId === org.id || (org.brandIds || []).includes(b.id));
 
               return (
                 <div

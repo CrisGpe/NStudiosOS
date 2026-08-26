@@ -90,13 +90,13 @@ export const BrandTerritoryManager: React.FC = () => {
   // Filter brands based on selected organization/holding
   const displayedBrands = selectedOrgId === 'all'
     ? brands
-    : (brands.filter((b) => b.clientOrganizationId === selectedOrgId || currentOrg?.brandIds.includes(b.id)).length > 0
-      ? brands.filter((b) => b.clientOrganizationId === selectedOrgId || currentOrg?.brandIds.includes(b.id))
+    : (brands.filter((b) => b.clientOrganizationId === selectedOrgId || (currentOrg?.brandIds || []).includes(b.id)).length > 0
+      ? brands.filter((b) => b.clientOrganizationId === selectedOrgId || (currentOrg?.brandIds || []).includes(b.id))
       : brands);
 
-  const currentBrand = brands.find((b) => b.id === (selectedBrandId && selectedBrandId !== 'all' ? selectedBrandId : activeBrandId)) || displayedBrands[0] || brands[0];
-  const brandTerritories = territories.filter((t) => t.brandId === currentBrand?.id);
-  const brandAssets = digitalAssets.filter((a) => a.brandId === currentBrand?.id);
+  const currentBrand = (brands || []).find((b) => b.id === (selectedBrandId && selectedBrandId !== 'all' ? selectedBrandId : activeBrandId)) || (displayedBrands && displayedBrands[0]) || (brands && brands[0]);
+  const brandTerritories = (territories || []).filter((t) => t.brandId === currentBrand?.id);
+  const brandAssets = (digitalAssets || []).filter((a) => a.brandId === currentBrand?.id);
   const validationStatus = validateBrandTerritories(currentBrand?.id);
 
   // Open Territory Edit/Create Modal
@@ -345,7 +345,7 @@ export const BrandTerritoryManager: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {effectiveOrgs.map((org) => {
-              const orgBrands = brands.filter((b) => b.clientOrganizationId === org.id || org.brandIds.includes(b.id));
+              const orgBrands = brands.filter((b) => b.clientOrganizationId === org.id || (org.brandIds || []).includes(b.id));
 
               return (
                 <div
@@ -592,7 +592,7 @@ export const BrandTerritoryManager: React.FC = () => {
 
           {/* Current Brand Active Header */}
           {currentBrand && (() => {
-            const activeOrg = effectiveOrgs.find((o) => o.id === currentBrand.clientOrganizationId || o.brandIds.includes(currentBrand.id)) || currentOrg;
+            const activeOrg = effectiveOrgs.find((o) => o.id === currentBrand.clientOrganizationId || (o.brandIds || []).includes(currentBrand.id)) || currentOrg;
             return (
               <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">

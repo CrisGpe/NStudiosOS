@@ -37,8 +37,8 @@ export const ClientOrganizationTeamManager: React.FC = () => {
 
   // Find the active organization for this client (or current user's org)
   const userOrg = organizations.find((o) => o.id === currentUser.clientOrganizationId) ||
-    organizations.find((o) => currentUser.assignedBrandIds?.some((bid) => o.brandIds.includes(bid))) ||
-    (currentUser.role === 'webadmin' || currentUser.role === 'director' ? organizations[0] : undefined) || {
+    organizations.find((o) => currentUser.assignedBrandIds?.some((bid) => (o.brandIds || []).includes(bid))) ||
+    (currentUser.role === 'webadmin' || currentUser.role === 'director' ? (organizations && organizations[0]) : undefined) || {
       id: 'org_personal',
       name: 'Mi Organización',
       contactEmail: currentUser.email,
@@ -50,7 +50,7 @@ export const ClientOrganizationTeamManager: React.FC = () => {
   // Brands belonging to this organization (or assigned to the client)
   const orgBrands = brands.filter((b) =>
     b.clientOrganizationId === userOrg.id ||
-    userOrg.brandIds.includes(b.id) ||
+    (userOrg.brandIds || []).includes(b.id) ||
     (currentUser.role === 'webadmin' || currentUser.role === 'director' ? true : currentUser.assignedBrandIds?.includes(b.id))
   );
 

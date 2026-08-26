@@ -292,7 +292,7 @@ export const CreateBrandModal: React.FC = () => {
                 <option value="">-- Marca Independiente (Sin Holding) --</option>
                 {organizations.map((org) => (
                   <option key={org.id} value={org.id}>
-                    🏢 {org.name} ({org.brandIds.length} marcas vinculadas)
+                    🏢 {org.name} ({(org.brandIds || []).length} marcas vinculadas)
                   </option>
                 ))}
               </select>

@@ -20,7 +20,7 @@ interface CreateSandboxIdeaModalProps {
 
 export const CreateSandboxIdeaModal: React.FC<CreateSandboxIdeaModalProps> = ({
   brand,
-  territories,
+  territories = [],
   isOpen,
   onClose,
   onSubmit,
@@ -28,7 +28,7 @@ export const CreateSandboxIdeaModal: React.FC<CreateSandboxIdeaModalProps> = ({
   const [step, setStep] = useState<1 | 2>(1);
   const [ideaType, setIdeaType] = useState<'campaign' | 'video' | 'graphic'>('video');
   const [title, setTitle] = useState('');
-  const [territoryId, setTerritoryId] = useState(territories[0]?.id || '');
+  const [territoryId, setTerritoryId] = useState((territories && territories[0]?.id) || '');
   const [formatSuggested, setFormatSuggested] = useState('9:16 Vertical Reel (45s)');
   const [referenceUrls, setReferenceUrls] = useState('');
   const [notes, setNotes] = useState('');
