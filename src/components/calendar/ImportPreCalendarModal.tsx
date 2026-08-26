@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, FileSpreadsheet, X, Upload, CheckCircle2, ArrowRight, Table, Layers, HardDrive, Download, Sparkles, Plus } from 'lucide-react';
+import { Calendar, FileSpreadsheet, X, Upload, CheckCircle2, ArrowRight, Table, Layers, HardDrive, Download, Sparkles, Plus, Folder, ExternalLink } from 'lucide-react';
 import { Brand, CommunicationTerritory, Deliverable, DriveFile } from '../../types';
 import { useDriveVaultContext } from '../../context/DriveVaultContext';
 import { useToast } from '../../context/ToastContext';
@@ -35,7 +35,14 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
   onClose,
   onImportBatch,
 }) => {
-  const { createDriveFile } = useDriveVaultContext();
+  const {
+    driveAccounts,
+    driveFolders,
+    driveFiles,
+    createDriveFile,
+    createDriveFolder,
+    selectedDriveAccountId,
+  } = useDriveVaultContext();
   const toast = useToast();
 
   const [selectedBrandId, setSelectedBrandId] = useState(brand?.id || allBrands[0]?.id || '');
@@ -46,12 +53,34 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentBrand = allBrands.find((b) => b.id === selectedBrandId) || brand;
-  const brandTerritories = territories.filter((t) => t.brandId === selectedBrandId && t.active);
-  const brandSpreadsheets = vaultFiles.filter(
+  const currentBrand = (allBrands || []).find((b) => b.id === selectedBrandId) || brand || allBrands[0];
+  const brandTerritories = (territories || []).filter((t) => t.brandId === selectedBrandId && t.active);
+
+  // Find all folders for this brand
+  const brandFolders = (driveFolders || []).filter((f) => f.brandId === selectedBrandId);
+  const brandFolderIds = brandFolders.map((f) => f.id);
+
+  // Pre-production folder (or strategy folder) for this brand
+  const preProdFolder = brandFolders.find(
     (f) =>
-      (selectedBrandId === 'all' || f.brandId === selectedBrandId) &&
-      (f.name.endsWith('.xlsx') || f.name.endsWith('.csv') || f.name.endsWith('.sheet') || f.type === 'document' || f.name.toLowerCase().includes('calendario') || f.name.toLowerCase().includes('cronograma'))
+      f.name.includes('02') ||
+      f.name.toLowerCase().includes('pre') ||
+      f.name.toLowerCase().includes('cronograma') ||
+      f.name.toLowerCase().includes('produccion')
+  ) || brandFolders.find((f) => f.name.includes('01')) || brandFolders[0];
+
+  // Match all spreadsheets/csv files belonging to this brand in Drive Vault
+  const effectiveFiles = driveFiles && driveFiles.length > 0 ? driveFiles : (vaultFiles || []);
+  const brandSpreadsheets = effectiveFiles.filter(
+    (f) =>
+      (f.brandId === selectedBrandId || brandFolderIds.includes(f.folderId)) &&
+      (f.name.endsWith('.xlsx') ||
+       f.name.endsWith('.csv') ||
+       f.name.endsWith('.sheet') ||
+       f.type === 'document' ||
+       f.name.toLowerCase().includes('calendario') ||
+       f.name.toLowerCase().includes('cronograma') ||
+       f.name.toLowerCase().includes('pauta'))
   );
 
   const handleDownloadTemplate = () => {
@@ -77,19 +106,45 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
   const handleAutoCreateSpreadsheetInVault = async () => {
     setIsProcessing(true);
     try {
+      const activeAccId = selectedDriveAccountId || (driveAccounts && driveAccounts[0]?.id) || 'acc_default';
+      
+      // Ensure target folder exists in the Vault
+      let targetFolderId = preProdFolder?.id;
+      if (!targetFolderId) {
+        // Create root brand folder first if missing
+        const rootFolder = createDriveFolder({
+          name: (currentBrand?.name || 'MARCA').toUpperCase() + ' [BRAND ROOT]',
+          accountId: activeAccId,
+          brandId: selectedBrandId || currentBrand?.id,
+          path: `/${currentBrand?.name || 'Marca'}`,
+        });
+
+        // Create 02_PreProduccion folder
+        const createdPreFolder = createDriveFolder({
+          name: '02_PreProduccion_Cronogramas',
+          accountId: activeAccId,
+          brandId: selectedBrandId || currentBrand?.id,
+          path: `/${currentBrand?.name || 'Marca'}/02_PreProduccion_Cronogramas`,
+          parentFolderId: rootFolder.id,
+        });
+
+        targetFolderId = createdPreFolder.id;
+      }
+
       const fileName = `01_Cronograma_PreCalendario_${currentBrand?.name.replace(/\s+/g, '_') || 'Marca'}.csv`;
-      const created = await createDriveFile({
+      const created = createDriveFile({
         name: fileName,
         type: 'document',
-        brandId: selectedBrandId || brand?.id || 'brd_apex',
+        brandId: selectedBrandId || currentBrand?.id || 'brd_apex',
         sizeFormatted: '48 KB',
         sizeBytes: 48000,
         mimeType: 'text/csv',
-        accountId: 'acc_default',
-        folderId: 'fld_default',
+        accountId: activeAccId,
+        folderId: targetFolderId,
         url: `https://drive.google.com/open?id=demo_${Date.now()}`,
         uploadedByName: 'Nataraja Studio OS',
       });
+
       setSelectedFileId(created.id);
       toast.success(`¡Hoja "${fileName}" creada y vinculada en el Vault de ${currentBrand?.name}!`);
     } catch (err: any) {
@@ -168,7 +223,7 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
   const handleConfirmImport = () => {
     const toCreate = parsedItems.map((item) => ({
       title: item.title,
-      brandId: selectedBrandId || brand?.id || 'brd_apex',
+      brandId: selectedBrandId || currentBrand?.id || 'brd_apex',
       territoryId: item.territoryId,
       deliverableType: item.deliverableType,
       phase: 'ideacion' as const,
@@ -176,7 +231,8 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
       productionStartDate: item.productionStartDate,
       productionEndDate: item.productionEndDate,
       publishDate: item.publishDate,
-      scriptText: `[Importado desde Pre-calendario Drive Vault]\nFormato: ${item.formatSuggested}`,
+      scriptText: `[Importado desde Pre-calendario Drive Vault]
+Formato: ${item.formatSuggested}`,
     }));
 
     onImportBatch(toCreate);
@@ -203,7 +259,7 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 {step === 1
-                  ? 'Selecciona la hoja de cálculo del Drive Vault o sube el archivo con la pauta mensual'
+                  ? 'Selecciona la hoja de cálculo del Drive Vault o auto-genera el archivo en el Vault de la marca'
                   : 'Revisa las piezas detectadas antes de crearlas en fase Ideación / Pre-producción'}
               </p>
             </div>
@@ -221,16 +277,20 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
         <div className="p-6 overflow-y-auto space-y-4">
           {step === 1 && (
             <div className="space-y-4 text-xs">
+              {/* Target Brand Selector */}
               <div>
                 <label className="block text-slate-700 font-semibold mb-1">
                   Marca de Destino
                 </label>
                 <select
                   value={selectedBrandId}
-                  onChange={(e) => setSelectedBrandId(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedBrandId(e.target.value);
+                    setSelectedFileId('');
+                  }}
                   className="w-full bg-slate-50 focus:bg-white border border-slate-300 focus:border-blue-600 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
                 >
-                  {allBrands.map((b) => (
+                  {(allBrands || []).map((b) => (
                     <option key={b.id} value={b.id}>
                       {b.name}
                     </option>
@@ -238,49 +298,88 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
                 </select>
               </div>
 
+              {/* Spreadsheets Available in Drive Vault */}
               <div>
-                <label className="block text-slate-700 font-semibold mb-1">
-                  Hojas de Cálculo disponibles en Drive Vault de {currentBrand?.name}
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-slate-700 font-semibold">
+                    Hojas de Cálculo vinculadas en Drive Vault de {currentBrand?.name}
+                  </label>
+                  {preProdFolder && (
+                    <span className="text-[10px] text-slate-500 font-mono flex items-center gap-1">
+                      <Folder className="w-3 h-3 text-indigo-500" />
+                      <span>{preProdFolder.name}</span>
+                    </span>
+                  )}
+                </div>
 
                 {brandSpreadsheets.length > 0 ? (
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    {brandSpreadsheets.map((file) => (
-                      <div
-                        key={file.id}
-                        onClick={() => setSelectedFileId(file.id)}
-                        className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
-                          selectedFileId === file.id
-                            ? 'bg-blue-50/80 border-blue-500 ring-2 ring-blue-500/20'
-                            : 'bg-white border-slate-200 hover:border-blue-300'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <FileSpreadsheet className="w-4 h-4 text-emerald-600 shrink-0" />
-                          <div>
-                            <span className="font-bold text-slate-900 block">{file.name}</span>
-                            <span className="text-[10px] text-slate-500 font-mono">
-                              {file.sizeFormatted} • Actualizado {file.uploadedAt}
-                            </span>
+                  <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                    {brandSpreadsheets.map((file) => {
+                      const parentFld = driveFolders.find((f) => f.id === file.folderId);
+                      const isSelected = selectedFileId === file.id;
+
+                      return (
+                        <div
+                          key={file.id}
+                          onClick={() => setSelectedFileId(file.id)}
+                          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-blue-50/80 border-blue-500 ring-2 ring-blue-500/20 shadow-2xs'
+                              : 'bg-white border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200">
+                              <FileSpreadsheet className="w-4 h-4 shrink-0" />
+                            </div>
+                            <div>
+                              <span className="font-bold text-slate-900 block text-xs">{file.name}</span>
+                              <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono mt-0.5">
+                                {parentFld && (
+                                  <span className="text-indigo-600 font-semibold">
+                                    📁 {parentFld.name}
+                                  </span>
+                                )}
+                                <span>• {file.sizeFormatted}</span>
+                                <span>• {file.createdAt ? file.createdAt.split('T')[0] : 'Drive Vault'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {isSelected ? (
+                              <div className="flex items-center gap-1 text-xs font-bold text-blue-600 bg-blue-100/80 px-2 py-0.5 rounded-lg">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Seleccionado</span>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className="text-xs text-slate-400 hover:text-slate-700"
+                              >
+                                Seleccionar
+                              </button>
+                            )}
                           </div>
                         </div>
-
-                        {selectedFileId === file.id && (
-                          <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-1 text-slate-500">
-                    <p className="text-xs">No hay hojas de cálculo vinculadas en el Vault de esta marca.</p>
-                    <p className="text-[11px] text-slate-400">Puedes usar la plantilla de auto-generación de cronograma.</p>
+                  <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-1.5 text-slate-500">
+                    <HardDrive className="w-6 h-6 text-slate-300 mx-auto" />
+                    <p className="text-xs font-semibold text-slate-700">
+                      No hay hojas de cálculo vinculadas en el Vault de {currentBrand?.name}.
+                    </p>
+                    <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+                      Puedes auto-generar la hoja oficial con 1 clic en la carpeta de Pre-Producción de la marca.
+                    </p>
                   </div>
                 )}
               </div>
 
               {/* Dual Action: Download Template CSV & Auto-Create in Vault */}
-              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200 text-slate-800 space-y-2.5 shadow-2xs">
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200 text-slate-800 space-y-2.5 shadow-2xs">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-blue-900 font-bold text-xs">
                     <Sparkles className="w-4 h-4 text-blue-600" />
@@ -292,14 +391,14 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
                 </div>
 
                 <p className="text-[11px] text-slate-600 leading-snug">
-                  Descarga el formato pre-estructurado con ejemplos de <strong>{currentBrand?.name}</strong> o auto-genera el archivo directamente en la carpeta de Drive de la marca.
+                  Descarga el formato pre-estructurado con ejemplos de <strong>{currentBrand?.name}</strong> o auto-genera el archivo directamente en la carpeta <strong>{preProdFolder?.name || '02_PreProduccion'}</strong> de Drive de la marca.
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                   <button
                     type="button"
                     onClick={handleDownloadTemplate}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs border border-slate-300 shadow-2xs transition-all cursor-pointer hover:border-slate-400 active:scale-98"
+                    className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs border border-slate-300 shadow-2xs transition-all cursor-pointer hover:border-slate-400 active:scale-98"
                   >
                     <Download className="w-3.5 h-3.5 text-blue-600" />
                     <span>📥 Descargar Plantilla .CSV</span>
@@ -309,7 +408,7 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
                     type="button"
                     onClick={handleAutoCreateSpreadsheetInVault}
                     disabled={isProcessing}
-                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all cursor-pointer disabled:opacity-50 active:scale-98"
+                    className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all cursor-pointer disabled:opacity-50 active:scale-98"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>⚡ Crear Hoja en Drive Vault</span>
@@ -401,7 +500,7 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
               type="button"
               onClick={handleProcessFile}
               disabled={isProcessing}
-              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
             >
               <Upload className="w-3.5 h-3.5" />
               <span>{isProcessing ? 'Procesando Vault...' : 'Analizar Hoja & Vista Previa'}</span>
@@ -410,7 +509,7 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
             <button
               type="button"
               onClick={handleConfirmImport}
-              className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all cursor-pointer flex items-center gap-1.5"
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-600/20 transition-all cursor-pointer flex items-center gap-1.5"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>Confirmar & Crear {parsedItems.length} Entregables</span>
