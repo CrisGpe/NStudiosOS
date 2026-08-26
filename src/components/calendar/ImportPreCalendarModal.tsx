@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Calendar, FileSpreadsheet, X, Upload, CheckCircle2, ArrowRight, Table, Layers, HardDrive } from 'lucide-react';
+import { Calendar, FileSpreadsheet, X, Upload, CheckCircle2, ArrowRight, Table, Layers, HardDrive, Download, Sparkles, Plus } from 'lucide-react';
 import { Brand, CommunicationTerritory, Deliverable, DriveFile } from '../../types';
+import { useDriveVaultContext } from '../../context/DriveVaultContext';
+import { useToast } from '../../context/ToastContext';
 
 interface ImportPreCalendarModalProps {
   brand?: Brand;
@@ -33,6 +35,9 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
   onClose,
   onImportBatch,
 }) => {
+  const { createDriveFile } = useDriveVaultContext();
+  const toast = useToast();
+
   const [selectedBrandId, setSelectedBrandId] = useState(brand?.id || allBrands[0]?.id || '');
   const [selectedFileId, setSelectedFileId] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -48,6 +53,51 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
       (selectedBrandId === 'all' || f.brandId === selectedBrandId) &&
       (f.name.endsWith('.xlsx') || f.name.endsWith('.csv') || f.name.endsWith('.sheet') || f.type === 'document' || f.name.toLowerCase().includes('calendario') || f.name.toLowerCase().includes('cronograma'))
   );
+
+  const handleDownloadTemplate = () => {
+    const csvContent = [
+      'Titulo,Territorio,Formato,Fecha_Rodaje_Inicio,Fecha_Rodaje_Fin,Fecha_Publicacion,Notas',
+      `"Reel Apertura de Mes - ADN ${currentBrand?.name || 'Marca'}","Pilar 1 - Identidad","9:16 Vertical Reel (45s)","2026-09-05","2026-09-07","2026-09-10","Gancho inicial de 0-3s con producto en primer plano"`,
+      `"Carrusel Educativo: 5 Tips","Pilar 2 - Educacion","1:1 Feed Post (5 slides)","2026-09-10","2026-09-12","2026-09-15","Diseno con paleta cromatica oficial"`,
+      `"Video Caso de Exito / Testimonial","Pilar 1 - Identidad","9:16 TikTok / Reel (60s)","2026-09-16","2026-09-18","2026-09-22","Entrevista dinamica y tomas de detalle"`,
+      `"Infografia Promo Especial","Pilar 2 - Educacion","4:5 Feed Portrait","2026-09-23","2026-09-24","2026-09-28","Copy con llamada a la accion clara"`,
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Plantilla_PreCalendario_${currentBrand?.name.replace(/\s+/g, '_') || 'NatarajaOS'}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('¡Plantilla oficial .CSV descargada con éxito!');
+  };
+
+  const handleAutoCreateSpreadsheetInVault = async () => {
+    setIsProcessing(true);
+    try {
+      const fileName = `01_Cronograma_PreCalendario_${currentBrand?.name.replace(/\s+/g, '_') || 'Marca'}.csv`;
+      const created = await createDriveFile({
+        name: fileName,
+        type: 'document',
+        brandId: selectedBrandId || brand?.id || 'brd_apex',
+        sizeFormatted: '48 KB',
+        sizeBytes: 48000,
+        mimeType: 'text/csv',
+        accountId: 'acc_default',
+        folderId: 'fld_default',
+        url: `https://drive.google.com/open?id=demo_${Date.now()}`,
+        uploadedByName: 'Nataraja Studio OS',
+      });
+      setSelectedFileId(created.id);
+      toast.success(`¡Hoja "${fileName}" creada y vinculada en el Vault de ${currentBrand?.name}!`);
+    } catch (err: any) {
+      toast.error('Error al crear hoja en el Vault: ' + (err.message || 'Error desconocido'));
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   // Generate mock parsed items based on spreadsheet or sample
   const handleProcessFile = () => {
@@ -229,14 +279,42 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
                 )}
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-200 text-blue-950 text-[11px] space-y-1">
-                <span className="font-bold block text-blue-900">⚡ Estructura de Columnas Soportada:</span>
-                <p className="text-slate-600">
-                  `Título`, `Territorio`, `Formato`, `Fecha_Rodaje`, `Fecha_Publicación`.
+              {/* Dual Action: Download Template CSV & Auto-Create in Vault */}
+              <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200 text-slate-800 space-y-2.5 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-blue-900 font-bold text-xs">
+                    <Sparkles className="w-4 h-4 text-blue-600" />
+                    <span>Plantilla Oficial de Pre-Calendario</span>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-100/80 text-blue-800 border border-blue-200">
+                    5 Columnas Requeridas
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-slate-600 leading-snug">
+                  Descarga el formato pre-estructurado con ejemplos de <strong>{currentBrand?.name}</strong> o auto-genera el archivo directamente en la carpeta de Drive de la marca.
                 </p>
-                <p className="text-slate-500 text-[10.5px]">
-                  Todos los entregables se inicializarán en <strong>1. Ideación / Brief (Pre-producción)</strong> sin bloquear fechas de rodaje en firme hasta su aprobación.
-                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleDownloadTemplate}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs border border-slate-300 shadow-2xs transition-all cursor-pointer hover:border-slate-400 active:scale-98"
+                  >
+                    <Download className="w-3.5 h-3.5 text-blue-600" />
+                    <span>📥 Descargar Plantilla .CSV</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleAutoCreateSpreadsheetInVault}
+                    disabled={isProcessing}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md shadow-blue-600/20 transition-all cursor-pointer disabled:opacity-50 active:scale-98"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>⚡ Crear Hoja en Drive Vault</span>
+                  </button>
+                </div>
               </div>
             </div>
           )}
