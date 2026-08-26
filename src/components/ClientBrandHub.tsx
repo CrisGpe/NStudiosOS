@@ -65,7 +65,7 @@ export const ClientBrandHub: React.FC = () => {
     organizations.length > 0 ? organizations : deriveOrganizationsFromBrands(brands);
 
   const isClientRole = currentUser.role === 'cliente';
-  const currentOrg = effectiveOrgs.find((o) => o.id === (isClientRole ? currentUser.clientOrganizationId : selectedOrgId)) || effectiveOrgs[0];
+  const currentOrg = effectiveOrgs.find((o) => o.id === (isClientRole ? currentUser.clientOrganizationId : selectedOrgId)) || effectiveOrgs[0] || { id: 'org_grupo_gonzales', name: 'Grupo Empresarial Gonzales', brandIds: [] };
 
   // Determine allowed brands for this user / holding
   const allowedBrands = isClientRole && currentUser.assignedBrandIds && currentUser.assignedBrandIds.length > 0
@@ -85,7 +85,7 @@ export const ClientBrandHub: React.FC = () => {
 
   const brand = brands.find((b) => b.id === activeBrandId) || allowedBrands[0] || brands[0];
   const userOrg = effectiveOrgs.find((o) => o.id === currentUser.clientOrganizationId) ||
-    effectiveOrgs.find((o) => (brand?.id && o.brandIds.includes(brand.id)) || (brand?.clientOrganizationId && o.id === brand.clientOrganizationId)) ||
+    effectiveOrgs.find((o) => (brand?.id && o.brandIds?.includes(brand.id)) || (brand?.clientOrganizationId && o.id === brand.clientOrganizationId)) ||
     currentOrg;
 
   const brandTerritories = territories.filter((t) => t.brandId === brand?.id && t.active);
@@ -161,7 +161,19 @@ export const ClientBrandHub: React.FC = () => {
     toast.success('¡Idea transformada en Entregable activo en el Pipeline!');
   };
 
-  if (!brand && allowedBrands.length === 0) {
+  if (!brand) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center space-y-4 max-w-lg mx-auto my-12 shadow-sm">
+        <Building2 className="w-12 h-12 text-indigo-500 animate-pulse mx-auto" />
+        <h2 className="text-xl font-bold text-slate-900">Cargando Espacio de Marca...</h2>
+        <p className="text-sm text-slate-500">
+          Sincronizando información de holdings y unidades de negocio.
+        </p>
+      </div>
+    );
+  }
+
+  if (allowedBrands.length === 0) {
     return (
       <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center space-y-4 max-w-lg mx-auto my-12 shadow-sm">
         <Building2 className="w-12 h-12 text-slate-400 mx-auto" />

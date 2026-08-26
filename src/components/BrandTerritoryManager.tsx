@@ -85,7 +85,7 @@ export const BrandTerritoryManager: React.FC = () => {
   const effectiveOrgs: ClientOrganization[] =
     organizations.length > 0 ? organizations : deriveOrganizationsFromBrands(brands);
 
-  const currentOrg = effectiveOrgs.find((o) => o.id === selectedOrgId) || effectiveOrgs[0];
+  const currentOrg = effectiveOrgs.find((o) => o.id === selectedOrgId) || effectiveOrgs[0] || { id: 'org_grupo_gonzales', name: 'Grupo Empresarial Gonzales', brandIds: [] };
 
   // Filter brands based on selected organization/holding
   const displayedBrands = selectedOrgId === 'all'

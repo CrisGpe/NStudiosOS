@@ -48,37 +48,41 @@ export interface BrandsContextType {
 
 const BrandsContext = createContext<BrandsContextType | undefined>(undefined);
 
-export const deriveOrganizationsFromBrands = (brandsList: Brand[]): ClientOrganization[] => {
-  if (!brandsList || brandsList.length === 0) return [];
+export const DEFAULT_CLIENT_ORGANIZATION: ClientOrganization = {
+  id: 'org_grupo_gonzales',
+  name: 'Grupo Empresarial Gonzales',
+  legalName: 'Gonzales Holdings S.A.C.',
+  contactEmail: 'contacto@gonzales.com',
+  ownerUserId: 'usr_owner_gonzales',
+  brandIds: [],
+  createdAt: '2026-01-01',
+};
 
-  const orgMap = new Map<string, { name: string; email: string; brandIds: string[] }>();
+export const deriveOrganizationsFromBrands = (brandsList: Brand[]): ClientOrganization[] => {
+  const defaultOrg: ClientOrganization = {
+    ...DEFAULT_CLIENT_ORGANIZATION,
+    brandIds: brandsList ? brandsList.map((b) => b.id) : [],
+  };
+
+  if (!brandsList || brandsList.length === 0) return [defaultOrg];
+
+  const orgMap = new Map<string, { name: string; email: string; legalName?: string; brandIds: string[] }>();
+
+  // Ensure default Grupo Empresarial Gonzales exists
+  orgMap.set(defaultOrg.id, {
+    name: defaultOrg.name,
+    email: defaultOrg.contactEmail || 'contacto@gonzales.com',
+    legalName: defaultOrg.legalName,
+    brandIds: [],
+  });
 
   brandsList.forEach((b) => {
-    let orgKey = b.clientOrganizationId;
+    let orgKey = b.clientOrganizationId || defaultOrg.id;
     let orgName = '';
-
-    if (!orgKey) {
-      const lower = (b.name || '').toLowerCase();
-      if (lower.includes('gonzales')) {
-        orgKey = 'org_grupo_gonzales';
-        orgName = 'Grupo Empresarial Gonzales';
-      } else if (lower.includes('salon') || lower.includes('gloss') || lower.includes('luxury') || lower.includes('belleza')) {
-        orgKey = 'org_holding_belleza';
-        orgName = 'Holding Belleza & Bienestar';
-      } else if (b.contactEmail) {
-        orgKey = 'org_' + b.contactEmail.replace(/[^a-zA-Z0-9]/g, '_');
-        orgName = b.name + ' (Holding)';
-      } else {
-        orgKey = 'org_' + b.id;
-        orgName = b.name + ' Group';
-      }
-    } else {
-      orgName = b.name + ' (Holding)';
-    }
 
     if (!orgMap.has(orgKey)) {
       orgMap.set(orgKey, {
-        name: orgName,
+        name: b.name + ' (Holding)',
         email: b.contactEmail || 'contacto@holding.com',
         brandIds: [b.id],
       });
@@ -93,6 +97,7 @@ export const deriveOrganizationsFromBrands = (brandsList: Brand[]): ClientOrgani
   return Array.from(orgMap.entries()).map(([id, info]) => ({
     id,
     name: info.name,
+    legalName: info.legalName,
     contactEmail: info.email,
     ownerUserId: 'usr_owner_' + id,
     brandIds: info.brandIds,
