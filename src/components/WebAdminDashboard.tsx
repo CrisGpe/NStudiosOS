@@ -72,10 +72,27 @@ export const WebAdminDashboard: React.FC = () => {
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('Nataraja2026!');
-  const [newUserRole, setNewUserRole] = useState<UserRole>('director');
-  const [newUserRoleTitle, setNewUserRoleTitle] = useState('Director Creativo & Executive Producer');
+  const [newUserRole, setNewUserRole] = useState<UserRole>('colaborador');
+  const [newUserRoleTitle, setNewUserRoleTitle] = useState('Gestor de Comunidad (Community Manager)');
+  const [newUserSpecialty, setNewUserSpecialty] = useState('Gestor de Comunidad (Community Manager)');
+  const [customSpecialty, setCustomSpecialty] = useState('');
+  const [newUserOrgId, setNewUserOrgId] = useState('');
   const [newUserBrandIds, setNewUserBrandIds] = useState<string[]>([]);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
+
+  const PREDEFINED_SPECIALTIES = [
+    'Director Creativo',
+    'Gestor de Comunidad (Community Manager)',
+    'Gestor de Redes Sociales (Social Media Manager)',
+    'Especialista en SEM (Paid Media)',
+    'Especialista en SEO',
+    'Copywriter & Estratega de Contenido',
+    'Content Creator & Filmmaker',
+    'Editor de Video & Post-Producción',
+    'Diseñador UI/UX & Gráfico',
+    'Fotógrafo / Motion Designer',
+    'custom',
+  ];
 
   // ==========================================
   // MODAL 2: CONNECT GOOGLE DRIVE ACCOUNT
@@ -126,7 +143,7 @@ export const WebAdminDashboard: React.FC = () => {
         .from('system_settings')
         .select('value')
         .eq('key', 'gemini_config')
-        .single()
+        .maybeSingle()
         .then(({ data }) => {
           if (data?.value) {
             setGeminiApiKey(data.value.api_key || '');
@@ -210,7 +227,7 @@ export const WebAdminDashboard: React.FC = () => {
     }
   };
 
-  // CREATE USER (DIRECTOR, COLABORADOR, WEBADMIN, CLIENTE)
+  // CREATE USER (DIRECTOR, EQUIPO, CLIENTE)
   const handleCreateNewUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserName || !newUserEmail || !newUserPassword) {
@@ -220,13 +237,42 @@ export const WebAdminDashboard: React.FC = () => {
 
     setIsCreatingUser(true);
     try {
+      const finalSpecialty =
+        newUserRole === 'colaborador'
+          ? newUserSpecialty === 'custom'
+            ? customSpecialty.trim() || 'Especialista'
+            : newUserSpecialty
+          : undefined;
+
+      const finalRoleTitle =
+        newUserRoleTitle.trim() ||
+        (newUserRole === 'director'
+          ? 'Director de Departamento / Productor Ejecutivo'
+          : newUserRole === 'cliente'
+          ? 'Líder de Marca / Contacto de Cliente'
+          : finalSpecialty || 'Equipo de Agencia');
+
       if (isSupabaseConfigured) {
-        await supabaseService.signUp(newUserEmail, newUserPassword, newUserName, newUserRole);
+        await supabaseService.signUp(
+          newUserEmail,
+          newUserPassword,
+          newUserName,
+          newUserRole,
+          finalRoleTitle,
+          finalSpecialty,
+          newUserOrgId || undefined,
+          newUserBrandIds
+        );
+      }
+
+      await refreshProfiles();
+      if (newUserRole === 'cliente') {
+        await refreshOrganizationsFromSupabase();
       }
 
       addAuditLog(
         'USUARIO_CREADO_POR_ADMIN',
-        `WebAdmin creó al usuario ${newUserName} con rol ${newUserRole}`,
+        `WebAdmin creó al usuario ${newUserName} con rol ${newUserRole}${finalSpecialty ? ` (Especialidad: ${finalSpecialty})` : ''}`,
         currentUser.id,
         'system',
         newUserEmail,
@@ -234,13 +280,22 @@ export const WebAdminDashboard: React.FC = () => {
         currentUser.role
       );
 
-      toast.success(`Usuario ${newUserName} (${newUserRole}) creado exitosamente en Supabase.`);
+      const roleDisplay =
+        newUserRole === 'director'
+          ? 'Director de Departamento'
+          : newUserRole === 'colaborador'
+          ? `Equipo (${finalSpecialty})`
+          : 'Cliente';
+
+      toast.success(`Usuario ${newUserName} (${roleDisplay}) registrado exitosamente.`);
       setShowCreateUserModal(false);
       setNewUserName('');
       setNewUserEmail('');
+      setCustomSpecialty('');
+      setNewUserBrandIds([]);
     } catch (err: any) {
       console.error('Error al crear usuario:', err);
-      toast.error('Error al crear usuario en Supabase: ' + (err.message || 'Error desconocido'));
+      toast.error('Error al registrar usuario: ' + (err.message || 'Error desconocido'));
     } finally {
       setIsCreatingUser(false);
     }
@@ -552,9 +607,16 @@ export const WebAdminDashboard: React.FC = () => {
                             <span className="font-bold text-slate-900 block leading-tight">
                               {u.name}
                             </span>
-                            <span className="text-slate-400 font-mono text-[10.5px]">
-                              {u.email}
-                            </span>
+                            <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                              <span className="text-slate-400 font-mono text-[10.5px]">
+                                {u.email}
+                              </span>
+                              {u.specialty && (
+                                <span className="px-1.5 py-0.2 rounded-md bg-indigo-50 text-indigo-700 text-[9.5px] font-bold border border-indigo-200">
+                                  {u.specialty}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -572,9 +634,9 @@ export const WebAdminDashboard: React.FC = () => {
                             className="px-2 py-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold"
                           >
                             <option value="webadmin">👑 WebAdmin Global</option>
-                            <option value="director">🎬 Director Creativo</option>
-                            <option value="colaborador">✂️ Colaborador Técnico</option>
-                            <option value="cliente">🏢 Cliente de Marca</option>
+                            <option value="director">🎬 Director de Departamento</option>
+                            <option value="colaborador">👥 Equipo</option>
+                            <option value="cliente">🏢 Cliente</option>
                           </select>
                         ) : (
                           <span
@@ -588,7 +650,7 @@ export const WebAdminDashboard: React.FC = () => {
                                 : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             }`}
                           >
-                            {u.role}
+                            {u.role === 'colaborador' ? 'EQUIPO' : u.role}
                           </span>
                         )}
                       </td>
@@ -1049,56 +1111,58 @@ export const WebAdminDashboard: React.FC = () => {
       </div>
 
       {/* ========================================================
-          MODAL: CREAR NUEVO USUARIO (DIRECTOR, COLABORADOR, ETC)
+          MODAL: CREAR NUEVO USUARIO (DIRECTOR, EQUIPO, CLIENTE)
           ======================================================== */}
       {showCreateUserModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 space-y-4 border border-slate-200 shadow-2xl animate-in zoom-in-95">
+          <div className="w-full max-w-lg bg-white rounded-3xl p-6 space-y-4 border border-slate-200 shadow-2xl animate-in zoom-in-95 max-h-[92vh] overflow-y-auto no-scrollbar">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                  <UserPlus className="w-4 h-4" />
+                <div className="w-9 h-9 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-xs">
+                  <UserPlus className="w-4.5 h-4.5" />
                 </div>
                 <div>
                   <h3 className="font-extrabold text-sm text-slate-900">
-                    Invitar / Crear Miembro del Equipo
+                    Invitar / Crear Usuario en Nataraja OS
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Crea credenciales de acceso para Directores, Editores o Clientes.
+                    Crea credenciales para Directores de Departamento, Equipo o Clientes.
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowCreateUserModal(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700"
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateNewUser} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Nombre Completo *</label>
-                <input
-                  type="text"
-                  value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
-                  placeholder="Ej. Valeria Benítez"
-                  required
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden"
-                />
-              </div>
+            <form onSubmit={handleCreateNewUser} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Nombre Completo *</label>
+                  <input
+                    type="text"
+                    value={newUserName}
+                    onChange={(e) => setNewUserName(e.target.value)}
+                    placeholder="Ej. Carlos Martínez"
+                    required
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:outline-hidden transition-all"
+                  />
+                </div>
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Correo Electrónico *</label>
-                <input
-                  type="email"
-                  value={newUserEmail}
-                  onChange={(e) => setNewUserEmail(e.target.value)}
-                  placeholder="valeria@cineflow.studio"
-                  required
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden"
-                />
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Correo Electrónico *</label>
+                  <input
+                    type="email"
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                    placeholder="carlos@nstudios.com"
+                    required
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:outline-hidden transition-all"
+                  />
+                </div>
               </div>
 
               <div>
@@ -1108,57 +1172,204 @@ export const WebAdminDashboard: React.FC = () => {
                   value={newUserPassword}
                   onChange={(e) => setNewUserPassword(e.target.value)}
                   required
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs focus:bg-white focus:border-indigo-500 focus:outline-hidden"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Rol RBAC *</label>
-                  <select
-                    value={newUserRole}
-                    onChange={(e) => {
-                      const r = e.target.value as UserRole;
-                      setNewUserRole(r);
-                      if (r === 'director') setNewUserRoleTitle('Director Creativo & Executive Producer');
-                      else if (r === 'colaborador') setNewUserRoleTitle('Colorista & Supervisor Post-Producción');
-                      else if (r === 'webadmin') setNewUserRoleTitle('Chief Technology Officer & WebAdmin Global');
-                      else if (r === 'cliente') setNewUserRoleTitle('Brand Lead & VP Marketing');
+              {/* Base Role Selector (3 Base Roles) */}
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">Rol Base de Permisos *</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewUserRole('director');
+                      setNewUserRoleTitle('Director de Departamento / Productor Ejecutivo');
                     }}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 font-semibold"
+                    className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                      newUserRole === 'director'
+                        ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 font-bold shadow-xs'
+                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                    }`}
                   >
-                    <option value="director">🎬 Director Creativo</option>
-                    <option value="colaborador">✂️ Colaborador Técnico</option>
-                    <option value="webadmin">👑 WebAdmin Global</option>
-                    <option value="cliente">🏢 Cliente de Marca</option>
-                  </select>
-                </div>
+                    <span className="block text-sm mb-0.5">🎬</span>
+                    <span className="font-bold text-xs block">Director</span>
+                    <span className="text-[10px] text-slate-500 block font-normal leading-tight">Dirección de depto.</span>
+                  </button>
 
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Cargo / Título</label>
-                  <input
-                    type="text"
-                    value={newUserRoleTitle}
-                    onChange={(e) => setNewUserRoleTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewUserRole('colaborador');
+                      setNewUserRoleTitle(newUserSpecialty === 'custom' ? customSpecialty || 'Especialista' : newUserSpecialty);
+                    }}
+                    className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                      newUserRole === 'colaborador'
+                        ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 font-bold shadow-xs'
+                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="block text-sm mb-0.5">👥</span>
+                    <span className="font-bold text-xs block">Equipo</span>
+                    <span className="text-[10px] text-slate-500 block font-normal leading-tight">Operativo / Creativo</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewUserRole('cliente');
+                      setNewUserRoleTitle('Líder de Marca / Contacto de Cliente');
+                    }}
+                    className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer ${
+                      newUserRole === 'cliente'
+                        ? 'border-emerald-600 bg-emerald-50/70 text-emerald-950 font-bold shadow-xs'
+                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                    }`}
+                  >
+                    <span className="block text-sm mb-0.5">🏢</span>
+                    <span className="font-bold text-xs block">Cliente</span>
+                    <span className="text-[10px] text-slate-500 block font-normal leading-tight">Holding / Marcas</span>
+                  </button>
                 </div>
+              </div>
+
+              {/* Conditional Section for EQUIPO: Specialty Tag */}
+              {newUserRole === 'colaborador' && (
+                <div className="p-3 bg-indigo-50/50 border border-indigo-200/70 rounded-2xl space-y-2.5 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-indigo-950 flex items-center gap-1.5">
+                      <span>🏷️ Especialidad del Miembro del Equipo</span>
+                    </label>
+                    <span className="text-[10px] text-indigo-700 bg-indigo-100/70 px-2 py-0.5 rounded-full font-semibold">
+                      Etiqueta Informativa
+                    </span>
+                  </div>
+
+                  <select
+                    value={newUserSpecialty}
+                    onChange={(e) => {
+                      const sp = e.target.value;
+                      setNewUserSpecialty(sp);
+                      if (sp !== 'custom') {
+                        setNewUserRoleTitle(sp);
+                      } else {
+                        setNewUserRoleTitle(customSpecialty || 'Especialista');
+                      }
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-indigo-200 bg-white text-slate-800 font-semibold focus:outline-hidden focus:border-indigo-500 cursor-pointer"
+                  >
+                    <option value="Director Creativo">🎬 Director Creativo</option>
+                    <option value="Gestor de Comunidad (Community Manager)">📱 Gestor de Comunidad (Community Manager)</option>
+                    <option value="Gestor de Redes Sociales (Social Media Manager)">🌐 Gestor de Redes Sociales (Social Media Manager)</option>
+                    <option value="Especialista en SEM (Paid Media)">📈 Especialista en SEM (Paid Media)</option>
+                    <option value="Especialista en SEO">🔍 Especialista en SEO</option>
+                    <option value="Copywriter & Estratega de Contenido">✍️ Copywriter & Estratega de Contenido</option>
+                    <option value="Content Creator & Filmmaker">🎥 Content Creator & Filmmaker</option>
+                    <option value="Editor de Video & Post-Producción">✂️ Editor de Video & Post-Producción</option>
+                    <option value="Diseñador UI/UX & Gráfico">🎨 Diseñador UI/UX & Gráfico</option>
+                    <option value="Fotógrafo / Motion Designer">📸 Fotógrafo / Motion Designer</option>
+                    <option value="custom">✨ + Otra especialidad personalizada...</option>
+                  </select>
+
+                  {newUserSpecialty === 'custom' && (
+                    <div className="pt-1 animate-in fade-in">
+                      <label className="block font-semibold text-slate-700 mb-1">Nombre de la Especialidad Personalizada</label>
+                      <input
+                        type="text"
+                        value={customSpecialty}
+                        onChange={(e) => {
+                          setCustomSpecialty(e.target.value);
+                          setNewUserRoleTitle(e.target.value);
+                        }}
+                        placeholder="Ej. Storyboarder & Conceptual Artist"
+                        className="w-full px-3 py-2 rounded-xl border border-indigo-200 bg-white text-slate-900 focus:outline-hidden focus:border-indigo-500"
+                        required
+                      />
+                    </div>
+                  )}
+
+                  <p className="text-[10.5px] text-indigo-900 leading-tight">
+                    💡 <strong>Nota del Director:</strong> La especialidad es una etiqueta informativa visible en perfiles, asignaciones y tarjetas Kanban; los permisos operativos se rigen por el rol base de Equipo.
+                  </p>
+                </div>
+              )}
+
+              {/* Conditional Section for CLIENTE: Organization & Brands */}
+              {newUserRole === 'cliente' && (
+                <div className="p-3 bg-emerald-50/60 border border-emerald-200/80 rounded-2xl space-y-2.5 animate-in fade-in">
+                  <div>
+                    <label className="block font-bold text-emerald-950 mb-1">Organización / Holding del Cliente</label>
+                    <select
+                      value={newUserOrgId}
+                      onChange={(e) => setNewUserOrgId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-emerald-200 bg-white text-slate-800 font-semibold focus:outline-hidden focus:border-emerald-600 cursor-pointer"
+                    >
+                      <option value="">Seleccionar Holding / Empresa...</option>
+                      {organizations.map((org) => (
+                        <option key={org.id} value={org.id}>
+                          {org.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-emerald-950 mb-1">Marcas con Acceso Asignado</label>
+                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 bg-white rounded-xl border border-emerald-200/80">
+                      {brands.map((b) => {
+                        const isSelected = newUserBrandIds.includes(b.id);
+                        return (
+                          <button
+                            type="button"
+                            key={b.id}
+                            onClick={() => {
+                              if (isSelected) {
+                                setNewUserBrandIds(newUserBrandIds.filter((id) => id !== b.id));
+                              } else {
+                                setNewUserBrandIds([...newUserBrandIds, b.id]);
+                              }
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs'
+                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            {b.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Title / Cargo Customization */}
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Cargo / Título Profesional</label>
+                <input
+                  type="text"
+                  value={newUserRoleTitle}
+                  onChange={(e) => setNewUserRoleTitle(e.target.value)}
+                  placeholder="Ej. Director Creativo & Lead Strategist"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-500 focus:outline-hidden"
+                />
               </div>
 
               <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowCreateUserModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={isCreatingUser}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 disabled:opacity-50 cursor-pointer transition-all active:scale-98"
                 >
-                  {isCreatingUser ? 'Creando en Supabase...' : 'Crear Usuario'}
+                  {isCreatingUser ? 'Registrando Usuario...' : 'Crear Usuario'}
                 </button>
               </div>
             </form>

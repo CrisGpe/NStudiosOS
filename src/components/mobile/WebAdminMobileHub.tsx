@@ -148,6 +148,7 @@ export const WebAdminMobileHub: React.FC = () => {
       if (isSupabaseConfigured) {
         await supabaseService.signUp(newUserEmail, newUserPassword, newUserName, newUserRole);
       }
+      await refreshProfiles();
 
       addAuditLog(
         'USUARIO_CREADO_POR_ADMIN',
@@ -826,16 +827,15 @@ export const WebAdminMobileHub: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Rol *</label>
+                  <label className="font-bold text-slate-700 block mb-1">Rol Base *</label>
                   <select
                     value={newUserRole}
                     onChange={(e) => setNewUserRole(e.target.value as UserRole)}
                     className="w-full p-2 border rounded-xl bg-slate-50 font-semibold"
                   >
-                    <option value="director">🎬 Director Creativo</option>
-                    <option value="colaborador">✂️ Colaborador Técnico</option>
-                    <option value="webadmin">👑 WebAdmin Global</option>
-                    <option value="cliente">🏢 Cliente de Marca</option>
+                    <option value="director">🎬 Director de Departamento</option>
+                    <option value="colaborador">👥 Equipo (Colaborador / Especialista)</option>
+                    <option value="cliente">🏢 Cliente</option>
                   </select>
                 </div>
 

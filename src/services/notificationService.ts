@@ -26,7 +26,7 @@ export const notificationService = {
           .from('system_settings')
           .select('value')
           .eq('key', 'notification_webhook')
-          .single();
+          .maybeSingle();
 
         if (data && !error && data.value) {
           return {

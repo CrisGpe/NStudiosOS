@@ -52,6 +52,8 @@ export interface UserProfile {
   clientRole?: 'holding_admin' | 'team_member'; // Nivel de autoridad dentro del cliente
   clientPermissionsMatrix?: Record<string, ClientBrandPermission>; // Matriz granular por Marca
   quotaSlot?: string; // e.g. "Cupo 1/2 Colaborador Demo"
+  specialty?: string; // Especialidad / Etiqueta informativa para usuarios de Equipo (e.g. "Community Manager", "Copywriter", etc.)
+  specialties?: string[]; // Lista de especialidades o tags
   preferences?: UserPreferences;
   schedule?: CollaboratorSchedule;
 }

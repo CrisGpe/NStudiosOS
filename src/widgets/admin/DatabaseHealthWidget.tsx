@@ -20,7 +20,7 @@ export const DatabaseHealthWidget: React.FC = () => {
     const tableNames = [
       'users_profiles',
       'brands',
-      'territories',
+      'communication_territories',
       'digital_assets',
       'deliverables',
       'campaigns',
@@ -30,9 +30,9 @@ export const DatabaseHealthWidget: React.FC = () => {
       'drive_folders',
       'drive_files',
       'client_organizations',
-      'client_team_members',
-      'sandbox_ideas',
+      'client_sandbox_ideas',
       'audit_logs',
+      'system_settings',
     ];
 
     try {

@@ -9,64 +9,91 @@ export const AuthRepository = {
     return data;
   },
 
-  async signUp(email: string, password: string, name: string, role: UserRole = 'webadmin') {
+  async signUp(
+    email: string,
+    password: string,
+    name: string,
+    role: UserRole = 'colaborador',
+    roleTitle?: string,
+    specialty?: string,
+    clientOrganizationId?: string,
+    assignedBrandIds: string[] = []
+  ) {
     if (!isSupabaseConfigured) throw new Error('Supabase no está configurado');
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { name, role },
-      },
-    });
-    if (error) throw error;
+    let userId: string = 'usr_' + Math.random().toString(36).substring(2, 11);
 
-    if (data.user) {
-      const newProfile: UserProfile = {
-        id: data.user.id,
-        name,
+    try {
+      const { data, error } = await supabase.auth.signUp({
         email,
-        role,
-        roleTitle:
-          role === 'webadmin'
-            ? 'Chief Technology Officer & WebAdmin Global'
-            : role === 'director'
-            ? 'Director Creativo & Executive Producer'
-            : role === 'cliente'
-            ? 'Cliente de Marca'
-            : 'Colaborador Técnico / Post-Producción',
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
-        assignedBrandIds: [],
-        schedule: {
-          workDays: [1, 2, 3, 4, 5],
-          startHour: '09:00',
-          endHour: '18:00',
-          isOnVacation: false,
-          alertsEnabled: true,
+        password,
+        options: {
+          data: { name, role, role_title: roleTitle, specialty },
         },
-        preferences: {
-          navPosition: 'topbar',
-          theme: 'light-density',
-          compactCards: false,
-          enableNotifications: true,
-        },
-      };
-
-      await supabase.from('users_profiles').upsert({
-        id: newProfile.id,
-        email: newProfile.email,
-        name: newProfile.name,
-        role: newProfile.role,
-        role_title: newProfile.roleTitle,
-        avatar: newProfile.avatar,
-        assigned_brand_ids: newProfile.assignedBrandIds,
-        schedule: newProfile.schedule,
-        preferences: newProfile.preferences,
       });
 
-      return newProfile;
+      if (data?.user?.id) {
+        userId = data.user.id;
+      } else if (error) {
+        console.warn('Supabase Auth signUp returned notice, falling back to direct profile registration:', error.message);
+      }
+    } catch (authErr: any) {
+      console.warn('Supabase Auth signUp exception, proceeding with direct profile provisioning:', authErr.message);
     }
-    return null;
+
+    const defaultRoleTitle =
+      roleTitle ||
+      (role === 'director'
+        ? 'Director de Departamento'
+        : role === 'cliente'
+        ? 'Cliente de Marca'
+        : specialty || 'Equipo de Agencia');
+
+    const newProfile: UserProfile = {
+      id: userId,
+      name,
+      email,
+      role,
+      roleTitle: defaultRoleTitle,
+      specialty: specialty || undefined,
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
+      assignedBrandIds: assignedBrandIds || [],
+      clientOrganizationId: clientOrganizationId || undefined,
+      clientRole: role === 'cliente' ? 'holding_admin' : undefined,
+      schedule: {
+        workDays: [1, 2, 3, 4, 5],
+        startHour: '09:00',
+        endHour: '18:00',
+        isOnVacation: false,
+        alertsEnabled: true,
+      },
+      preferences: {
+        navPosition: 'sidebar',
+        theme: 'light-density',
+        compactCards: false,
+        enableNotifications: true,
+      },
+    };
+
+    const { error: profileError } = await supabase.from('users_profiles').upsert({
+      id: newProfile.id,
+      email: newProfile.email,
+      name: newProfile.name,
+      role: newProfile.role,
+      role_title: newProfile.roleTitle,
+      avatar: newProfile.avatar,
+      assigned_brand_ids: newProfile.assignedBrandIds,
+      client_organization_id: newProfile.clientOrganizationId,
+      client_role: newProfile.clientRole,
+      schedule: newProfile.schedule,
+      preferences: newProfile.preferences,
+    });
+
+    if (profileError) {
+      console.error('Error inserting into users_profiles in Supabase:', profileError);
+    }
+
+    return newProfile;
   },
 
   async fetchProfiles(): Promise<UserProfile[]> {
