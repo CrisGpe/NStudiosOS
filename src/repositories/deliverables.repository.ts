@@ -81,7 +81,7 @@ function mapPriorityFromDB(dbPriority: string): 'low' | 'medium' | 'high' | 'urg
 }
 
 export const DeliverablesRepository = {
-  async fetchDeliverables(): Promise<Deliverable[]> {
+    async fetchDeliverables(): Promise<Deliverable[]> {
     if (!isSupabaseConfigured) return [];
     try {
       const { data, error } = await supabase.from('deliverables').select('*');
@@ -96,16 +96,16 @@ export const DeliverablesRepository = {
         campaignId: row.campaign_id,
         assigneeId: row.assignee_id,
         phase: mapPhaseFromDB(row.phase),
-        deliverableType: row.deliverable_type || 'audiovisual',
+        deliverableType: row.process_type === 'graphic' ? 'graphic' : 'audiovisual',
         priority: mapPriorityFromDB(row.priority),
         format: row.format || '9:16 UHD',
         conceptHook: row.concept_hook,
-        description: row.description || '',
-        productionStartDate: row.production_start_date || new Date().toISOString().split('T')[0],
-        productionEndDate: row.production_end_date || new Date().toISOString().split('T')[0],
+        description: row.brief || row.description || '',
+        productionStartDate: row.shooting_date || row.production_start_date || new Date().toISOString().split('T')[0],
+        productionEndDate: row.production_end_date || row.shooting_date || new Date().toISOString().split('T')[0],
         publishDate: row.publish_date || new Date().toISOString().split('T')[0],
         equipmentReservedIds: row.equipment_reserved_ids || [],
-        technicalGuide: row.technical_guide || {
+        technicalGuide: row.tech_guide || row.technical_guide || {
           aspectRatios: ['9:16'],
           frameRate: '24fps',
           colorSpace: 'Rec.709',
@@ -130,39 +130,33 @@ export const DeliverablesRepository = {
     }
   },
 
-  async createDeliverable(deliverable: Deliverable): Promise<Deliverable> {
+    async createDeliverable(deliverable: Deliverable): Promise<Deliverable> {
     if (!isSupabaseConfigured) return deliverable;
 
-    const { error } = await supabase.from('deliverables').insert({
+    const payload = {
       id: deliverable.id,
-      code: deliverable.code,
-      title: deliverable.title,
+      code: deliverable.code || 'DEL-' + Date.now().toString().slice(-4),
       brand_id: deliverable.brandId,
-      territory_id: deliverable.territoryId,
-      campaign_id: deliverable.campaignId,
-      assignee_id: deliverable.assigneeId,
+      campaign_id: deliverable.campaignId || null,
+      territory_id: deliverable.territoryId || null,
+      title: deliverable.title,
+      brief: deliverable.description || (deliverable as any).scriptText || '',
+      format: deliverable.format || '16:9 4K',
       phase: mapPhaseToDB(deliverable.phase),
-      deliverable_type: deliverable.deliverableType,
       priority: mapPriorityToDB(deliverable.priority),
-      format: deliverable.format,
-      concept_hook: deliverable.conceptHook,
-      description: deliverable.description,
-      production_start_date: deliverable.productionStartDate,
-      production_end_date: deliverable.productionEndDate,
-      publish_date: deliverable.publishDate,
-      equipment_reserved_ids: deliverable.equipmentReservedIds,
-      technical_guide: deliverable.technicalGuide,
-      assets_linked: deliverable.assetsLinked,
-      change_requests: deliverable.changeRequests,
-      client_approved: deliverable.clientApproved,
-      director_approved: deliverable.directorApproved,
-      drive_folder_id: deliverable.driveFolderId,
-      drive_files_count: deliverable.driveFilesCount,
-      first_delivery_drive_url: deliverable.firstDeliveryDriveUrl,
-      created_at: deliverable.createdAt,
-      updated_at: deliverable.updatedAt,
-    });
-    if (error) console.error('Error inserting deliverable to Supabase:', error);
+      shooting_date: deliverable.productionStartDate || null,
+      publish_date: deliverable.publishDate || null,
+      process_type: deliverable.deliverableType === 'graphic' ? 'graphic' : 'audiovisual',
+      tech_guide: deliverable.technicalGuide || {},
+      change_requests: deliverable.changeRequests || [],
+    };
+
+    try {
+      const { error } = await supabase.from('deliverables').insert(payload);
+      if (error) console.warn('Supabase insert deliverable notice:', error.message);
+    } catch (err) {
+      console.warn('Supabase insert deliverable catch:', err);
+    }
     return deliverable;
   },
 

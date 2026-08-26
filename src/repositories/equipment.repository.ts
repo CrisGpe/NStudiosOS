@@ -3,7 +3,7 @@ import { HardwareEquipment, EquipmentReservation, EquipmentCategory, EquipmentSt
 
 export const EquipmentRepository = {
   // EQUIPMENT
-  async fetchEquipment(): Promise<HardwareEquipment[]> {
+    async fetchEquipment(): Promise<HardwareEquipment[]> {
     if (!isSupabaseConfigured) return [];
     try {
       const { data, error } = await supabase.from('hardware_equipment').select('*');
@@ -13,12 +13,12 @@ export const EquipmentRepository = {
         id: row.id,
         name: row.name,
         category: row.category as EquipmentCategory,
-        model: row.model,
+        model: row.model || row.name,
         serialNumber: row.serial_number,
         status: row.status as EquipmentStatus,
-        specs: row.specs,
-        dailyRateUSD: Number(row.daily_rate_usd) || 0,
-        image: row.image,
+        specs: row.specs || {},
+        dailyRateUSD: row.daily_rate_cents ? Math.round(Number(row.daily_rate_cents) / 100) : (Number(row.daily_rate_usd) || 0),
+        image: row.image || 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=400',
         currentReservationId: row.current_reservation_id,
       }));
     } catch {
@@ -26,22 +26,22 @@ export const EquipmentRepository = {
     }
   },
 
-  async createEquipment(item: HardwareEquipment): Promise<HardwareEquipment> {
+    async createEquipment(item: HardwareEquipment): Promise<HardwareEquipment> {
     if (!isSupabaseConfigured) return item;
 
-    const { error } = await supabase.from('hardware_equipment').insert({
-      id: item.id,
-      name: item.name,
-      category: item.category,
-      model: item.model,
-      serial_number: item.serialNumber,
-      status: item.status,
-      specs: item.specs,
-      daily_rate_usd: item.dailyRateUSD,
-      image: item.image,
-      current_reservation_id: item.currentReservationId,
-    });
-    if (error) console.error('Error inserting hardware equipment in Supabase:', error);
+    try {
+      const { error } = await supabase.from('hardware_equipment').insert({
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        status: item.status,
+        serial_number: item.serialNumber,
+        daily_rate_cents: (item.dailyRateUSD || 0) * 100,
+      });
+      if (error) console.warn('Supabase insert equipment notice:', error.message);
+    } catch (err) {
+      console.warn('Supabase insert equipment catch:', err);
+    }
     return item;
   },
 
