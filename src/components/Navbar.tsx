@@ -61,78 +61,118 @@ export const Navbar: React.FC = () => {
   const navItems: {
     id: any;
     label: string;
-    icon: React.ReactNode;
     roles: UserRole[];
     badge?: number;
   }[] = [
     {
       id: 'kanban',
       label: 'Tablero Kanban',
-      icon: <Layers className="w-3.5 h-3.5 text-indigo-600" />,
       roles: ['webadmin', 'director', 'colaborador', 'cliente'],
       badge: deliverables.filter((d) => selectedBrandId === 'all' || d.brandId === selectedBrandId).length,
     },
     {
       id: 'brand_hub',
       label: currentUser.role === 'cliente' ? 'Mi Marca & Sandbox' : 'Sandbox de Marca',
-      icon: <Sparkles className="w-3.5 h-3.5 text-purple-600" />,
       roles: ['webadmin', 'director', 'colaborador', 'cliente'],
       badge: sandboxIdeas.filter((i) => selectedBrandId === 'all' || i.brandId === selectedBrandId).length,
     },
     {
       id: 'calendar',
       label: 'Calendarios',
-      icon: <Calendar className="w-3.5 h-3.5 text-blue-600" />,
       roles: ['webadmin', 'director', 'colaborador', 'cliente'],
     },
     {
       id: 'campaigns',
       label: 'Campañas',
-      icon: <Target className="w-3.5 h-3.5 text-rose-600" />,
       roles: ['webadmin', 'director', 'colaborador', 'cliente'],
       badge: campaigns.filter((c) => selectedBrandId === 'all' || c.brandId === selectedBrandId).length,
     },
     {
       id: 'drive',
       label: 'Drive Vault & Media',
-      icon: <HardDrive className="w-3.5 h-3.5 text-cyan-600" />,
       roles: ['webadmin', 'director', 'colaborador', 'cliente'],
       badge: driveFiles.filter((f) => selectedBrandId === 'all' || f.brandId === selectedBrandId).length,
     },
     {
       id: 'brands',
       label: 'Marcas & Territorios',
-      icon: <Building2 className="w-3.5 h-3.5 text-amber-600" />,
       roles: ['webadmin', 'director'],
     },
     {
       id: 'equipment',
       label: 'Hardware & Equipos',
-      icon: <Camera className="w-3.5 h-3.5 text-teal-600" />,
       roles: ['webadmin', 'director', 'colaborador'],
     },
     {
       id: 'specs',
       label: 'System Specs & ERD',
-      icon: <FileCode className="w-3.5 h-3.5 text-emerald-600" />,
       roles: ['webadmin', 'director'],
     },
     {
       id: 'operations',
       label: 'Dirección & Operaciones',
-      icon: <Compass className="w-3.5 h-3.5 text-indigo-600" />,
       roles: ['director', 'webadmin'],
     },
     {
       id: 'admin',
-      label: 'WebAdmin Dashboard',
-      icon: <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />,
+      label: 'WebAdmin Panel',
       roles: ['webadmin'],
     },
   ];
 
   const allowedNavItems = navItems.filter((item) => item.roles.includes(currentUser.role));
   const invalidBrands = brands.filter((b) => !validateBrandTerritories(b.id).isValid);
+
+  const renderNavIcon = (id: string, isActive: boolean) => {
+    const iconClass = `w-3.5 h-3.5 transition-colors ${
+      isActive
+        ? 'text-white'
+        : id === 'kanban'
+        ? 'text-indigo-600'
+        : id === 'brand_hub'
+        ? 'text-purple-600'
+        : id === 'calendar'
+        ? 'text-blue-600'
+        : id === 'campaigns'
+        ? 'text-rose-600'
+        : id === 'drive'
+        ? 'text-cyan-600'
+        : id === 'brands'
+        ? 'text-amber-600'
+        : id === 'equipment'
+        ? 'text-teal-600'
+        : id === 'specs'
+        ? 'text-emerald-600'
+        : id === 'operations'
+        ? 'text-indigo-600'
+        : 'text-purple-600'
+    }`;
+
+    switch (id) {
+      case 'kanban':
+        return <Layers className={iconClass} />;
+      case 'brand_hub':
+        return <Sparkles className={iconClass} />;
+      case 'calendar':
+        return <Calendar className={iconClass} />;
+      case 'campaigns':
+        return <Target className={iconClass} />;
+      case 'drive':
+        return <HardDrive className={iconClass} />;
+      case 'brands':
+        return <Building2 className={iconClass} />;
+      case 'equipment':
+        return <Camera className={iconClass} />;
+      case 'specs':
+        return <FileCode className={iconClass} />;
+      case 'operations':
+        return <Compass className={iconClass} />;
+      case 'admin':
+        return <ShieldCheck className={iconClass} />;
+      default:
+        return <Layers className={iconClass} />;
+    }
+  };
 
   const getRoleBadgeColor = (role: UserRole) => {
     switch (role) {
@@ -397,7 +437,7 @@ export const Navbar: React.FC = () => {
                     : 'bg-white/60 hover:bg-white text-slate-600 hover:text-slate-900 border border-slate-200/70 shadow-[0_2px_6px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1),inset_0_-1px_2px_rgba(0,0,0,0.02)]'
                 }`}
               >
-                {item.icon}
+                {renderNavIcon(item.id, isActive)}
                 <span>{item.label}</span>
                 {item.badge !== undefined && item.badge > 0 && (
                   <span

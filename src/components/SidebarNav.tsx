@@ -44,75 +44,118 @@ export const SidebarNav: React.FC = () => {
 
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const navItems: { id: AppTab; label: string; icon: React.ReactNode; roles: UserRole[]; badge?: number }[] = [
+  const navItems: { id: AppTab; label: string; roles: UserRole[]; badge?: number }[] = [
     {
       id: 'kanban',
       label: 'Pipeline Kanban',
-      icon: <Layers className="w-4 h-4 text-indigo-600" />,
       roles: ['webadmin', 'director', 'colaborador', 'cliente'],
       badge: deliverables.filter((d) => selectedBrandId === 'all' || d.brandId === selectedBrandId).length,
     },
     {
       id: 'brand_hub',
       label: currentUser.role === 'cliente' ? 'Mi Marca & Sandbox' : 'Sandbox de Marca',
-      icon: <Sparkles className="w-4 h-4 text-purple-600" />,
       roles: ['webadmin', 'director', 'colaborador', 'cliente'],
       badge: sandboxIdeas.filter((i) => selectedBrandId === 'all' || i.brandId === selectedBrandId).length,
     },
     {
       id: 'calendar',
       label: 'Calendarios Duales',
-      icon: <Calendar className="w-4 h-4 text-blue-600" />,
       roles: ['webadmin', 'director', 'colaborador', 'cliente'],
     },
     {
       id: 'campaigns',
       label: 'Campañas',
-      icon: <Target className="w-4 h-4 text-rose-600" />,
       roles: ['webadmin', 'director', 'colaborador', 'cliente'],
       badge: campaigns.filter((c) => selectedBrandId === 'all' || c.brandId === selectedBrandId).length,
     },
     {
       id: 'drive',
       label: 'Drive Vault & Media',
-      icon: <HardDrive className="w-4 h-4 text-cyan-600" />,
       roles: ['webadmin', 'director', 'colaborador', 'cliente'],
       badge: driveFiles.filter((f) => selectedBrandId === 'all' || f.brandId === selectedBrandId).length,
     },
     {
       id: 'brands',
       label: 'Marcas & Territorios',
-      icon: <Building2 className="w-4 h-4 text-amber-600" />,
       roles: ['webadmin', 'director'],
     },
     {
       id: 'equipment',
       label: 'Hardware & Equipos',
-      icon: <Camera className="w-4 h-4 text-teal-600" />,
       roles: ['webadmin', 'director', 'colaborador'],
     },
     {
       id: 'specs',
       label: 'System Specs Hub',
-      icon: <FileCode className="w-4 h-4 text-emerald-600" />,
       roles: ['webadmin', 'director'],
     },
     {
       id: 'operations',
       label: 'Dirección & Operaciones',
-      icon: <Compass className="w-4 h-4 text-indigo-600" />,
       roles: ['director', 'webadmin'],
     },
     {
       id: 'admin',
       label: 'WebAdmin Dashboard',
-      icon: <ShieldCheck className="w-4 h-4 text-purple-600" />,
       roles: ['webadmin'],
     },
   ];
 
   const allowedNavItems = navItems.filter((item) => item.roles.includes(currentUser.role));
-  const invalidBrands = brands.filter((b) => !validateBrandTerritories(b.id).isValid);  return (
+  const invalidBrands = brands.filter((b) => !validateBrandTerritories(b.id).isValid);
+
+  const renderNavIcon = (id: AppTab, isActive: boolean) => {
+    const iconClass = `w-4 h-4 transition-colors ${
+      isActive
+        ? 'text-white'
+        : id === 'kanban'
+        ? 'text-indigo-600'
+        : id === 'brand_hub'
+        ? 'text-purple-600'
+        : id === 'calendar'
+        ? 'text-blue-600'
+        : id === 'campaigns'
+        ? 'text-rose-600'
+        : id === 'drive'
+        ? 'text-cyan-600'
+        : id === 'brands'
+        ? 'text-amber-600'
+        : id === 'equipment'
+        ? 'text-teal-600'
+        : id === 'specs'
+        ? 'text-emerald-600'
+        : id === 'operations'
+        ? 'text-indigo-600'
+        : 'text-purple-600'
+    }`;
+
+    switch (id) {
+      case 'kanban':
+        return <Layers className={iconClass} />;
+      case 'brand_hub':
+        return <Sparkles className={iconClass} />;
+      case 'calendar':
+        return <Calendar className={iconClass} />;
+      case 'campaigns':
+        return <Target className={iconClass} />;
+      case 'drive':
+        return <HardDrive className={iconClass} />;
+      case 'brands':
+        return <Building2 className={iconClass} />;
+      case 'equipment':
+        return <Camera className={iconClass} />;
+      case 'specs':
+        return <FileCode className={iconClass} />;
+      case 'operations':
+        return <Compass className={iconClass} />;
+      case 'admin':
+        return <ShieldCheck className={iconClass} />;
+      default:
+        return <Layers className={iconClass} />;
+    }
+  };
+
+  return (
     <aside
       className={`h-screen sticky top-0 bg-gradient-to-b from-white/95 via-slate-50/90 to-white/95 backdrop-blur-2xl border-r border-white/80 flex flex-col justify-between transition-all duration-200 z-40 shrink-0 select-none shadow-[10px_0_30px_-10px_rgba(0,0,0,0.06),inset_-2px_0_4px_rgba(255,255,255,0.9)] ${
         isCollapsed ? 'w-18' : 'w-64'
@@ -191,14 +234,23 @@ export const SidebarNav: React.FC = () => {
                     navigate(`/${item.id}`);
                   }
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-semibold transition-all cursor-pointer ${
+                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-2xl text-xs transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 text-white font-bold shadow-[0_8px_20px_rgba(79,70,229,0.35),inset_0_2px_4px_rgba(255,255,255,0.35),inset_0_-2px_4px_rgba(0,0,0,0.2)] border border-indigo-400/40 scale-[1.02]'
-                    : 'bg-white/70 hover:bg-white text-slate-700 hover:text-slate-950 font-semibold shadow-[0_3px_8px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1),inset_0_-1px_2px_rgba(0,0,0,0.02)] border border-slate-200/70 hover:border-slate-300/80 hover:shadow-[0_4px_12px_rgba(0,0,0,0.05),inset_0_1px_2px_rgba(255,255,255,1)] hover:scale-[1.01]'
+                    ? 'bg-gradient-to-r from-indigo-600 via-indigo-600 to-purple-600 text-white font-extrabold shadow-[0_8px_20px_rgba(79,70,229,0.35),inset_0_2px_4px_rgba(255,255,255,0.35),inset_0_-2px_4px_rgba(0,0,0,0.2)] border border-indigo-400/40 scale-[1.02]'
+                    : 'bg-white/70 hover:bg-white text-slate-700 hover:text-slate-950 font-bold shadow-[0_3px_8px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1),inset_0_-1px_2px_rgba(0,0,0,0.02)] border border-slate-200/70 hover:border-slate-300/80 hover:shadow-[0_4px_12px_rgba(0,0,0,0.05),inset_0_1px_2px_rgba(255,255,255,1)] hover:scale-[1.01]'
                 } ${isCollapsed ? 'justify-center px-0' : ''}`}
                 title={item.label}
               >
-                <div className={`shrink-0 ${isActive ? 'text-white drop-shadow-xs' : ''}`}>{item.icon}</div>
+                <div
+                  className={`shrink-0 w-7 h-7 rounded-xl flex items-center justify-center transition-all ${
+                    isActive
+                      ? 'bg-white/25 text-white shadow-[inset_0_1px_2px_rgba(255,255,255,0.4),0_2px_4px_rgba(0,0,0,0.15)] ring-1 ring-white/30'
+                      : 'bg-slate-100/80 shadow-[inset_0_1px_1px_rgba(0,0,0,0.04)]'
+                  }`}
+                >
+                  {renderNavIcon(item.id, isActive)}
+                </div>
+
                 {!isCollapsed && (
                   <div className="flex-1 flex items-center justify-between min-w-0">
                     <span className="truncate">{item.label}</span>
