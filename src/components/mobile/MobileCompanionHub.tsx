@@ -57,7 +57,7 @@ export const MobileCompanionHub: React.FC = () => {
   const activeBrandId =
     selectedBrandId !== 'all' && allowedBrands.some((b) => b.id === selectedBrandId)
       ? selectedBrandId
-      : (allowedBrands[0]?.id || brands[0]?.id || 'brd_apex');
+      : (allowedBrands[0]?.id || brands[0]?.id || brands[0]?.id || '');
 
   const brand = brands.find((b) => b.id === activeBrandId) || allowedBrands[0] || fallbackBrand;
   const brandTerritories = territories.filter((t) => t.brandId === brand.id && t.active);

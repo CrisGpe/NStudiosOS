@@ -47,8 +47,8 @@ export const ClientBrandHub: React.FC = () => {
   const isClientRole = currentUser.role === 'cliente';
   const currentOrg = effectiveOrgs.find((o) => o.id === (isClientRole ? currentUser.clientOrganizationId : selectedOrgId)) || effectiveOrgs[0] || { id: 'org_grupo_gonzales', name: 'Grupo Empresarial Gonzales', brandIds: [] };
 
-  // Determine allowed brands for this user / holding
-  const allowedBrands = isClientRole && currentUser.assignedBrandIds && currentUser.assignedBrandIds.length > 0
+  // Determine allowed brands for this user / holding (with strict deduplication)
+  const rawAllowedBrands = isClientRole && currentUser.assignedBrandIds && currentUser.assignedBrandIds.length > 0
     ? brands.filter((b) => currentUser.assignedBrandIds!.includes(b.id))
     : isClientRole && currentUser.clientOrganizationId
     ? brands.filter((b) => b.clientOrganizationId === currentUser.clientOrganizationId || (currentOrg?.brandIds || []).includes(b.id))
@@ -58,10 +58,22 @@ export const ClientBrandHub: React.FC = () => {
         ? brands.filter((b) => b.clientOrganizationId === selectedOrgId || (currentOrg?.brandIds || []).includes(b.id))
         : brands));
 
+  const seenIds = new Set<string>();
+  const seenNames = new Set<string>();
+  const allowedBrands = rawAllowedBrands.filter((b) => {
+    if (!b || !b.id || !b.name) return false;
+    if (b.id.startsWith('brd_')) return false;
+    const norm = b.name.trim().toLowerCase();
+    if (seenIds.has(b.id) || seenNames.has(norm)) return false;
+    seenIds.add(b.id);
+    seenNames.add(norm);
+    return true;
+  });
+
   // Active brand resolution
   const activeBrandId = (selectedBrandId && selectedBrandId !== 'all' && allowedBrands.some((b) => b.id === selectedBrandId))
     ? selectedBrandId
-    : (allowedBrands[0]?.id || brands[0]?.id || 'brd_apex');
+    : (allowedBrands[0]?.id || brands[0]?.id || brands[0]?.id || '');
 
   const brand = brands.find((b) => b.id === activeBrandId) || allowedBrands[0] || brands[0];
   const userOrg = effectiveOrgs.find((o) => o.id === currentUser.clientOrganizationId) ||

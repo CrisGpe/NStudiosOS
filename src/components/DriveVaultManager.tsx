@@ -38,9 +38,9 @@ export const DriveVaultManager: React.FC = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isNewFolderModalOpen, setIsNewFolderModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
-  const [newFolderBrandId, setNewFolderBrandId] = useState(selectedBrandId !== 'all' ? selectedBrandId : brands[0]?.id || 'brd_apex');
+  const [newFolderBrandId, setNewFolderBrandId] = useState(selectedBrandId !== 'all' ? selectedBrandId : brands[0]?.id || brands[0]?.id || '');
   const [uploadFileName, setUploadFileName] = useState('');
-  const [uploadBrandId, setUploadBrandId] = useState(selectedBrandId !== 'all' ? selectedBrandId : brands[0]?.id || 'brd_apex');
+  const [uploadBrandId, setUploadBrandId] = useState(selectedBrandId !== 'all' ? selectedBrandId : brands[0]?.id || brands[0]?.id || '');
   const [uploadFileType, setUploadFileType] = useState<DriveFileType>('video');
   const [uploadFileSize, setUploadFileSize] = useState('250 MB');
   const [uploadFileUrl, setUploadFileUrl] = useState('');
@@ -172,7 +172,7 @@ export const DriveVaultManager: React.FC = () => {
     createDriveFile({
       name: uploadFileName,
       type: uploadFileType,
-      brandId: uploadBrandId || (brands && brands[0]?.id) || 'brd_apex',
+      brandId: uploadBrandId || (brands && brands[0]?.id) || brands[0]?.id || '',
       folderId: currentFolderId || 'fld_root',
       sizeFormatted: uploadFileSize || '150 MB',
       sizeBytes: 150000000,
@@ -195,7 +195,7 @@ export const DriveVaultManager: React.FC = () => {
     createDriveFolder({
       name: newFolderName,
       accountId: currentAccount.id,
-      brandId: newFolderBrandId || (currentFolder?.brandId) || (brands && brands[0]?.id) || 'brd_apex',
+      brandId: newFolderBrandId || (currentFolder?.brandId) || (brands && brands[0]?.id) || brands[0]?.id || '',
       parentFolderId: currentFolderId || undefined,
       path: currentFolder ? `${currentFolder.path}/${newFolderName}` : `/${newFolderName}`,
     });

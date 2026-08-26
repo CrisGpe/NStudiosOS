@@ -109,7 +109,8 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [brands, setBrands] = useState<Brand[]>(() => {
     try {
       const saved = localStorage.getItem('nataraja_brands');
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      return Array.isArray(parsed) ? parsed.filter((b: any) => !b?.id?.startsWith('brd_')) : [];
     } catch {
       return [];
     }
@@ -171,8 +172,26 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         BrandsRepository.fetchDigitalAssets(),
       ]);
 
-      const effectiveBrands = dbBrands && dbBrands.length > 0 ? dbBrands : brands;
+      const dedupeBrands = (list: Brand[]) => {
+        const seenIds = new Set<string>();
+        const seenNames = new Set<string>();
+        return list.filter((b) => {
+          if (!b || !b.id || !b.name) return false;
+          if (b.id.startsWith('brd_')) return false;
+          const norm = b.name.trim().toLowerCase();
+          if (seenIds.has(b.id) || seenNames.has(norm)) return false;
+          seenIds.add(b.id);
+          seenNames.add(norm);
+          return true;
+        });
+      };
+
+      const rawBrands = dbBrands && dbBrands.length > 0 ? dbBrands : brands;
+      const effectiveBrands = dedupeBrands(rawBrands);
       setBrands(effectiveBrands);
+      try {
+        localStorage.setItem('nataraja_brands', JSON.stringify(effectiveBrands));
+      } catch {}
 
       if (effectiveBrands && effectiveBrands.length > 0) {
         if (!selectedBrandId || !effectiveBrands.some((b) => b.id === selectedBrandId)) {

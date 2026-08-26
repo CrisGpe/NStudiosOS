@@ -35,9 +35,9 @@ export const CampaignManager: React.FC = () => {
     return matchesStatus && matchesType && matchesSearch;
   });
 
-  const totalBudget = filteredCampaigns.reduce((acc, c) => acc + c.budgetUSD, 0);
-  const totalAdSpend = filteredCampaigns.reduce((acc, c) => acc + (c.adSpendUSD || 0), 0);
-  const totalSpent = filteredCampaigns.reduce((acc, c) => acc + (c.spentUSD || 0), 0);
+  const totalBudget = filteredCampaigns.reduce((acc, c) => acc + (Number(c.budgetUSD) || 0), 0);
+  const totalAdSpend = filteredCampaigns.reduce((acc, c) => acc + (Number(c.adSpendUSD) || 0), 0);
+  const totalSpent = filteredCampaigns.reduce((acc, c) => acc + (Number(c.spentUSD) || 0), 0);
   const totalLinkedDeliverables = filteredCampaigns.reduce(
     (acc, c) => acc + (c.deliverableIds?.length || 0),
     0
@@ -136,10 +136,10 @@ export const CampaignManager: React.FC = () => {
               Presupuesto Total (S/.)
             </span>
             <div className="text-xl font-extrabold text-slate-900 font-mono mt-1">
-              S/. {totalBudget.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              S/. {(Number(totalBudget) || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <span className="text-[10.5px] text-slate-500 font-mono mt-0.5 block">
-              Ejecutado: S/. {totalSpent.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0}%)
+              Ejecutado: S/. {(Number(totalSpent) || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0}%)
             </span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-2xs shrink-0">
@@ -153,7 +153,7 @@ export const CampaignManager: React.FC = () => {
               Inversión en Pauta (Ad Spend)
             </span>
             <div className="text-xl font-extrabold text-rose-600 font-mono mt-1">
-              S/. {totalAdSpend.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              S/. {(Number(totalAdSpend) || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <span className="text-[10.5px] text-slate-500 mt-0.5 block">
               Meta Ads • Google • TikTok
@@ -315,14 +315,14 @@ export const CampaignManager: React.FC = () => {
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-2xs">
                     <span className="text-slate-500 text-[9.5px] block font-medium">Presupuesto Total</span>
                     <span className="font-mono font-bold text-slate-900 text-xs mt-0.5 block">
-                      S/. {camp.budgetUSD.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      S/. {(Number(camp.budgetUSD) || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
 
                   <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 shadow-2xs">
                     <span className="text-slate-500 text-[9.5px] block font-medium">Pauta (Ad Spend)</span>
                     <span className="font-mono font-bold text-rose-600 text-xs mt-0.5 block">
-                      S/. {(camp.adSpendUSD || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      S/. {(Number(camp.adSpendUSD) || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
 
@@ -378,6 +378,8 @@ export const CampaignManager: React.FC = () => {
                     </span>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {camp.kpis.map((kpi) => {
+                        const cur = Number(kpi.currentValue ?? (kpi as any).current) || 0;
+                        const tgt = Number(kpi.targetValue ?? (kpi as any).target) || 0;
                         return (
                           <div
                             key={kpi.id}
@@ -385,8 +387,8 @@ export const CampaignManager: React.FC = () => {
                           >
                             <span className="text-slate-500 text-[10px] truncate block">{kpi.metric}</span>
                             <div className="flex items-center justify-between font-mono font-bold text-slate-900 mt-1">
-                              <span>{kpi.currentValue.toLocaleString()} {kpi.unit}</span>
-                              <span className="text-[10px] text-slate-500">/ {kpi.targetValue.toLocaleString()}</span>
+                              <span>{cur.toLocaleString()} {kpi.unit || ''}</span>
+                              <span className="text-[10px] text-slate-500">/ {tgt.toLocaleString()}</span>
                             </div>
                           </div>
                         );

@@ -135,7 +135,7 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
       const created = createDriveFile({
         name: fileName,
         type: 'document',
-        brandId: selectedBrandId || currentBrand?.id || 'brd_apex',
+        brandId: selectedBrandId || currentBrand?.id || '',
         sizeFormatted: '48 KB',
         sizeBytes: 48000,
         mimeType: 'text/csv',
@@ -223,7 +223,7 @@ export const ImportPreCalendarModal: React.FC<ImportPreCalendarModalProps> = ({
   const handleConfirmImport = () => {
     const toCreate = parsedItems.map((item) => ({
       title: item.title,
-      brandId: selectedBrandId || currentBrand?.id || 'brd_apex',
+      brandId: selectedBrandId || currentBrand?.id || '',
       territoryId: item.territoryId,
       deliverableType: item.deliverableType,
       phase: 'ideacion' as const,

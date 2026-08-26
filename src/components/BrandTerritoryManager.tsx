@@ -61,12 +61,24 @@ export const BrandTerritoryManager: React.FC = () => {
 
   const currentOrg = effectiveOrgs.find((o) => o.id === selectedOrgId) || effectiveOrgs[0] || { id: 'org_grupo_gonzales', name: 'Grupo Empresarial Gonzales', brandIds: [] };
 
-  // Filter brands based on selected organization/holding
-  const displayedBrands = selectedOrgId === 'all'
+  // Filter brands based on selected organization/holding (with strict deduplication)
+  const rawDisplayedBrands = selectedOrgId === 'all'
     ? brands
     : (brands.filter((b) => b.clientOrganizationId === selectedOrgId || (currentOrg?.brandIds || []).includes(b.id)).length > 0
       ? brands.filter((b) => b.clientOrganizationId === selectedOrgId || (currentOrg?.brandIds || []).includes(b.id))
       : brands);
+
+  const seenIdsBtm = new Set<string>();
+  const seenNamesBtm = new Set<string>();
+  const displayedBrands = rawDisplayedBrands.filter((b) => {
+    if (!b || !b.id || !b.name) return false;
+    if (b.id.startsWith('brd_')) return false;
+    const norm = b.name.trim().toLowerCase();
+    if (seenIdsBtm.has(b.id) || seenNamesBtm.has(norm)) return false;
+    seenIdsBtm.add(b.id);
+    seenNamesBtm.add(norm);
+    return true;
+  });
 
   const currentBrand = (brands || []).find((b) => b.id === (selectedBrandId && selectedBrandId !== 'all' ? selectedBrandId : activeBrandId)) || (displayedBrands && displayedBrands[0]) || (brands && brands[0]);
   const brandTerritories = (territories || []).filter((t) => t.brandId === currentBrand?.id);
