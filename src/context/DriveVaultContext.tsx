@@ -7,10 +7,12 @@ import {
   CommunicationTerritory,
   DigitalAsset,
   HardwareEquipment,
+  ClientOrganization,
 } from '../types';
 import { DriveVaultRepository } from '../repositories/drive.repository';
 import { driveVaultService } from '../services/supabaseService';
 import { isSupabaseConfigured } from '../lib/supabaseClient';
+import { deriveOrganizationsFromBrands } from './BrandsContext';
 
 export interface DriveVaultContextType {
   driveAccounts: DriveAccount[];
@@ -32,13 +34,125 @@ export interface DriveVaultContextType {
   syncDriveAccount: (id: string) => Promise<void>;
   generateBrandDriveTreeAndDocs: (params: {
     brand: Brand;
-    territories: CommunicationTerritory[];
+    territories?: CommunicationTerritory[];
     digitalAssets?: DigitalAsset[];
     equipment?: HardwareEquipment[];
     accountId?: string;
   }) => { brandFolderId: string; createdFoldersCount: number; createdDocsCount: number };
+  generateFullHierarchyForHoldingsAndBrands: (brandsList: Brand[], orgsList?: ClientOrganization[]) => void;
   refreshDriveFromSupabase: () => Promise<void>;
 }
+
+export const createDefaultVaultHierarchy = (
+  brandsList: Brand[],
+  orgsList: ClientOrganization[] = [],
+  accId: string = 'acc_default'
+): { folders: DriveFolder[]; files: DriveFile[] } => {
+  const folders: DriveFolder[] = [];
+  const files: DriveFile[] = [];
+
+  const effectiveOrgs = orgsList.length > 0 ? orgsList : deriveOrganizationsFromBrands(brandsList);
+
+  effectiveOrgs.forEach((org) => {
+    // 1. Holding Root Folder
+    const orgFolderId = `fld_org_${org.id}`;
+    folders.push({
+      id: orgFolderId,
+      name: org.name,
+      accountId: accId,
+      path: `/${org.name}`,
+      parentFolderId: undefined,
+      isSystemGenerated: true,
+      itemCount: 0,
+      createdAt: '2026-01-01',
+    });
+
+    const orgBrands = brandsList.filter(
+      (b) => b.clientOrganizationId === org.id || (org.brandIds || []).includes(b.id)
+    );
+
+    orgBrands.forEach((brand) => {
+      // 2. Brand Folder inside Holding
+      const brandFolderId = `fld_brand_${brand.id}`;
+      folders.push({
+        id: brandFolderId,
+        name: brand.name,
+        accountId: accId,
+        brandId: brand.id,
+        path: `/${org.name}/${brand.name}`,
+        parentFolderId: orgFolderId,
+        isSystemGenerated: true,
+        itemCount: 6,
+        createdAt: '2026-01-01',
+      });
+
+      // 3. 6 Standard Production Subfolders
+      const subfolders = [
+        { key: '01_Brand_Strategy_And_Territories', label: '01 Estrategia & Territorios' },
+        { key: '02_PreProduccion_Cronogramas', label: '02 Pre-Producción & Cronogramas' },
+        { key: '03_Raw_Footage_Shoots', label: '03 Rodajes & Raw Footage' },
+        { key: '04_Post_Production_Masters', label: '04 Post-Producción & Masters' },
+        { key: '05_Client_Review_Proxies', label: '05 Proxies & Revisión Cliente' },
+        { key: '06_Published_Deliverables', label: '06 Entregables Publicados' },
+      ];
+
+      subfolders.forEach((sub) => {
+        const subFolderId = `fld_${brand.id}_${sub.key}`;
+        folders.push({
+          id: subFolderId,
+          name: sub.label,
+          accountId: accId,
+          brandId: brand.id,
+          path: `/${org.name}/${brand.name}/${sub.key}`,
+          parentFolderId: brandFolderId,
+          isSystemGenerated: true,
+          itemCount: 1,
+          createdAt: '2026-01-01',
+        });
+
+        // Add pre-calendar spreadsheet in 02_PreProduccion_Cronogramas
+        if (sub.key === '02_PreProduccion_Cronogramas') {
+          files.push({
+            id: `file_${brand.id}_precalendar`,
+            accountId: accId,
+            folderId: subFolderId,
+            brandId: brand.id,
+            name: `01_Cronograma_PreCalendario_${brand.name.replace(/\s+/g, '_')}.csv`,
+            type: 'document',
+            mimeType: 'text/csv',
+            sizeFormatted: '48 KB',
+            sizeBytes: 48000,
+            url: `https://drive.google.com/open?id=demo_precalendar_${brand.id}`,
+            uploadedByName: 'Nataraja Studio OS',
+            createdAt: '2026-01-01',
+            updatedAt: '2026-01-01',
+          });
+        }
+
+        // Add brand guidelines in 01_Brand_Strategy_And_Territories
+        if (sub.key === '01_Brand_Strategy_And_Territories') {
+          files.push({
+            id: `file_${brand.id}_manual`,
+            accountId: accId,
+            folderId: subFolderId,
+            brandId: brand.id,
+            name: `Manual_Identidad_Visual_${brand.name.replace(/\s+/g, '_')}.pdf`,
+            type: 'document',
+            mimeType: 'application/pdf',
+            sizeFormatted: '12.4 MB',
+            sizeBytes: 12400000,
+            url: `https://drive.google.com/open?id=demo_manual_${brand.id}`,
+            uploadedByName: 'Creative Director',
+            createdAt: '2026-01-01',
+            updatedAt: '2026-01-01',
+          });
+        }
+      });
+    });
+  });
+
+  return { folders, files };
+};
 
 const DriveVaultContext = createContext<DriveVaultContextType | undefined>(undefined);
 
@@ -46,31 +160,52 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [driveAccounts, setDriveAccounts] = useState<DriveAccount[]>(() => {
     try {
       const saved = localStorage.getItem('nataraja_drive_accounts');
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      if (parsed.length > 0) return parsed;
     } catch {
-      return [];
+      // fallback
     }
+    return [
+      {
+        id: 'acc_default',
+        name: 'NStudIOS Workspace Vault',
+        type: 'corporate_workspace',
+        email: 'cria10810@gmail.com',
+        rootFolderId: 'root',
+        quotaTotalGB: 200,
+        quotaUsedGB: 18.5,
+        isConnected: true,
+        status: 'active',
+        lastSyncedAt: new Date().toISOString(),
+      },
+    ];
   });
 
   const [driveFolders, setDriveFolders] = useState<DriveFolder[]>(() => {
     try {
       const saved = localStorage.getItem('nataraja_drive_folders');
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      if (parsed.length > 0) return parsed;
     } catch {
-      return [];
+      // fallback
     }
+    return [];
   });
 
   const [driveFiles, setDriveFiles] = useState<DriveFile[]>(() => {
     try {
       const saved = localStorage.getItem('nataraja_drive_files');
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      if (parsed.length > 0) return parsed;
     } catch {
-      return [];
+      // fallback
     }
+    return [];
   });
 
-  const [selectedDriveAccountId, setSelectedDriveAccountId] = useState<string>('');
+  const [selectedDriveAccountId, setSelectedDriveAccountId] = useState<string>(
+    driveAccounts[0]?.id || 'acc_default'
+  );
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [activePreviewFile, setActivePreviewFile] = useState<DriveFile | null>(null);
 
@@ -82,9 +217,9 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         DriveVaultRepository.fetchFolders(),
         DriveVaultRepository.fetchFiles(),
       ]);
-      setDriveAccounts(dbAccounts || []);
-      setDriveFolders(dbFolders || []);
-      setDriveFiles(dbFiles || []);
+      if (dbAccounts && dbAccounts.length > 0) setDriveAccounts(dbAccounts);
+      if (dbFolders && dbFolders.length > 0) setDriveFolders(dbFolders);
+      if (dbFiles && dbFiles.length > 0) setDriveFiles(dbFiles);
       if (dbAccounts && dbAccounts.length > 0 && !selectedDriveAccountId) {
         setSelectedDriveAccountId(dbAccounts[0].id);
       }
@@ -139,15 +274,18 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const createDriveFolder = (folderData: Partial<DriveFolder> & { name: string; accountId: string }): DriveFolder => {
     const newFolder: DriveFolder = {
       brandId: folderData.brandId || '',
-      parentFolderId: undefined,
-      path: `/${folderData.name}`,
+      parentFolderId: folderData.parentFolderId,
+      path: folderData.path || `/${folderData.name}`,
       isSystemGenerated: false,
       itemCount: 0,
       createdAt: new Date().toISOString().split('T')[0],
       ...folderData,
-      id: 'fld_' + Date.now(),
+      id: folderData.id || 'fld_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
     };
-    setDriveFolders((prev) => [...prev, newFolder]);
+    setDriveFolders((prev) => {
+      const filtered = prev.filter((f) => f.id !== newFolder.id);
+      return [...filtered, newFolder];
+    });
     DriveVaultRepository.createFolder(newFolder).catch((err) => console.warn('Supabase createDriveFolder sync error:', err));
     return newFolder;
   };
@@ -155,7 +293,7 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const createDriveFile = (fileData: Omit<DriveFile, 'id' | 'createdAt' | 'updatedAt'>): DriveFile => {
     const newFile: DriveFile = {
       ...fileData,
-      id: 'file_' + Date.now(),
+      id: 'file_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
       createdAt: new Date().toISOString().split('T')[0],
       updatedAt: new Date().toISOString().split('T')[0],
     };
@@ -170,7 +308,7 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const deleteDriveFolder = (id: string) => {
-    setDriveFolders((prev) => prev.filter((f) => f.id !== id));
+    setDriveFolders((prev) => prev.filter((f) => f.id !== id && f.parentFolderId !== id));
     setDriveFiles((prev) => prev.filter((f) => f.folderId !== id));
     if (selectedFolderId === id) setSelectedFolderId(null);
     DriveVaultRepository.deleteFolder(id).catch((err) => console.warn('Supabase deleteDriveFolder sync error:', err));
@@ -197,12 +335,12 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const generateBrandDriveTreeAndDocs = (params: {
     brand: Brand;
-    territories: CommunicationTerritory[];
+    territories?: CommunicationTerritory[];
     digitalAssets?: DigitalAsset[];
     equipment?: HardwareEquipment[];
     accountId?: string;
   }) => {
-    const accId = params.accountId || selectedDriveAccountId;
+    const accId = params.accountId || selectedDriveAccountId || 'acc_default';
     const rootFolder = createDriveFolder({
       name: params.brand.name.toUpperCase() + ' [BRAND ROOT]',
       accountId: accId,
@@ -213,7 +351,7 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const subfolders = [
       '01_Brand_Strategy_And_Territories',
-      '02_Digital_Assets_And_Logos',
+      '02_PreProduccion_Cronogramas',
       '03_Raw_Footage_Shoots',
       '04_Post_Production_Masters',
       '05_Client_Review_Proxies',
@@ -237,6 +375,21 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   };
 
+  const generateFullHierarchyForHoldingsAndBrands = (brandsList: Brand[], orgsList: ClientOrganization[] = []) => {
+    const accId = selectedDriveAccountId || (driveAccounts[0]?.id) || 'acc_default';
+    const { folders, files } = createDefaultVaultHierarchy(brandsList, orgsList, accId);
+    setDriveFolders((prev) => {
+      const existingIds = new Set(prev.map((f) => f.id));
+      const newFolders = folders.filter((f) => !existingIds.has(f.id));
+      return [...prev, ...newFolders];
+    });
+    setDriveFiles((prev) => {
+      const existingIds = new Set(prev.map((f) => f.id));
+      const newFiles = files.filter((f) => !existingIds.has(f.id));
+      return [...prev, ...newFiles];
+    });
+  };
+
   const contextValue = React.useMemo(
     () => ({
       driveAccounts,
@@ -257,16 +410,20 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       updateDriveAccount,
       syncDriveAccount,
       generateBrandDriveTreeAndDocs,
+      generateFullHierarchyForHoldingsAndBrands,
       refreshDriveFromSupabase,
     }),
-    [driveAccounts, driveFolders, driveFiles, selectedDriveAccountId, selectedFolderId, activePreviewFile]
+    [
+      driveAccounts,
+      driveFolders,
+      driveFiles,
+      selectedDriveAccountId,
+      selectedFolderId,
+      activePreviewFile,
+    ]
   );
 
-  return (
-    <DriveVaultContext.Provider value={contextValue}>
-      {children}
-    </DriveVaultContext.Provider>
-  );
+  return <DriveVaultContext.Provider value={contextValue}>{children}</DriveVaultContext.Provider>;
 };
 
 export const useDriveVaultContext = (): DriveVaultContextType => {

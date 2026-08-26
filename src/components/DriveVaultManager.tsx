@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { useDriveVaultContext } from '../context/DriveVaultContext';
 import {
   HardDrive,
   Folder,
@@ -18,9 +19,17 @@ import {
   UploadCloud,
   FileCode,
   X,
+  Building2,
+  ArrowLeft,
+  LayoutGrid,
+  List,
+  Layers,
+  FileSpreadsheet,
+  Download,
 } from 'lucide-react';
-import { DriveFileType, DriveAccount } from '../types';
+import { DriveFileType, DriveAccount, DriveFolder, DriveFile } from '../types';
 import { InlineDeleteConfirm } from './ui/InlineDeleteConfirm';
+import { deriveOrganizationsFromBrands } from '../context/BrandsContext';
 
 export const DriveVaultManager: React.FC = () => {
   const {
@@ -31,6 +40,7 @@ export const DriveVaultManager: React.FC = () => {
     driveFiles,
     selectedBrandId,
     brands,
+    organizations,
     currentUser,
     setActivePreviewFile,
     createDriveFolder,
@@ -38,12 +48,16 @@ export const DriveVaultManager: React.FC = () => {
     createDriveFile,
     deleteDriveFile,
     syncDriveAccount,
+    toast,
   } = useApp();
+
+  const { generateFullHierarchyForHoldingsAndBrands } = useDriveVaultContext();
 
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('all');
   const [fileSearchQuery, setFileSearchQuery] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // Modals for creation
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -56,6 +70,83 @@ export const DriveVaultManager: React.FC = () => {
   const [uploadFileSize, setUploadFileSize] = useState('250 MB');
   const [uploadFileUrl, setUploadFileUrl] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+
+  // Auto-generate hierarchy on first mount if folders are empty
+  useEffect(() => {
+    if (driveFolders.length === 0 && brands.length > 0) {
+      generateFullHierarchyForHoldingsAndBrands(brands, organizations);
+    }
+  }, [brands, driveFolders.length]);
+
+  const fallbackAccount: DriveAccount = {
+    id: 'acc_default',
+    name: 'NStudIOS Workspace Vault',
+    type: 'corporate_workspace',
+    email: 'cria10810@gmail.com',
+    rootFolderId: 'root',
+    quotaTotalGB: 200,
+    quotaUsedGB: 18.5,
+    isConnected: true,
+    status: 'active',
+    lastSyncedAt: new Date().toISOString(),
+  };
+
+  const currentAccount =
+    driveAccounts.find((a) => a.id === selectedDriveAccountId) || driveAccounts[0] || fallbackAccount;
+
+  // Active Brand Isolation for Client role
+  const activeBrandFilter =
+    currentUser.role === 'cliente' && currentUser.assignedBrandIds?.[0]
+      ? currentUser.assignedBrandIds[0]
+      : selectedBrandId;
+
+  // Effective organizations
+  const effectiveOrgs = organizations.length > 0 ? organizations : deriveOrganizationsFromBrands(brands);
+
+  // Calculate current folder and breadcrumbs chain
+  const currentFolder = driveFolders.find((f) => f.id === currentFolderId);
+
+  // Build breadcrumbs path
+  const breadcrumbs: DriveFolder[] = [];
+  let tempFld = currentFolder;
+  while (tempFld) {
+    breadcrumbs.unshift(tempFld);
+    tempFld = driveFolders.find((f) => f.id === tempFld?.parentFolderId);
+  }
+
+  // Get parent folder for the "Go up" button
+  const parentFolder = currentFolder?.parentFolderId
+    ? driveFolders.find((f) => f.id === currentFolder.parentFolderId)
+    : null;
+
+  // Visible folders in current view level
+  const visibleFolders = driveFolders.filter((f) => {
+    if (currentFolderId) {
+      return f.parentFolderId === currentFolderId;
+    }
+    // At root: show folders without parentFolderId
+    return !f.parentFolderId;
+  });
+
+  // Visible files in current folder (or filtered by brand/type/search)
+  const visibleFiles = driveFiles.filter((file) => {
+    // If inside a specific folder, show files belonging to this folder
+    const matchFolder = currentFolderId ? file.folderId === currentFolderId : !file.folderId;
+    
+    // Type filter
+    const matchType =
+      selectedTypeFilter === 'all' ||
+      (selectedTypeFilter === 'video' && file.type === 'video') ||
+      (selectedTypeFilter === 'audio' && file.type === 'audio') ||
+      (selectedTypeFilter === 'document' && (file.type === 'document' || file.name.endsWith('.csv') || file.name.endsWith('.xlsx')));
+
+    // Search query
+    const matchSearch =
+      !fileSearchQuery ||
+      file.name.toLowerCase().includes(fileSearchQuery.toLowerCase());
+
+    return matchFolder && matchType && matchSearch;
+  });
 
   const handleDropFile = (e: React.DragEvent) => {
     e.preventDefault();
@@ -99,392 +190,303 @@ export const DriveVaultManager: React.FC = () => {
     }
   };
 
-  const fallbackAccount: DriveAccount = {
-    id: 'acc_default',
-    name: 'Google Drive Vault Principal',
-    type: 'corporate_workspace',
-    email: 'drive.vault@nstudios.com',
-    rootFolderId: 'root',
-    quotaTotalGB: 2000,
-    quotaUsedGB: 0,
-    isConnected: true,
-    status: 'active',
-    lastSyncedAt: new Date().toISOString(),
-  };
-
-  const currentAccount =
-    driveAccounts.find((a) => a.id === selectedDriveAccountId) || driveAccounts[0] || fallbackAccount;
-
-  // Brand Filtering (Enforce Client isolation)
-  const activeBrandFilter =
-    currentUser.role === 'cliente' && currentUser.assignedBrandIds?.[0]
-      ? currentUser.assignedBrandIds[0]
-      : selectedBrandId;
-
-  // Filter folders by active account, brand, and parent
-  const visibleFolders = driveFolders.filter((f) => {
-    const matchAccount = f.accountId === selectedDriveAccountId;
-    const matchBrand =
-      activeBrandFilter === 'all' || !f.brandId || f.brandId === activeBrandFilter;
-    const matchParent = currentFolderId ? f.parentFolderId === currentFolderId : !f.parentFolderId;
-    return matchAccount && matchBrand && matchParent;
-  });
-
-  // Filter files
-  const visibleFiles = driveFiles.filter((f) => {
-    const matchAccount = f.accountId === selectedDriveAccountId;
-    const matchBrand =
-      activeBrandFilter === 'all' || !f.brandId || f.brandId === activeBrandFilter;
-    const matchFolder = currentFolderId ? f.folderId === currentFolderId : true;
-    const matchType = selectedTypeFilter === 'all' || f.type === selectedTypeFilter;
-    const matchSearch =
-      f.name.toLowerCase().includes(fileSearchQuery.toLowerCase()) ||
-      (f.technicalSpecs?.codec || '').toLowerCase().includes(fileSearchQuery.toLowerCase()) ||
-      (f.technicalSpecs?.resolution || '').toLowerCase().includes(fileSearchQuery.toLowerCase());
-    return matchAccount && matchBrand && matchFolder && matchType && matchSearch;
-  });
-
-  const currentFolder = driveFolders.find((f) => f.id === currentFolderId);
-
-  const handleSync = async () => {
-    setIsSyncing(true);
-    await syncDriveAccount(selectedDriveAccountId);
-    setIsSyncing(false);
-  };
-
-  const handleCreateFolder = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newFolderName.trim()) return;
-
-    createDriveFolder({
-      name: newFolderName.trim(),
-      accountId: selectedDriveAccountId,
-      parentFolderId: currentFolderId || undefined,
-      brandId: newFolderBrandId || (activeBrandFilter !== 'all' ? activeBrandFilter : undefined),
-    });
-
-    setNewFolderName('');
-    setIsNewFolderModalOpen(false);
-  };
-
   const handleUploadSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!uploadFileName.trim()) return;
 
-    const brandForFile = uploadBrandId || (activeBrandFilter !== 'all' ? activeBrandFilter : brands[0]?.id || 'brd_apex');
-
-    const targetFolderId =
-      currentFolderId ||
-      driveFolders.find((f) => f.accountId === selectedDriveAccountId && f.brandId === brandForFile)?.id;
-
     createDriveFile({
-      accountId: selectedDriveAccountId,
-      folderId: targetFolderId,
-      brandId: brandForFile,
-      name: uploadFileName.trim(),
+      name: uploadFileName,
       type: uploadFileType,
-      mimeType:
-        uploadFileType === 'video'
-          ? 'video/mp4'
-          : uploadFileType === 'audio'
-          ? 'audio/wav'
-          : 'application/pdf',
-      sizeFormatted: uploadFileSize,
-      sizeBytes: 1024 * 1024 * 150,
-      url: uploadFileUrl.trim() || 'https://drive.google.com/file/d/demo/view',
+      brandId: uploadBrandId || (brands && brands[0]?.id) || 'brd_apex',
+      folderId: currentFolderId || 'fld_root',
+      sizeFormatted: uploadFileSize || '150 MB',
+      sizeBytes: 150000000,
+      mimeType: uploadFileType === 'video' ? 'video/mp4' : uploadFileType === 'audio' ? 'audio/wav' : 'application/pdf',
+      accountId: currentAccount.id,
+      url: uploadFileUrl || `https://drive.google.com/open?id=demo_${Date.now()}`,
       uploadedByName: currentUser.name,
-      technicalSpecs:
-        uploadFileType === 'video'
-          ? {
-              resolution: '3840x2160 (4K)',
-              codec: 'Apple ProRes 422',
-              frameRate: '24.00 fps',
-              duration: '00:00:30:00',
-            }
-          : uploadFileType === 'audio'
-          ? {
-              audioSpecs: '32-bit Float 48kHz Stereo',
-              duration: '00:00:30:00',
-            }
-          : undefined,
     });
 
+    toast.success(`Archivo "${uploadFileName}" subido exitosamente al Vault.`);
+    setIsUploadModalOpen(false);
     setUploadFileName('');
     setUploadFileUrl('');
-    setIsUploadModalOpen(false);
   };
 
-  const getFileIcon = (type: DriveFileType) => {
-    switch (type) {
-      case 'video':
-        return <Film className="w-4 h-4 text-rose-600" />;
-      case 'audio':
-        return <Music className="w-4 h-4 text-indigo-600" />;
-      case 'document':
-        return <FileText className="w-4 h-4 text-blue-600" />;
-      default:
-        return <FileCode className="w-4 h-4 text-emerald-600" />;
+  const handleCreateFolderSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFolderName.trim()) return;
+
+    createDriveFolder({
+      name: newFolderName,
+      accountId: currentAccount.id,
+      brandId: newFolderBrandId || (currentFolder?.brandId) || (brands && brands[0]?.id) || 'brd_apex',
+      parentFolderId: currentFolderId || undefined,
+      path: currentFolder ? `${currentFolder.path}/${newFolderName}` : `/${newFolderName}`,
+    });
+
+    toast.success(`Carpeta "${newFolderName}" creada correctamente.`);
+    setIsNewFolderModalOpen(false);
+    setNewFolderName('');
+  };
+
+  const handleGenerateFullVault = () => {
+    generateFullHierarchyForHoldingsAndBrands(brands, organizations);
+    toast.success('¡Estructura de Vault para Holdings y Marcas generada con éxito!');
+  };
+
+  const handleSyncAccount = async () => {
+    setIsSyncing(true);
+    try {
+      await syncDriveAccount(currentAccount.id);
+      toast.success('Cuenta sincronizada con Google Drive API v3.');
+    } catch {
+      toast.error('Error al sincronizar con Google Drive.');
+    } finally {
+      setIsSyncing(false);
     }
   };
 
+  const getFileIcon = (file: DriveFile) => {
+    if (file.type === 'video') return <Film className="w-5 h-5 text-indigo-600" />;
+    if (file.type === 'audio') return <Music className="w-5 h-5 text-purple-600" />;
+    if (file.name.endsWith('.csv') || file.name.endsWith('.xlsx')) return <FileSpreadsheet className="w-5 h-5 text-emerald-600" />;
+    return <FileText className="w-5 h-5 text-blue-600" />;
+  };
+
   return (
-    <div className="space-y-4 text-slate-800">
-      
-      {/* Top Header & Multi-Account Switcher */}
-      <div className="glass-panel rounded-2xl p-4.5 space-y-4 shadow-sm bg-white border border-slate-200">
-        
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+    <div className="space-y-4">
+      {/* 1. Header & Connected Drive Account Status */}
+      <div className="bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl p-4 shadow-2xs space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-sm shadow-indigo-600/20 shrink-0">
-              <HardDrive className="w-5 h-5 text-white" />
+            <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-2xs">
+              <HardDrive className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-sm font-bold text-slate-900">
+                <h1 className="text-lg font-extrabold text-slate-900">
                   Drive Vault & Media Hub
-                </h2>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                </h1>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                   Google Drive API v3 Activo
                 </span>
               </div>
-              <p className="text-xs text-slate-500">
-                Almacenamiento multi-cuenta centralizado • Masters 4K, Stems 32-bit Float y Documentos Generados
+              <p className="text-xs text-slate-500 mt-0.5">
+                Almacenamiento multi-cuenta jerárquico • Holdings ➔ Marcas ➔ Subcarpetas Operativas 4K / ProRes & Masters
               </p>
             </div>
           </div>
 
-          {/* Account selector pills (WebAdmin/Director) */}
-          <div className="flex flex-wrap items-center gap-2">
-            {currentUser.role !== 'cliente' && (
-              <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
-                {driveAccounts.map((acc) => {
-                  const isSelected = acc.id === selectedDriveAccountId;
-                  return (
-                    <button
-                      key={acc.id}
-                      onClick={() => setSelectedDriveAccountId(acc.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                        isSelected
-                          ? 'bg-indigo-600 text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                      }`}
-                    >
-                      <HardDrive className="w-3.5 h-3.5" />
-                      <span>{acc.name.split('(')[0]}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleGenerateFullVault}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-98"
+              title="Crea las carpetas automáticas para cada marca y holding"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+              <span>Auto-Generar Vault de Marcas</span>
+            </button>
 
             <button
-              onClick={handleSync}
+              onClick={handleSyncAccount}
               disabled={isSyncing}
-              className="btn-secondary"
-              title="Sincronizar con Google Drive"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-indigo-600' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${isSyncing ? 'animate-spin' : ''}`} />
               <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar'}</span>
             </button>
 
-            {currentUser.role !== 'cliente' && (
-              <button
-                onClick={() => setIsUploadModalOpen(true)}
-                className="btn-primary"
-              >
-                <UploadCloud className="w-4 h-4" />
-                <span>+ Subir Archivo</span>
-              </button>
-            )}
+            <button
+              onClick={() => setIsUploadModalOpen(true)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-98"
+            >
+              <UploadCloud className="w-4 h-4" />
+              <span>+ Subir Archivo</span>
+            </button>
           </div>
         </div>
 
-        {/* Quota & Storage Stats Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2.5 border-t border-slate-100 text-xs">
-          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between shadow-2xs">
+        {/* Storage and Account Specs Badges */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-100 text-xs">
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
             <div>
-              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Espacio Utilizado</span>
-              <div className="font-mono font-bold text-slate-900 text-xs mt-0.5">
-                {currentAccount?.quotaUsedGB ?? 0} GB / {currentAccount?.quotaTotalGB ?? 2000} GB
-              </div>
+              <span className="text-[10px] uppercase font-bold text-slate-400 font-mono block">
+                Espacio Utilizado
+              </span>
+              <span className="font-extrabold text-slate-800">
+                {currentAccount.quotaUsedGB} GB / {currentAccount.quotaTotalGB} GB
+              </span>
             </div>
-            <span className="text-xs font-mono font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
-              {currentAccount?.quotaTotalGB ? Math.round(((currentAccount.quotaUsedGB || 0) / currentAccount.quotaTotalGB) * 100) : 0}% ocupado
+            <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">
+              {((currentAccount.quotaUsedGB / currentAccount.quotaTotalGB) * 100).toFixed(0)}% ocupado
             </span>
           </div>
 
-          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between shadow-2xs">
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
             <div>
-              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Archivos Registrados</span>
-              <div className="font-mono font-bold text-slate-900 text-xs mt-0.5">
-                {driveFiles.filter((f) => f.accountId === selectedDriveAccountId).length} Assets en Vault
-              </div>
+              <span className="text-[10px] uppercase font-bold text-slate-400 font-mono block">
+                Estructura en Vault
+              </span>
+              <span className="font-extrabold text-slate-800">
+                {driveFolders.length} Carpetas • {driveFiles.length} Archivos
+              </span>
             </div>
-            <span className="text-xs text-slate-600 font-mono">
-              {driveFolders.filter((f) => f.accountId === selectedDriveAccountId).length} Carpetas
-            </span>
+            <Folder className="w-4 h-4 text-slate-400" />
           </div>
 
-          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between shadow-2xs">
+          <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200/80">
             <div>
-              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider block">Cuenta Conectada</span>
-              <div className="font-mono text-slate-800 text-xs truncate mt-0.5">
-                {currentAccount?.email || 'drive.vault@nstudios.com'}
-              </div>
+              <span className="text-[10px] uppercase font-bold text-slate-400 font-mono block">
+                Cuenta Conectada
+              </span>
+              <span className="font-mono text-slate-800 font-semibold truncate block max-w-[150px]">
+                {currentAccount.email}
+              </span>
             </div>
-            <span className="text-xs text-emerald-700 font-semibold flex items-center gap-1.5 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Online</span>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+              Online
             </span>
           </div>
         </div>
-
       </div>
 
-      {/* Filter & Breadcrumb Bar */}
-      <div className="glass-panel rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-xs bg-white border border-slate-200">
-        
-        {/* Breadcrumb path */}
-        <div className="flex items-center gap-1.5 text-xs">
+      {/* 🧭 2. Google Drive Hierarchical Breadcrumbs Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl p-2.5 shadow-2xs">
+        <div className="flex items-center gap-1 text-xs font-semibold overflow-x-auto no-scrollbar">
+          {/* Root Breadcrumb */}
           <button
+            type="button"
             onClick={() => setCurrentFolderId(null)}
-            className={`font-semibold cursor-pointer transition-colors ${
-              !currentFolderId ? 'text-indigo-600 font-bold' : 'text-slate-600 hover:text-slate-900'
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+              currentFolderId === null
+                ? 'bg-slate-900 text-white font-bold shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            Nataraja Workspace
+            <HardDrive className="w-3.5 h-3.5" />
+            <span>Drive Vault (Raíz)</span>
           </button>
-          {currentFolder && (
-            <>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-              <span className="font-bold text-slate-900">{currentFolder.name}</span>
-            </>
-          )}
+
+          {/* Dynamic Breadcrumbs chain */}
+          {breadcrumbs.map((crumb, idx) => {
+            const isLast = idx === breadcrumbs.length - 1;
+            const crumbBrand = brands.find((b) => b.id === crumb.brandId);
+
+            return (
+              <React.Fragment key={crumb.id}>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                <button
+                  type="button"
+                  onClick={() => setCurrentFolderId(crumb.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer max-w-[200px] truncate ${
+                    isLast
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  {crumbBrand ? (
+                    <img src={crumbBrand.logo} alt="" className="w-3.5 h-3.5 rounded object-cover" />
+                  ) : (
+                    <Folder className="w-3.5 h-3.5" />
+                  )}
+                  <span className="truncate">{crumb.name}</span>
+                </button>
+              </React.Fragment>
+            );
+          })}
         </div>
 
-        {/* Type filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
-            {['all', 'video', 'audio', 'document'].map((t) => (
-              <button
-                key={t}
-                onClick={() => setSelectedTypeFilter(t)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize transition-all cursor-pointer ${
-                  selectedTypeFilter === t
-                    ? 'bg-indigo-600 text-white shadow-2xs font-bold'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                }`}
-              >
-                {t === 'all' ? 'Todos' : t === 'video' ? 'Videos (4K/ProRes)' : t === 'audio' ? 'Audios 32-bit' : 'Documentos'}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative w-48 sm:w-60">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={fileSearchQuery}
-              onChange={(e) => setFileSearchQuery(e.target.value)}
-              placeholder="Buscar archivo, códec..."
-              className="input-impeccable pl-8.5"
-            />
-          </div>
-
-          {currentUser.role !== 'cliente' && (
+        {/* Right Navigation Controls */}
+        <div className="flex items-center gap-2">
+          {currentFolderId && (
             <button
-              onClick={() => setIsNewFolderModalOpen(true)}
-              className="btn-secondary"
+              onClick={() => setCurrentFolderId(parentFolder?.id || null)}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Carpeta</span>
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Subir Nivel</span>
             </button>
           )}
-        </div>
 
+          <button
+            onClick={() => setIsNewFolderModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>+ Carpeta</span>
+          </button>
+        </div>
       </div>
 
-      {/* Folders Section (if any) */}
+      {/* 📁 3. Google Drive Folders Explorer Grid */}
       {visibleFolders.length > 0 && (
         <div className="space-y-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block px-1">
-            Carpetas ({visibleFolders.length})
-          </span>
+          <div className="flex items-center justify-between px-1">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 font-mono flex items-center gap-1.5">
+              <Folder className="w-3.5 h-3.5 text-indigo-600" />
+              <span>
+                Carpetas en {currentFolder ? currentFolder.name : 'Directorio Raíz'} ({visibleFolders.length})
+              </span>
+            </span>
+          </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {visibleFolders.map((fld) => {
-              const brand = brands.find((b) => b.id === fld.brandId);
-              const isSandbox = fld.name.includes('00_Sandbox_CoCreativo') || fld.name.toLowerCase().includes('sandbox');
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {visibleFolders.map((folder) => {
+              const folderBrand = brands.find((b) => b.id === folder.brandId);
+              const subItemsCount = driveFolders.filter((f) => f.parentFolderId === folder.id).length;
+              const filesInsideCount = driveFiles.filter((f) => f.folderId === folder.id).length;
+
+              const isHoldingFolder = !folder.parentFolderId && folder.name.includes('Grupo');
+              const isBrandFolder = folder.brandId && !folder.name.includes('01') && !folder.name.includes('02') && !folder.name.includes('03') && !folder.name.includes('04') && !folder.name.includes('05') && !folder.name.includes('06');
 
               return (
                 <div
-                  key={fld.id}
-                  onClick={() => setCurrentFolderId(fld.id)}
-                  className={`rounded-2xl p-3.5 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-2.5 group bg-white border relative hover:z-20 ${
-                    isSandbox
-                      ? 'bg-purple-50/50 border-purple-200 hover:border-purple-400'
-                      : 'border-slate-200 hover:border-indigo-400'
-                  }`}
+                  key={folder.id}
+                  onClick={() => setCurrentFolderId(folder.id)}
+                  className="bg-white hover:bg-slate-50/80 border border-slate-200 hover:border-indigo-400 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden"
                 >
-                  <div className="flex items-center justify-between">
-                    {isSandbox ? (
-                      <div className="flex items-center gap-1.5 text-purple-600">
-                        <Folder className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                        <Sparkles className="w-3.5 h-3.5 animate-subtle-pulse" />
+                  <div className="space-y-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 group-hover:scale-105 transition-transform">
+                        {isHoldingFolder ? (
+                          <Building2 className="w-5 h-5" />
+                        ) : folderBrand ? (
+                          <img src={folderBrand.logo} alt="" className="w-5 h-5 rounded object-cover" />
+                        ) : (
+                          <Folder className="w-5 h-5" />
+                        )}
                       </div>
-                    ) : (
-                      <Folder className="w-5 h-5 text-indigo-600 group-hover:scale-110 transition-transform" />
-                    )}
 
-                    <div className="flex items-center gap-1.5">
-                      {brand && (
-                        <span
-                          className="w-2.5 h-2.5 rounded-full shadow-2xs ring-1 ring-slate-200"
-                          style={{ backgroundColor: brand.primaryColor }}
-                          title={brand.name}
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <InlineDeleteConfirm
+                          itemId={folder.id}
+                          itemType="carpeta"
+                          itemName={folder.name}
+                          onConfirm={() => deleteDriveFolder(folder.id)}
                         />
-                      )}
-                      
-                      {/* Open Folder in Google Drive (External Link) */}
-                      <a
-                        href={(fld as any).url || `https://drive.google.com/drive/folders/${fld.id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-1 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all opacity-0 group-hover:opacity-100"
-                        title="Abrir carpeta en Google Drive (Nueva Pestaña)"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
+                      </div>
+                    </div>
 
-                      {currentUser.role !== 'cliente' && !fld.isSystemGenerated && (
-                        <div onClick={(e) => e.stopPropagation()} className="opacity-0 group-hover:opacity-100 transition-all">
-                          <InlineDeleteConfirm
-                            title="¿Eliminar carpeta?"
-                            description={fld.name}
-                            onConfirm={() => deleteDriveFolder(fld.id)}
-                            triggerClassName="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
-                            triggerIcon={<Trash2 className="w-3 h-3" />}
-                          />
-                        </div>
-                      )}
+                    <div>
+                      <h4 className="font-extrabold text-xs text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
+                        {folder.name}
+                      </h4>
+                      <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                        {subItemsCount > 0
+                          ? `${subItemsCount} subcarpetas`
+                          : filesInsideCount > 0
+                          ? `${filesInsideCount} archivos`
+                          : 'Carpeta operativa'}
+                      </span>
                     </div>
                   </div>
 
-                  <div>
-                    <h4 className={`font-bold text-xs truncate transition-colors ${
-                      isSandbox ? 'text-purple-900 group-hover:text-purple-700' : 'text-slate-900 group-hover:text-indigo-600'
-                    }`}>
-                      {fld.name}
-                    </h4>
-                    <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono mt-0.5">
-                      <span>{fld.itemCount} elementos</span>
-                      {isSandbox && (
-                        <span className="text-[9.5px] font-sans font-bold text-purple-600">
-                          Sandbox
-                        </span>
-                      )}
-                    </div>
+                  <div className="pt-2.5 mt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-indigo-600 group-hover:translate-x-0.5 transition-transform">
+                    <span>Abrir</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
                   </div>
                 </div>
               );
@@ -493,204 +495,425 @@ export const DriveVaultManager: React.FC = () => {
         </div>
       )}
 
-      {/* Files Section */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between px-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
-            Archivos & Assets ({visibleFiles.length})
-          </span>
-          <span className="text-xs text-slate-500">Haz clic en un archivo para reproducir o previsualizar</span>
+      {/* 📄 4. Files Section & Filter Toolbar */}
+      <div className="space-y-3 pt-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {/* File Type Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            <button
+              onClick={() => setSelectedTypeFilter('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                selectedTypeFilter === 'all'
+                  ? 'bg-slate-900 text-white font-bold shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              Todos los Assets
+            </button>
+            <button
+              onClick={() => setSelectedTypeFilter('video')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                selectedTypeFilter === 'video'
+                  ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              Videos (4K/ProRes)
+            </button>
+            <button
+              onClick={() => setSelectedTypeFilter('audio')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                selectedTypeFilter === 'audio'
+                  ? 'bg-purple-600 text-white font-bold shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              Audios 32-bit Float
+            </button>
+            <button
+              onClick={() => setSelectedTypeFilter('document')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                selectedTypeFilter === 'document'
+                  ? 'bg-blue-600 text-white font-bold shadow-xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+              }`}
+            >
+              Documentos & Hojas
+            </button>
+          </div>
+
+          {/* Search and View Mode */}
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={fileSearchQuery}
+                onChange={(e) => setFileSearchQuery(e.target.value)}
+                placeholder="Buscar archivo o códec..."
+                className="pl-8 pr-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none w-44"
+              />
+            </div>
+
+            <div className="flex items-center border border-slate-200 bg-white rounded-xl p-0.5">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  viewMode === 'grid' ? 'bg-slate-100 text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-700'
+                }`}
+                title="Vista en Cuadrícula"
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-lg transition-colors ${
+                  viewMode === 'list' ? 'bg-slate-100 text-slate-900 font-bold' : 'text-slate-400 hover:text-slate-700'
+                }`}
+                title="Vista en Lista"
+              >
+                <List className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
 
-        {visibleFiles.length === 0 ? (
-          <div className="p-12 text-center bg-white border border-dashed border-slate-300 rounded-2xl space-y-3">
-            <HardDrive className="w-10 h-10 text-slate-400 mx-auto" />
-            <h4 className="font-bold text-slate-700 text-sm">No hay archivos en esta carpeta</h4>
-            <p className="text-xs text-slate-500">Sube un nuevo master, audio stem o documento para visualizarlo aquí.</p>
+        {/* Files Display */}
+        {visibleFiles.length === 0 && visibleFolders.length === 0 ? (
+          <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center space-y-3 shadow-2xs">
+            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl w-12 h-12 mx-auto flex items-center justify-center">
+              <Folder className="w-6 h-6" />
+            </div>
+            <h3 className="font-extrabold text-slate-800 text-sm">
+              Esta carpeta está vacía
+            </h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              Sube un nuevo master 4K, audio stem o auto-genera el árbol de carpetas de marcas para empezar.
+            </p>
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <button
+                onClick={handleGenerateFullVault}
+                className="px-4 py-2 rounded-xl bg-purple-600 text-white font-bold text-xs shadow-xs hover:bg-purple-700 transition-all cursor-pointer"
+              >
+                + Generar Estructura Automática
+              </button>
+              <button
+                onClick={() => setIsUploadModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-xs hover:bg-indigo-700 transition-all cursor-pointer"
+              >
+                + Subir Archivo
+              </button>
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {visibleFiles.map((file) => {
-              const brand = brands.find((b) => b.id === file.brandId);
+              const fileBrand = brands.find((b) => b.id === file.brandId);
 
               return (
                 <div
                   key={file.id}
-                  className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all space-y-3 relative group hover:z-20"
-                  style={{ borderLeftColor: brand?.primaryColor || '#4f46e5', borderLeftWidth: '4px' }}
+                  className="bg-white hover:bg-slate-50/60 border border-slate-200 hover:border-indigo-300 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all space-y-3 flex flex-col justify-between group relative"
                 >
-                  {/* File Header */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-start gap-2.5 min-w-0">
-                      <div className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 shadow-2xs">
-                        {getFileIcon(file.type)}
+                  <div className="space-y-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="p-2 rounded-xl bg-slate-50 border border-slate-100 shrink-0">
+                          {getFileIcon(file)}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-xs text-slate-900 truncate block group-hover:text-indigo-600 transition-colors">
+                            {file.name}
+                          </h4>
+                          <span className="text-[10px] text-slate-400 font-mono uppercase block">
+                            {file.type} • {file.sizeFormatted}
+                          </span>
+                        </div>
                       </div>
 
-                      <div className="min-w-0 flex-1">
-                        <h4 className="font-bold text-xs text-slate-900 truncate leading-snug">
-                          {file.name}
-                        </h4>
-                        <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono mt-0.5">
-                          <span>{file.sizeFormatted}</span>
-                          <span>•</span>
-                          <span className="capitalize">{file.type}</span>
-                          {file.isOriginalMaster && (
-                            <span className="px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[9px]">
-                              MASTER 4K
-                            </span>
-                          )}
-                        </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => setActivePreviewFile(file)}
+                          className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                          title="Previsualizar"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <InlineDeleteConfirm
+                          itemId={file.id}
+                          itemType="archivo"
+                          itemName={file.name}
+                          onConfirm={() => deleteDriveFile(file.id)}
+                        />
                       </div>
                     </div>
 
-                    {brand && (
-                      <span
-                        className="text-[9.5px] font-bold px-2 py-0.5 rounded-full text-white shrink-0 shadow-2xs"
-                        style={{ backgroundColor: brand.primaryColor }}
-                      >
-                        {brand.name}
-                      </span>
+                    {fileBrand && (
+                      <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 border border-slate-100 w-fit text-[10px] font-semibold text-slate-700">
+                        <img src={fileBrand.logo} alt="" className="w-3 h-3 rounded object-cover" />
+                        <span>{fileBrand.name}</span>
+                      </div>
                     )}
                   </div>
 
-                  {/* Technical Specs Tags (if video/audio) */}
-                  {file.technicalSpecs && (
-                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[10.5px] font-mono text-slate-700 grid grid-cols-2 gap-1.5 shadow-2xs">
-                      {file.technicalSpecs.resolution && (
-                        <div>
-                          <span className="text-slate-400 text-[9px] block">Resolución</span>
-                          <span className="font-bold text-slate-900">{file.technicalSpecs.resolution}</span>
-                        </div>
-                      )}
-                      {file.technicalSpecs.codec && (
-                        <div>
-                          <span className="text-slate-400 text-[9px] block">Códec</span>
-                          <span className="font-bold text-slate-900 truncate block">{file.technicalSpecs.codec}</span>
-                        </div>
-                      )}
-                      {file.technicalSpecs.audioSpecs && (
-                        <div className="col-span-2">
-                          <span className="text-slate-400 text-[9px] block">Audio</span>
-                          <span className="font-bold text-slate-900">{file.technicalSpecs.audioSpecs}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Generated Document Summary (if doc) */}
-                  {file.generatedDocument && (
-                    <div className="p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-100 text-[10.5px] text-indigo-900 shadow-2xs">
-                      <span className="font-bold block text-slate-900">{file.generatedDocument.subtitle}</span>
-                      <span className="text-slate-500 text-[10px]">
-                        {file.generatedDocument.sections.length} secciones estructuradas
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
                   <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      Subido: {file.createdAt}
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {file.createdAt ? file.createdAt.split('T')[0] : 'Drive Vault'}
                     </span>
-
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => setActivePreviewFile(file)}
-                        className="btn-primary py-1 px-2.5 text-xs"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>Previsualizar</span>
-                      </button>
-
-                      <a
-                        href={file.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer transition-colors"
-                        title="Abrir en Google Drive"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-
-                      {currentUser.role !== 'cliente' && (
-                        <InlineDeleteConfirm
-                          title="¿Eliminar del Vault?"
-                          description={file.name}
-                          onConfirm={() => deleteDriveFile(file.id)}
-                          triggerClassName="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer transition-colors"
-                          triggerIcon={<Trash2 className="w-3.5 h-3.5" />}
-                          align="right"
-                        />
-                      )}
-                    </div>
+                    <a
+                      href={file.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                    >
+                      <span>Abrir en Drive</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
                   </div>
-
                 </div>
               );
             })}
           </div>
+        ) : (
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 text-[11px]">
+                <tr>
+                  <th className="py-2.5 px-3 font-bold">Nombre del Archivo</th>
+                  <th className="py-2.5 px-3 font-bold">Marca</th>
+                  <th className="py-2.5 px-3 font-bold">Tipo</th>
+                  <th className="py-2.5 px-3 font-bold">Tamaño</th>
+                  <th className="py-2.5 px-3 font-bold">Subido por</th>
+                  <th className="py-2.5 px-3 font-bold text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {visibleFiles.map((file) => {
+                  const fileBrand = brands.find((b) => b.id === file.brandId);
+                  return (
+                    <tr key={file.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-2.5 px-3 font-semibold text-slate-900 max-w-[200px] truncate flex items-center gap-2">
+                        {getFileIcon(file)}
+                        <span className="truncate">{file.name}</span>
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-600">
+                        {fileBrand?.name || 'General'}
+                      </td>
+                      <td className="py-2.5 px-3 uppercase font-mono text-[10px] text-slate-500">
+                        {file.type}
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-[11px] text-slate-600">
+                        {file.sizeFormatted}
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-500 text-[11px]">
+                        {file.uploadedByName}
+                      </td>
+                      <td className="py-2.5 px-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => setActivePreviewFile(file)}
+                            className="text-indigo-600 hover:underline font-bold text-xs"
+                          >
+                            Previsualizar
+                          </button>
+                          <a
+                            href={file.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-slate-400 hover:text-slate-700"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* CREATE FOLDER MODAL */}
-      {isNewFolderModalOpen && (
-        <div
-          onClick={() => setIsNewFolderModalOpen(false)}
-          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 border border-slate-200 shadow-2xl text-slate-800 animate-in zoom-in-95 my-auto"
-          >
+      {/* Upload File Modal */}
+      {isUploadModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full overflow-hidden flex flex-col space-y-4 p-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900">Nueva Carpeta en Drive</h3>
+              <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                <UploadCloud className="w-5 h-5 text-indigo-600" />
+                <span>Subir Archivo al Vault</span>
+              </h3>
               <button
-                type="button"
-                onClick={() => setIsNewFolderModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer active:scale-95"
+                onClick={() => setIsUploadModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <form onSubmit={handleCreateFolder} className="space-y-3.5 text-xs">
+
+            <form onSubmit={handleUploadSubmit} className="space-y-3.5 text-xs">
+              {/* Drag & Drop Area */}
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDropFile}
+                className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer ${
+                  isDragging
+                    ? 'border-indigo-500 bg-indigo-50/60 ring-2 ring-indigo-500/20'
+                    : 'border-slate-200 hover:border-indigo-400 bg-slate-50/60'
+                }`}
+              >
+                <input
+                  type="file"
+                  id="vault-file-input"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                />
+                <label htmlFor="vault-file-input" className="cursor-pointer space-y-1 block">
+                  <UploadCloud className="w-8 h-8 text-indigo-600 mx-auto" />
+                  <p className="font-bold text-slate-800 text-xs">
+                    Arrastra tu archivo aquí o haz clic para explorar
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-mono">
+                    Soporta Video 4K ProRes, Audio WAV 32-bit, Hojas CSV / Excel y PDFs
+                  </p>
+                </label>
+              </div>
+
               <div>
-                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Nombre de la Carpeta *</label>
+                <label className="font-bold text-slate-700 block mb-1">Nombre del Archivo *</label>
                 <input
                   type="text"
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                  placeholder="Ej: 04_Audio_Masters"
                   required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
+                  value={uploadFileName}
+                  onChange={(e) => setUploadFileName(e.target.value)}
+                  placeholder="Ej. Spot_GlossSalon_Master_4K.mov"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs"
                 />
               </div>
 
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Marca Asociada</label>
-                <select
-                  value={newFolderBrandId}
-                  onChange={(e) => setNewFolderBrandId(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all cursor-pointer"
-                >
-                  {brands.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name} ({b.industry})
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Marca</label>
+                  <select
+                    value={uploadBrandId}
+                    onChange={(e) => setUploadBrandId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs"
+                  >
+                    {brands.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Tipo de Archivo</label>
+                  <select
+                    value={uploadFileType}
+                    onChange={(e) => setUploadFileType(e.target.value as DriveFileType)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs"
+                  >
+                    <option value="video">🎥 Video (Master 4K / ProRes)</option>
+                    <option value="audio">🎵 Audio (Stem 32-bit Float)</option>
+                    <option value="document">📄 Documento / Hoja de Cálculo</option>
+                    <option value="archive">📦 Archivo Comprimido (ZIP/RAR)</option>
+                  </select>
+                </div>
               </div>
 
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">URL de Google Drive / Web (Opcional)</label>
+                <input
+                  type="url"
+                  value={uploadFileUrl}
+                  onChange={(e) => setUploadFileUrl(e.target.value)}
+                  placeholder="https://drive.google.com/file/d/..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-mono"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setIsNewFolderModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer active:scale-98"
+                  onClick={() => setIsUploadModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 transition-all cursor-pointer active:scale-98"
+                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold shadow-xs hover:bg-indigo-700 transition-all"
+                >
+                  Subir al Vault
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* New Folder Modal */}
+      {isNewFolderModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-md w-full overflow-hidden flex flex-col space-y-4 p-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                <Folder className="w-5 h-5 text-indigo-600" />
+                <span>Crear Nueva Carpeta</span>
+              </h3>
+              <button
+                onClick={() => setIsNewFolderModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateFolderSubmit} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Nombre de la Carpeta *</label>
+                <input
+                  type="text"
+                  required
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  placeholder="Ej. 07_Material_Promocional_Q3"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Marca Asociada</label>
+                <select
+                  value={newFolderBrandId}
+                  onChange={(e) => setNewFolderBrandId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs"
+                >
+                  {brands.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsNewFolderModalOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold shadow-xs hover:bg-indigo-700 transition-all"
                 >
                   Crear Carpeta
                 </button>
@@ -699,148 +922,6 @@ export const DriveVaultManager: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* UPLOAD FILE MODAL */}
-      {isUploadModalOpen && (
-        <div
-          onClick={() => setIsUploadModalOpen(false)}
-          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 animate-in fade-in"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl max-w-lg w-full p-5 space-y-4 border border-slate-200 shadow-2xl text-slate-800 animate-in zoom-in-95 my-auto"
-          >
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900">Subir Asset al Drive Vault</h3>
-              <button
-                type="button"
-                onClick={() => setIsUploadModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer active:scale-95"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <form onSubmit={handleUploadSubmit} className="space-y-3.5 text-xs">
-              {/* Drag and Drop Zone */}
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDropFile}
-                onClick={() => document.getElementById('vault-file-input')?.click()}
-                className={`p-4 rounded-2xl border-2 border-dashed text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5 ${
-                  isDragging
-                    ? 'border-indigo-600 bg-indigo-50/80 scale-[1.01]'
-                    : 'border-slate-300 bg-slate-50/60 hover:bg-slate-100/60 hover:border-slate-400'
-                }`}
-              >
-                <input
-                  id="vault-file-input"
-                  type="file"
-                  onChange={handleFileInputChange}
-                  className="hidden"
-                />
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200 flex items-center justify-center">
-                  <UploadCloud className="w-5 h-5" />
-                </div>
-                <div>
-                  <span className="font-bold text-slate-800 block text-xs">
-                    Arrastra y suelta tu archivo aquí, o <span className="text-indigo-600 underline">haz clic para examinar</span>
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    Videos (ProRes/H.265), Audios 32-bit, Hojas de cálculo, Documentos
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Marca de Destino *</label>
-                <select
-                  value={uploadBrandId}
-                  onChange={(e) => setUploadBrandId(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all cursor-pointer font-bold text-indigo-700"
-                >
-                  {brands.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name} — {b.industry}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Nombre del Archivo *</label>
-                <input
-                  type="text"
-                  value={uploadFileName}
-                  onChange={(e) => setUploadFileName(e.target.value)}
-                  placeholder="Ej: CF-APX-001_Final_Master_Rec709.mov"
-                  required
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Tipo de Archivo</label>
-                  <select
-                    value={uploadFileType}
-                    onChange={(e) => setUploadFileType(e.target.value as DriveFileType)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all cursor-pointer"
-                  >
-                    <option value="video">Video Master / Proxy</option>
-                    <option value="audio">Audio Stem / Track</option>
-                    <option value="document">Documento / Guía</option>
-                    <option value="archive">Brand Asset / Kit</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1 text-[11px]">Tamaño Estimado</label>
-                  <input
-                    type="text"
-                    value={uploadFileSize}
-                    onChange={(e) => setUploadFileSize(e.target.value)}
-                    placeholder="Ej: 1.85 GB"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1 text-[11px]">URL de Google Drive (opcional)</label>
-                <input
-                  type="url"
-                  value={uploadFileUrl}
-                  onChange={(e) => setUploadFileUrl(e.target.value)}
-                  placeholder="https://drive.google.com/file/d/..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono placeholder:text-slate-400 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsUploadModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer active:scale-98"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 transition-all cursor-pointer active:scale-98"
-                >
-                  Subir Asset
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 };
-
