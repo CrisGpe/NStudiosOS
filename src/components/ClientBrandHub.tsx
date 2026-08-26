@@ -23,6 +23,8 @@ import {
 import { ClientOrganizationTeamManager } from './client/ClientOrganizationTeamManager';
 import { CreateSandboxIdeaModal } from './client/CreateSandboxIdeaModal';
 import { RequestTerritoryReviewModal } from './client/RequestTerritoryReviewModal';
+import { deriveOrganizationsFromBrands } from '../context/BrandsContext';
+import { ClientOrganization } from '../types';
 
 export const ClientBrandHub: React.FC = () => {
   const {
@@ -50,15 +52,19 @@ export const ClientBrandHub: React.FC = () => {
   const { driveFiles, setActivePreviewFile } = useDriveVaultContext();
   const { digitalAssets } = useBrandsContext();
 
+  // Effective organizations (guaranteed non-empty)
+  const effectiveOrgs: ClientOrganization[] =
+    organizations.length > 0 ? organizations : deriveOrganizationsFromBrands(brands);
+
   // Determine allowed brands for this user
   const isClientRole = currentUser.role === 'cliente';
   const allowedBrands = isClientRole && currentUser.assignedBrandIds && currentUser.assignedBrandIds.length > 0
     ? brands.filter((b) => currentUser.assignedBrandIds!.includes(b.id))
     : isClientRole && currentUser.clientOrganizationId
-    ? brands.filter((b) => b.clientOrganizationId === currentUser.clientOrganizationId || organizations.find((o) => o.id === currentUser.clientOrganizationId)?.brandIds.includes(b.id))
+    ? brands.filter((b) => b.clientOrganizationId === currentUser.clientOrganizationId || effectiveOrgs.find((o) => o.id === currentUser.clientOrganizationId)?.brandIds.includes(b.id))
     : (selectedOrgId === 'all'
       ? brands
-      : brands.filter((b) => b.clientOrganizationId === selectedOrgId || organizations.find((o) => o.id === selectedOrgId)?.brandIds.includes(b.id)));
+      : brands.filter((b) => b.clientOrganizationId === selectedOrgId || effectiveOrgs.find((o) => o.id === selectedOrgId)?.brandIds.includes(b.id)));
 
   // Active brand resolution
   const activeBrandId = (selectedBrandId && selectedBrandId !== 'all' && allowedBrands.some((b) => b.id === selectedBrandId))
@@ -66,9 +72,9 @@ export const ClientBrandHub: React.FC = () => {
     : (allowedBrands[0]?.id || brands[0]?.id || 'brd_apex');
 
   const brand = brands.find((b) => b.id === activeBrandId) || allowedBrands[0] || brands[0];
-  const userOrg = organizations.find((o) => o.id === currentUser.clientOrganizationId) ||
-    organizations.find((o) => (brand?.id && o.brandIds.includes(brand.id)) || (brand?.clientOrganizationId && o.id === brand.clientOrganizationId)) ||
-    (selectedOrgId !== 'all' ? organizations.find((o) => o.id === selectedOrgId) : organizations[0]);
+  const userOrg = effectiveOrgs.find((o) => o.id === currentUser.clientOrganizationId) ||
+    effectiveOrgs.find((o) => (brand?.id && o.brandIds.includes(brand.id)) || (brand?.clientOrganizationId && o.id === brand.clientOrganizationId)) ||
+    (selectedOrgId !== 'all' ? effectiveOrgs.find((o) => o.id === selectedOrgId) : effectiveOrgs[0]);
 
   const brandTerritories = territories.filter((t) => t.brandId === brand?.id && t.active);
   const brandIdeas = sandboxIdeas.filter((i) => i.brandId === brand?.id);
@@ -144,7 +150,7 @@ export const ClientBrandHub: React.FC = () => {
     <div className="space-y-3.5 text-slate-800">
       
       {/* Level 1: Client / Holding Selector Pills (For Director / Agency WebAdmin) */}
-      {!isClientRole && organizations.length > 0 && (
+      {!isClientRole && effectiveOrgs.length > 0 && (
         <div className="bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl p-3 shadow-[0_4px_12px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] space-y-2">
           <div className="flex items-center justify-between px-1">
             <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 font-mono flex items-center gap-1.5">
@@ -169,7 +175,7 @@ export const ClientBrandHub: React.FC = () => {
               Todos los Clientes ({brands.length})
             </button>
 
-            {organizations.map((org) => {
+            {effectiveOrgs.map((org) => {
               const isSelected = selectedOrgId === org.id;
               const orgBrandsCount = brands.filter((b) => b.clientOrganizationId === org.id || org.brandIds.includes(b.id)).length;
 

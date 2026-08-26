@@ -23,7 +23,9 @@ import {
   CommunicationTerritory,
   DigitalAsset,
   AssetType,
+  ClientOrganization,
 } from '../types';
+import { deriveOrganizationsFromBrands } from '../context/BrandsContext';
 import { InlineDeleteConfirm } from './ui/InlineDeleteConfirm';
 
 export const BrandTerritoryManager: React.FC = () => {
@@ -72,10 +74,14 @@ export const BrandTerritoryManager: React.FC = () => {
   const [assetUrl, setAssetUrl] = useState('');
   const [assetNotes, setAssetNotes] = useState('');
 
+  // Effective organizations (guaranteed non-empty)
+  const effectiveOrgs: ClientOrganization[] =
+    organizations.length > 0 ? organizations : deriveOrganizationsFromBrands(brands);
+
   // Filter brands based on selected organization/holding
   const displayedBrands = selectedOrgId === 'all'
     ? brands
-    : brands.filter((b) => b.clientOrganizationId === selectedOrgId || organizations.find((o) => o.id === selectedOrgId)?.brandIds.includes(b.id));
+    : brands.filter((b) => b.clientOrganizationId === selectedOrgId || effectiveOrgs.find((o) => o.id === selectedOrgId)?.brandIds.includes(b.id));
 
   const currentBrand = brands.find((b) => b.id === (selectedBrandId && selectedBrandId !== 'all' ? selectedBrandId : activeBrandId)) || displayedBrands[0] || brands[0];
   const brandTerritories = territories.filter((t) => t.brandId === currentBrand?.id);
@@ -222,7 +228,7 @@ export const BrandTerritoryManager: React.FC = () => {
     <div className="space-y-4">
       
       {/* Level 1: Client / Holding Selector Pills */}
-      {currentUser.role !== 'cliente' && organizations.length > 0 && (
+      {currentUser.role !== 'cliente' && effectiveOrgs.length > 0 && (
         <div className="bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl p-3 shadow-[0_4px_12px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,1)] space-y-2">
           <div className="flex items-center justify-between px-1">
             <span className="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 font-mono flex items-center gap-1.5">
@@ -247,7 +253,7 @@ export const BrandTerritoryManager: React.FC = () => {
               Todos los Clientes ({brands.length})
             </button>
 
-            {organizations.map((org) => {
+            {effectiveOrgs.map((org) => {
               const isSelected = selectedOrgId === org.id;
               const orgBrandsCount = brands.filter((b) => b.clientOrganizationId === org.id || org.brandIds.includes(b.id)).length;
 

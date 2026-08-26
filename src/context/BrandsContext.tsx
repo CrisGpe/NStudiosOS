@@ -48,6 +48,58 @@ export interface BrandsContextType {
 
 const BrandsContext = createContext<BrandsContextType | undefined>(undefined);
 
+export const deriveOrganizationsFromBrands = (brandsList: Brand[]): ClientOrganization[] => {
+  if (!brandsList || brandsList.length === 0) return [];
+
+  const orgMap = new Map<string, { name: string; email: string; brandIds: string[] }>();
+
+  brandsList.forEach((b) => {
+    let orgKey = b.clientOrganizationId;
+    let orgName = '';
+
+    if (!orgKey) {
+      const lower = (b.name || '').toLowerCase();
+      if (lower.includes('gonzales')) {
+        orgKey = 'org_grupo_gonzales';
+        orgName = 'Grupo Empresarial Gonzales';
+      } else if (lower.includes('salon') || lower.includes('gloss') || lower.includes('luxury') || lower.includes('belleza')) {
+        orgKey = 'org_holding_belleza';
+        orgName = 'Holding Belleza & Bienestar';
+      } else if (b.contactEmail) {
+        orgKey = 'org_' + b.contactEmail.replace(/[^a-zA-Z0-9]/g, '_');
+        orgName = b.name + ' (Holding)';
+      } else {
+        orgKey = 'org_' + b.id;
+        orgName = b.name + ' Group';
+      }
+    } else {
+      orgName = b.name + ' (Holding)';
+    }
+
+    if (!orgMap.has(orgKey)) {
+      orgMap.set(orgKey, {
+        name: orgName,
+        email: b.contactEmail || 'contacto@holding.com',
+        brandIds: [b.id],
+      });
+    } else {
+      const existing = orgMap.get(orgKey)!;
+      if (!existing.brandIds.includes(b.id)) {
+        existing.brandIds.push(b.id);
+      }
+    }
+  });
+
+  return Array.from(orgMap.entries()).map(([id, info]) => ({
+    id,
+    name: info.name,
+    contactEmail: info.email,
+    ownerUserId: 'usr_owner_' + id,
+    brandIds: info.brandIds,
+    createdAt: new Date().toISOString().split('T')[0],
+  }));
+};
+
 export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [brands, setBrands] = useState<Brand[]>(() => {
     try {
@@ -82,17 +134,23 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [organizations, setOrganizations] = useState<ClientOrganization[]>(() => {
     try {
       const saved = localStorage.getItem('nataraja_client_orgs');
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : [];
+      if (parsed.length > 0) return parsed;
     } catch {
-      return [];
+      // fallback
     }
+    return deriveOrganizationsFromBrands(brands);
   });
 
   const refreshOrganizationsFromSupabase = async () => {
     if (!isSupabaseConfigured) return;
     try {
       const dbOrgs = await ClientOrganizationsRepository.fetchOrganizations();
-      setOrganizations(dbOrgs || []);
+      if (dbOrgs && dbOrgs.length > 0) {
+        setOrganizations(dbOrgs);
+      } else {
+        setOrganizations(deriveOrganizationsFromBrands(brands));
+      }
     } catch (err) {
       console.warn('Could not sync client organizations with Supabase:', err);
     }
@@ -108,16 +166,20 @@ export const BrandsProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         BrandsRepository.fetchDigitalAssets(),
       ]);
 
-      setBrands(dbBrands || []);
-      if (dbBrands && dbBrands.length > 0) {
-        if (!selectedBrandId || !dbBrands.some((b) => b.id === selectedBrandId)) {
-          setSelectedBrandId(dbBrands[0].id);
+      const effectiveBrands = dbBrands && dbBrands.length > 0 ? dbBrands : brands;
+      setBrands(effectiveBrands);
+
+      if (effectiveBrands && effectiveBrands.length > 0) {
+        if (!selectedBrandId || !effectiveBrands.some((b) => b.id === selectedBrandId)) {
+          setSelectedBrandId(effectiveBrands[0].id);
         }
       } else {
         setSelectedBrandId('');
       }
+
       setTerritories(dbTerritories || []);
-      setOrganizations(dbOrgs || []);
+      const effectiveOrgs = dbOrgs && dbOrgs.length > 0 ? dbOrgs : deriveOrganizationsFromBrands(effectiveBrands);
+      setOrganizations(effectiveOrgs);
       setDigitalAssets(dbAssets || []);
     } catch (err) {
       console.warn('Could not sync brands with Supabase:', err);
