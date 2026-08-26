@@ -375,18 +375,34 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   };
 
-  const generateFullHierarchyForHoldingsAndBrands = (brandsList: Brand[], orgsList: ClientOrganization[] = []) => {
+    const generateFullHierarchyForHoldingsAndBrands = (brandsList: Brand[], orgsList: ClientOrganization[] = []) => {
     const accId = selectedDriveAccountId || (driveAccounts[0]?.id) || 'acc_default';
     const { folders, files } = createDefaultVaultHierarchy(brandsList, orgsList, accId);
+    
     setDriveFolders((prev) => {
-      const existingIds = new Set(prev.map((f) => f.id));
-      const newFolders = folders.filter((f) => !existingIds.has(f.id));
-      return [...prev, ...newFolders];
+      const mergedMap = new Map<string, DriveFolder>();
+      // Put default generated first
+      folders.forEach((f) => mergedMap.set(f.id, f));
+      // Put custom user-created folders that are not system generated
+      prev.forEach((f) => {
+        if (!f.isSystemGenerated || !mergedMap.has(f.id)) {
+          mergedMap.set(f.id, f);
+        }
+      });
+      const result = Array.from(mergedMap.values());
+      localStorage.setItem('nataraja_drive_folders', JSON.stringify(result));
+      return result;
     });
+
     setDriveFiles((prev) => {
-      const existingIds = new Set(prev.map((f) => f.id));
-      const newFiles = files.filter((f) => !existingIds.has(f.id));
-      return [...prev, ...newFiles];
+      const mergedMap = new Map<string, DriveFile>();
+      files.forEach((f) => mergedMap.set(f.id, f));
+      prev.forEach((f) => {
+        mergedMap.set(f.id, f);
+      });
+      const result = Array.from(mergedMap.values());
+      localStorage.setItem('nataraja_drive_files', JSON.stringify(result));
+      return result;
     });
   };
 

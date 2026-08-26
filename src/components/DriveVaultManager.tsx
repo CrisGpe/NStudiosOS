@@ -74,7 +74,7 @@ export const DriveVaultManager: React.FC = () => {
 
   // Auto-generate hierarchy on first mount if folders are empty
   useEffect(() => {
-    if (driveFolders.length === 0 && brands.length > 0) {
+    if (driveFolders.length < 10 && brands.length > 0) {
       generateFullHierarchyForHoldingsAndBrands(brands, organizations);
     }
   }, [brands, driveFolders.length]);
