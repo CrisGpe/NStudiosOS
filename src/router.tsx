@@ -214,6 +214,10 @@ export const router = createBrowserRouter([
             ],
           },
           {
+            path: 'client',
+            element: <Navigate to="/client/hub" replace />,
+          },
+          {
             path: 'client/hub',
             element: <ProtectedRoute allowedRoles={['cliente', 'webadmin', 'director']} />,
             children: [

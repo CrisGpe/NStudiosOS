@@ -9,8 +9,8 @@ export interface AuthContextType {
   currentUser: UserProfile;
   users: UserProfile[];
   login: (userId: string) => void;
-  loginWithPassword: (email: string, password: string) => Promise<void>;
-  signUpWithPassword: (email: string, password: string, name: string, role?: UserRole) => Promise<void>;
+  loginWithPassword: (email: string, password: string) => Promise<UserProfile | null>;
+  signUpWithPassword: (email: string, password: string, name: string, role?: UserRole) => Promise<UserProfile | null>;
   logout: () => void;
   setCurrentUser: (user: UserProfile) => void;
   refreshProfiles: () => Promise<void>;
@@ -41,7 +41,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUserState] = useState<UserProfile>(() => {
     try {
       const saved = localStorage.getItem('nataraja_current_user');
-      return saved ? JSON.parse(saved) : DEFAULT_ANONYMOUS_USER;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed.role === 'string' && parsed.role.length > 0) {
+          return parsed;
+        }
+      }
+      return DEFAULT_ANONYMOUS_USER;
     } catch {
       return DEFAULT_ANONYMOUS_USER;
     }
@@ -127,29 +133,75 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [isAuthenticated]);
 
-  const loginWithPassword = async (email: string, password: string) => {
+  const loginWithPassword = async (email: string, password: string): Promise<UserProfile | null> => {
     setIsLoadingAuth(true);
     try {
-      const profile = await AuthRepository.signIn(email, password);
-      if (profile) {
-        setCurrentUserState(profile);
+      const authData = await AuthRepository.signIn(email, password);
+      if (authData?.user) {
         setIsAuthenticated(true);
-        await refreshProfiles();
+        const dbProfiles = await AuthRepository.fetchProfiles();
+        setUsers(dbProfiles || []);
+
+        const found = dbProfiles?.find(
+          (p) =>
+            p.id === authData.user.id ||
+            p.email.toLowerCase() === authData.user.email?.toLowerCase() ||
+            p.email.toLowerCase() === email.toLowerCase()
+        );
+
+        if (found) {
+          setCurrentUserState(found);
+          try {
+            localStorage.setItem('nataraja_current_user', JSON.stringify(found));
+            localStorage.setItem('nataraja_is_auth', 'true');
+          } catch {}
+          return found;
+        } else {
+          const fallbackUser: UserProfile = {
+            id: authData.user.id,
+            name: authData.user.user_metadata?.name || 'Cliente',
+            email: authData.user.email || email,
+            role: (authData.user.user_metadata?.role as UserRole) || 'cliente',
+            roleTitle: 'Representante Holding • Grupo Empresarial Gonzales',
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${authData.user.id}`,
+            assignedBrandIds: [
+              'brand_1787275758106',
+              'brand_1787292438614',
+              'brand_1787317026035',
+              'brand_1787317081023',
+            ],
+            clientOrganizationId: 'org_grupo_gonzales',
+            clientRole: 'holding_admin',
+          };
+          setCurrentUserState(fallbackUser);
+          try {
+            localStorage.setItem('nataraja_current_user', JSON.stringify(fallbackUser));
+            localStorage.setItem('nataraja_is_auth', 'true');
+          } catch {}
+          return fallbackUser;
+        }
       }
+      return null;
     } finally {
       setIsLoadingAuth(false);
     }
   };
 
-  const signUpWithPassword = async (email: string, password: string, name: string, role?: UserRole) => {
+  const signUpWithPassword = async (email: string, password: string, name: string, role?: UserRole): Promise<UserProfile | null> => {
     setIsLoadingAuth(true);
     try {
       const profile = await AuthRepository.signUp(email, password, name, role);
       if (profile) {
         setCurrentUserState(profile);
         setIsAuthenticated(true);
+        try {
+          localStorage.setItem('nataraja_current_user', JSON.stringify(profile));
+          localStorage.setItem('nataraja_is_auth', 'true');
+        } catch {}
         await refreshProfiles();
+        return profile;
       }
+      return null;
     } finally {
       setIsLoadingAuth(false);
     }

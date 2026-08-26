@@ -31,17 +31,19 @@ export const LoginView: React.FC = () => {
     }
 
     try {
+      let authenticatedProfile = null;
       if (authMode === 'login') {
-        await loginWithPassword(email, password);
+        authenticatedProfile = await loginWithPassword(email, password);
       } else {
         if (!name) {
           setErrorMessage('Por favor ingresa tu nombre completo.');
           return;
         }
-        await signUpWithPassword(email, password, name, 'cliente');
+        authenticatedProfile = await signUpWithPassword(email, password, name, 'cliente');
       }
 
       const isClientUser =
+        authenticatedProfile?.role === 'cliente' ||
         authMode === 'signup' ||
         email.toLowerCase().includes('cliente') ||
         currentUser?.role === 'cliente';
