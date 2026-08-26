@@ -1,23 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp, AppTab } from '../context/AppContext';
-import {
-  Film,
-  Layers,
-  Calendar,
-  Building2,
-  Camera,
-  FileCode,
-  ShieldCheck,
-  Sparkles,
-  ChevronLeft,
-  ChevronRight,
-  LogOut,
-  Target,
-  Search,
-  HardDrive,
-  Compass,
-} from 'lucide-react';
+import { Film, Layers, Calendar, Building2, Camera, FileCode, ShieldCheck, Sparkles, ChevronLeft, ChevronRight, LogOut, Target, Search, HardDrive, Compass } from 'lucide-react';
 import { UserRole } from '../types';
 
 export const SidebarNav: React.FC = () => {

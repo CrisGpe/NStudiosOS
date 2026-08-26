@@ -1,15 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import {
-  X,
-  Target,
-  Plus,
-  Trash2,
-  BarChart3,
-  ShoppingBag,
-  Users,
-  Megaphone,
-} from 'lucide-react';
+import { X, Target, Plus, Trash2, BarChart3, ShoppingBag, Users, Megaphone } from 'lucide-react';
 import { CampaignKPI, CampaignType, CampaignStatus } from '../types';
 
 export const CreateCampaignModal: React.FC = () => {

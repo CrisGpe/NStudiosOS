@@ -1,5 +1,5 @@
 import { useApp } from '../context/AppContext';
-import { Campaign, CampaignKPI } from '../types';
+import { Campaign } from '../types';
 
 export const useCampaigns = () => {
   const {

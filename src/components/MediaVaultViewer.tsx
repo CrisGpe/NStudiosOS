@@ -1,23 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import {
-  X,
-  Film,
-  Music,
-  FileText,
-  ExternalLink,
-  Download,
-  CheckCircle2,
-  HardDrive,
-  Calendar,
-  Layers,
-  Sparkles,
-  Info,
-  Maximize2,
-  Copy,
-  Check,
-} from 'lucide-react';
-import { DriveFile } from '../types';
+import { X, Film, Music, FileText, ExternalLink, Copy, Check } from 'lucide-react';
 
 export const MediaVaultViewer: React.FC = () => {
   const { activePreviewFile, setActivePreviewFile, brands, driveAccounts } = useApp();

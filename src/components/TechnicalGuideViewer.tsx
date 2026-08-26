@@ -1,26 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import {
-  Deliverable,
-  TechnicalGuide,
-  ShotItem,
-} from '../types';
-import {
-  Film,
-  Camera,
-  Layers,
-  Sparkles,
-  Sliders,
-  Volume2,
-  Sun,
-  Tv,
-  CheckCircle2,
-  AlertCircle,
-  Plus,
-  Trash2,
-  Edit3,
-  FileCheck2,
-} from 'lucide-react';
+import { Deliverable, TechnicalGuide, ShotItem } from '../types';
+import { Film, Sparkles, Sliders, Volume2, Sun, CheckCircle2, Plus, Trash2, FileCheck2 } from 'lucide-react';
 
 interface TechnicalGuideViewerProps {
   deliverable: Deliverable;

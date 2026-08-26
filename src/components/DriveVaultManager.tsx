@@ -1,32 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { useDriveVaultContext } from '../context/DriveVaultContext';
-import {
-  HardDrive,
-  Folder,
-  Film,
-  Music,
-  FileText,
-  Plus,
-  Search,
-  ExternalLink,
-  RefreshCw,
-  Eye,
-  Trash2,
-  Sparkles,
-  CheckCircle2,
-  ChevronRight,
-  UploadCloud,
-  FileCode,
-  X,
-  Building2,
-  ArrowLeft,
-  LayoutGrid,
-  List,
-  Layers,
-  FileSpreadsheet,
-  Download,
-} from 'lucide-react';
+import { HardDrive, Folder, Film, Music, FileText, Plus, Search, ExternalLink, Eye, ChevronRight, UploadCloud, X, Building2, ArrowLeft, LayoutGrid, List, FileSpreadsheet } from 'lucide-react';
 import { DriveFileType, DriveAccount, DriveFolder, DriveFile } from '../types';
 import { InlineDeleteConfirm } from './ui/InlineDeleteConfirm';
 import { deriveOrganizationsFromBrands } from '../context/BrandsContext';

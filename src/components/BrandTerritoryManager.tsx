@@ -1,33 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import {
-  Building2,
-  Plus,
-  ShieldCheck,
-  AlertTriangle,
-  Layers,
-  Globe,
-  Smartphone,
-  BookOpen,
-  FileText,
-  ExternalLink,
-  Edit2,
-  Trash2,
-  CheckCircle2,
-  XCircle,
-  Sparkles,
-  X,
-  Folder,
-  ChevronRight,
-  ArrowLeft,
-} from 'lucide-react';
-import {
-  Brand,
-  CommunicationTerritory,
-  DigitalAsset,
-  AssetType,
-  ClientOrganization,
-} from '../types';
+import { Building2, Plus, ShieldCheck, AlertTriangle, Layers, Globe, Smartphone, BookOpen, FileText, ExternalLink, Edit2, Sparkles, X, Folder, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Brand, CommunicationTerritory, DigitalAsset, AssetType, ClientOrganization } from '../types';
 import { deriveOrganizationsFromBrands } from '../context/BrandsContext';
 import { InlineDeleteConfirm } from './ui/InlineDeleteConfirm';
 import { CreateHoldingModal } from './CreateHoldingModal';

@@ -1,11 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import {
-  X,
-  Camera,
-  Plus,
-  DollarSign,
-} from 'lucide-react';
+import { X, Camera, Plus, DollarSign } from 'lucide-react';
 import { EquipmentCategory } from '../types';
 
 export const CreateEquipmentModal: React.FC = () => {

@@ -1,20 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import {
-  Sparkles,
-  X,
-  Send,
-  Film,
-  Camera,
-  Layers,
-  CheckCircle2,
-  AlertCircle,
-  Lightbulb,
-  Cpu,
-  ChevronRight,
-  Sliders,
-} from 'lucide-react';
-import { Deliverable, TechnicalGuide } from '../types';
+import { Sparkles, X, CheckCircle2, Lightbulb, Cpu, ChevronRight } from 'lucide-react';
+import { TechnicalGuide } from '../types';
 
 export const AICopilotModal: React.FC = () => {
   const {

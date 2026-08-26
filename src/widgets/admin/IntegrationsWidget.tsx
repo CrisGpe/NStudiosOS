@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Key, CheckCircle, ExternalLink, RefreshCw } from 'lucide-react';
+import { Key, CheckCircle, RefreshCw } from 'lucide-react';
 import { isSupabaseConfigured } from '../../lib/supabaseClient';
 
 export const IntegrationsWidget: React.FC = () => {

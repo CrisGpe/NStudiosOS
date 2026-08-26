@@ -1,23 +1,7 @@
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import {
-  Layers,
-  Sparkles,
-  Calendar,
-  Target,
-  HardDrive,
-  Building2,
-  Camera,
-  FileCode,
-  ShieldCheck,
-  Search,
-  LogOut,
-  AlertTriangle,
-  Film,
-  Smartphone,
-  Compass,
-} from 'lucide-react';
+import { Layers, Sparkles, Calendar, Target, HardDrive, Building2, Camera, FileCode, ShieldCheck, Search, LogOut, AlertTriangle, Film, Smartphone, Compass } from 'lucide-react';
 import { UserRole } from '../types';
 
 export const Navbar: React.FC = () => {

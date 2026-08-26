@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { ShieldCheck, Search, Filter, Clock } from 'lucide-react';
+import { ShieldCheck, Search, Clock } from 'lucide-react';
 
 export const AuditLogsWidget: React.FC = () => {
   const { auditLogs } = useApp();

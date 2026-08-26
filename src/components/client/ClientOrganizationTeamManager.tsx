@@ -1,24 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import {
-  Building2,
-  Users,
-  UserPlus,
-  ShieldCheck,
-  CheckCircle2,
-  Lock,
-  Plus,
-  Trash2,
-  Edit3,
-  X,
-  Sparkles,
-  Layers,
-  FolderOpen,
-  Film,
-  Lightbulb,
-  Clock,
-  KeyRound,
-} from 'lucide-react';
+import { Building2, Users, UserPlus, ShieldCheck, CheckCircle2, Edit3, X, Layers } from 'lucide-react';
 import { ClientBrandPermission, UserProfile } from '../../types';
 
 export const ClientOrganizationTeamManager: React.FC = () => {

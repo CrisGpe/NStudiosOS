@@ -1,19 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import {
-  Film,
-  Lock,
-  Mail,
-  User,
-  ShieldCheck,
-  Sparkles,
-  ArrowRight,
-  AlertCircle,
-  KeyRound,
-  Building2,
-  Smartphone,
-} from 'lucide-react';
+import { Film, Lock, Mail, User, ArrowRight, AlertCircle, KeyRound, Building2 } from 'lucide-react';
 import { UserRole } from '../types';
 
 export const LoginView: React.FC = () => {

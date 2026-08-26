@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import {
-  X,
-  Sparkles,
-  Target,
-  Calendar,
-  Layers,
-  Link,
-  Info,
-  CheckCircle2,
-  Send,
-} from 'lucide-react';
+import { X, Info, Send } from 'lucide-react';
 
 export const CreateClientDeliverableModal: React.FC = () => {
   const {

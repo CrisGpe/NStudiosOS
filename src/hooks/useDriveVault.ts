@@ -1,5 +1,4 @@
 import { useApp } from '../context/AppContext';
-import { Brand, CommunicationTerritory } from '../types';
 
 export const useDriveVault = () => {
   const {

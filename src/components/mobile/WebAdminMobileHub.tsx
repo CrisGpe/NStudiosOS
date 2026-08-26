@@ -1,28 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import {
-  ShieldCheck,
-  Users,
-  KeyRound,
-  HardDrive,
-  Activity,
-  Monitor,
-  LogOut,
-  Search,
-  CheckCircle2,
-  Database,
-  Cpu,
-  Edit3,
-  X,
-  Building2,
-  RefreshCw,
-  Lock,
-  UserPlus,
-  Plus,
-  Sparkles,
-  Trash2,
-} from 'lucide-react';
+import { ShieldCheck, Users, KeyRound, HardDrive, Activity, Monitor, LogOut, Search, CheckCircle2, Database, Cpu, Edit3, X, RefreshCw, UserPlus, Plus, Trash2 } from 'lucide-react';
 import { UserRole } from '../../types';
 import { supabaseService } from '../../services/supabaseService';
 import { isSupabaseConfigured } from '../../lib/supabaseClient';

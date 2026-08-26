@@ -1,29 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import {
-  Deliverable,
-  DeliverablePhase,
-  ChangeRequest,
-} from '../types';
-import {
-  X,
-  Calendar,
-  Layers,
-  Camera,
-  AlertTriangle,
-  FileCheck2,
-  Clock,
-  Sparkles,
-  User,
-  Building2,
-  ExternalLink,
-  ChevronRight,
-  ShieldAlert,
-  CheckCircle2,
-  XCircle,
-  Video,
-  DollarSign,
-} from 'lucide-react';
+import { DeliverablePhase } from '../types';
+import { X, Calendar, Clock, Sparkles, ChevronRight, ShieldAlert, Video } from 'lucide-react';
 import { TechnicalGuideViewer } from './TechnicalGuideViewer';
 
 const PHASE_STEPS: { id: DeliverablePhase; label: string; tag: string }[] = [

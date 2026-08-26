@@ -1,35 +1,6 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
-import {
-  UserProfile,
-  Brand,
-  CommunicationTerritory,
-  Deliverable,
-  HardwareEquipment,
-  EquipmentReservation,
-  Campaign,
-  AuditLog,
-  DriveAccount,
-  DriveFolder,
-  DriveFile,
-  ClientIdeaSandboxItem,
-  UserRole,
-  DeliverablePhase,
-  DeliverablePriority,
-  ClientOrganization,
-  ClientBrandPermission,
-  DigitalAsset,
-} from '../types';
-import {
-  AuthRepository,
-  BrandsRepository,
-  DeliverablesRepository,
-  CampaignsRepository,
-  DriveVaultRepository,
-  EquipmentRepository,
-  ClientOrganizationsRepository,
-  AuditRepository,
-  ClientSandboxRepository,
-} from '../repositories';
+import { UserProfile, Brand, ClientBrandPermission } from '../types';
+import { AuthRepository, BrandsRepository, DeliverablesRepository, CampaignsRepository, DriveVaultRepository, EquipmentRepository, ClientOrganizationsRepository, AuditRepository, ClientSandboxRepository } from '../repositories';
 
 // ==============================================================================
 // 1. AUTH & PROFILES SERVICE

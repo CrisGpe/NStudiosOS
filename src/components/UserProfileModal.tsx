@@ -1,21 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import {
-  X,
-  User,
-  Layout,
-  LogOut,
-  Check,
-  Shield,
-  Sun,
-  Clock,
-  Calendar,
-  Bell,
-  Palmtree,
-  CheckCircle2,
-  AlertCircle,
-  Sliders,
-} from 'lucide-react';
+import { X, User, Layout, LogOut, Shield, Sun, Clock, Calendar, Bell, Palmtree, CheckCircle2, AlertCircle, Sliders } from 'lucide-react';
 import { CollaboratorSchedule } from '../types';
 
 export const UserProfileModal: React.FC = () => {

@@ -1,16 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  X,
-  Sparkles,
-  Link,
-  Camera,
-  FileText,
-  Mic,
-  MicOff,
-  Upload,
-  CheckCircle2,
-  Send,
-} from 'lucide-react';
+import { X, Sparkles, Link, Camera, FileText, Mic, MicOff, Upload, CheckCircle2, Send } from 'lucide-react';
 import { Brand, CommunicationTerritory, MobileCaptureType } from '../../types';
 
 interface MobileFlashCaptureModalProps {

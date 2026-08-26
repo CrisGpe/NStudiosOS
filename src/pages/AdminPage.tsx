@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { WebAdminDashboard } from '../components/WebAdminDashboard';
 import { DatabaseHealthWidget, IntegrationsWidget, AuditLogsWidget } from '../widgets/admin';
-import { ShieldCheck, Database, Sliders, FileText } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 
 export const AdminPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'users_rbac' | 'health' | 'integrations' | 'audit'>('users_rbac');

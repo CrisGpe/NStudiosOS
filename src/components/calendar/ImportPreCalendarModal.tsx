@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calendar, FileSpreadsheet, X, Upload, CheckCircle2, ArrowRight, Table, Layers, HardDrive, Download, Sparkles, Plus, Folder, ExternalLink } from 'lucide-react';
+import { FileSpreadsheet, X, Upload, CheckCircle2, HardDrive, Download, Sparkles, Plus, Folder } from 'lucide-react';
 import { Brand, CommunicationTerritory, Deliverable, DriveFile } from '../../types';
 import { useDriveVaultContext } from '../../context/DriveVaultContext';
 import { useToast } from '../../context/ToastContext';

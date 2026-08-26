@@ -1,16 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import {
-  Compass,
-  Users,
-  Building2,
-  Camera,
-  Layers,
-  Clock,
-  Palmtree,
-  AlertTriangle,
-  ChevronRight,
-} from 'lucide-react';
+import { Compass, Users, Building2, Camera, Layers, Clock, Palmtree, AlertTriangle, ChevronRight } from 'lucide-react';
 
 export const DirectorOperationsDashboard: React.FC = () => {
   const {

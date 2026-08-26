@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Target, X, Send, AlertCircle, FileText, CheckCircle2 } from 'lucide-react';
+import { Target, X, Send, AlertCircle } from 'lucide-react';
 import { Brand, CommunicationTerritory } from '../../types';
 
 interface RequestTerritoryReviewModalProps {

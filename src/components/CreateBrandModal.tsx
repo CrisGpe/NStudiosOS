@@ -1,13 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import {
-  X,
-  Building2,
-  Plus,
-  Trash2,
-  AlertCircle,
-  CheckCircle2,
-} from 'lucide-react';
+import { X, Building2, Plus, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { CommunicationTerritory } from '../types';
 
 const TERRITORY_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];

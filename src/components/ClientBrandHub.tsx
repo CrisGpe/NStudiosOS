@@ -2,27 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useDriveVaultContext } from '../context/DriveVaultContext';
 import { useBrandsContext } from '../context/BrandsContext';
-import {
-  Sparkles,
-  Lightbulb,
-  Plus,
-  ArrowRight,
-  ExternalLink,
-  Trash2,
-  FileText,
-  CheckCircle2,
-  Target,
-  HardDrive,
-  Compass,
-  Link,
-  Building2,
-  ShieldCheck,
-  Lock,
-  Send,
-  Folder,
-  ChevronRight,
-  ArrowLeft,
-} from 'lucide-react';
+import { Sparkles, Lightbulb, Plus, ArrowRight, ExternalLink, Trash2, FileText, Target, HardDrive, Compass, Link, Building2, Send, Folder, ChevronRight, ArrowLeft } from 'lucide-react';
 import { ClientOrganizationTeamManager } from './client/ClientOrganizationTeamManager';
 import { CreateSandboxIdeaModal } from './client/CreateSandboxIdeaModal';
 import { RequestTerritoryReviewModal } from './client/RequestTerritoryReviewModal';

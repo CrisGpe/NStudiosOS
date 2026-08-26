@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, X, Target, Film, Palette, CheckCircle2, ArrowRight, ArrowLeft, Link as LinkIcon, FileText } from 'lucide-react';
+import { Sparkles, X, Target, Film, Palette, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
 import { Brand, CommunicationTerritory } from '../../types';
 
 interface CreateSandboxIdeaModalProps {

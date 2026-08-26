@@ -2,12 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Sparkles, Plus } from 'lucide-react';
 import { CreateDeliverableModal } from './CreateDeliverableModal';
-import {
-  KanbanProcessToggle,
-  KanbanFilters,
-  KanbanColumn,
-  KANBAN_COLUMNS
-} from './kanban';
+import { KanbanProcessToggle, KanbanFilters, KanbanColumn, KANBAN_COLUMNS } from './kanban';
 
 export const KanbanBoard: React.FC = () => {
   const {

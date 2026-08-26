@@ -1,19 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { useDriveVaultContext } from '../context/DriveVaultContext';
-import {
-  Calendar as CalendarIcon,
-  Video,
-  Send,
-  ChevronLeft,
-  ChevronRight,
-  Clock,
-  AlertTriangle,
-  Camera,
-  Layers,
-  Sparkles,
-  FileSpreadsheet,
-} from 'lucide-react';
+import { Calendar as CalendarIcon, Video, Send, ChevronLeft, ChevronRight, Layers, FileSpreadsheet } from 'lucide-react';
 import { Deliverable } from '../types';
 import { ImportPreCalendarModal } from './calendar/ImportPreCalendarModal';
 

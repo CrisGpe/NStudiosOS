@@ -1,26 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import {
-  Camera,
-  Calendar,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Plus,
-  Search,
-  Filter,
-  DollarSign,
-  Layers,
-  XCircle,
-  Video,
-  X,
-} from 'lucide-react';
-import {
-  HardwareEquipment,
-  EquipmentCategory,
-  EquipmentStatus,
-  EquipmentReservation,
-} from '../types';
+import { Camera, Calendar, AlertTriangle, CheckCircle2, Clock, Plus, Search, X } from 'lucide-react';
+import { HardwareEquipment, EquipmentStatus } from '../types';
 
 export const EquipmentManager: React.FC = () => {
   const {

@@ -1,19 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import {
-  FileCode,
-  Layers,
-  Database,
-  GitBranch,
-  Table,
-  Copy,
-  Check,
-  Download,
-  Terminal,
-  ShieldCheck,
-  Cpu,
-  BookOpen,
-} from 'lucide-react';
+import { FileCode, Database, GitBranch, Table, Copy, Check, Download, Terminal } from 'lucide-react';
 
 export const SystemSpecsHub: React.FC = () => {
   const {

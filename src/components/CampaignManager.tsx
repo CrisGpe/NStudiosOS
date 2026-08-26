@@ -1,17 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import {
-  Target,
-  Plus,
-  DollarSign,
-  TrendingUp,
-  Layers,
-  ChevronRight,
-  BarChart3,
-  Megaphone,
-  ShoppingBag,
-  Users,
-} from 'lucide-react';
+import { Target, Plus, DollarSign, TrendingUp, Layers, ChevronRight, BarChart3, Megaphone, ShoppingBag, Users } from 'lucide-react';
 import { CampaignStatus, CampaignType } from '../types';
 
 export const CampaignManager: React.FC = () => {

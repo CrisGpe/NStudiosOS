@@ -1,14 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import {
-  DriveAccount,
-  DriveFolder,
-  DriveFile,
-  Brand,
-  CommunicationTerritory,
-  DigitalAsset,
-  HardwareEquipment,
-  ClientOrganization,
-} from '../types';
+import { DriveAccount, DriveFolder, DriveFile, Brand, CommunicationTerritory, DigitalAsset, HardwareEquipment, ClientOrganization } from '../types';
 import { DriveVaultRepository } from '../repositories/drive.repository';
 import { driveVaultService } from '../services/supabaseService';
 import { isSupabaseConfigured } from '../lib/supabaseClient';

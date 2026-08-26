@@ -1,5 +1,4 @@
 import { useApp } from '../context/AppContext';
-import { DeliverablePhase, TechnicalGuide, ChangeRequest } from '../types';
 
 export const useDeliverables = () => {
   const {
