@@ -279,15 +279,26 @@ export const DriveVaultManager: React.FC = () => {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2">
+                    {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={currentAccount.rootFolderId && currentAccount.rootFolderId !== 'root' ? `https://drive.google.com/drive/folders/${currentAccount.rootFolderId}` : 'https://drive.google.com/drive/folders/1mYfiTe9fwkD8OOCSeW8b63mNmUmhZZpo'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-98"
+              title="Abrir esta bóveda directamente en Google Drive Web"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+              <span>Abrir en Google Drive ↗</span>
+            </a>
+
             <button
               onClick={() => setIsGasModalOpen(true)}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-98"
               title="Generar carpetas reales en drive.google.com con Google Apps Script"
             >
-              <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />
-              <span>⚡ Sincronizar en Google Drive Real</span>
+              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+              <span>⚡ Script de Google Drive</span>
             </button>
 
             <button
@@ -295,17 +306,8 @@ export const DriveVaultManager: React.FC = () => {
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-98"
               title="Crea las carpetas automáticas para cada marca y holding"
             >
-              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-              <span>Auto-Generar Vault de Marcas</span>
-            </button>
-
-            <button
-              onClick={handleSyncAccount}
-              disabled={isSyncing}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 text-slate-600 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? 'Sincronizando...' : 'Sincronizar'}</span>
+              <RefreshCw className="w-3.5 h-3.5 text-purple-600" />
+              <span>Sincronizar Marcas</span>
             </button>
 
             <button

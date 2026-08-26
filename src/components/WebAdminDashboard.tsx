@@ -23,6 +23,7 @@ import {
   Check,
   Bell,
   Sparkles,
+  PenLine,
   ExternalLink,
   Eye,
   EyeOff,
@@ -48,6 +49,7 @@ export const WebAdminDashboard: React.FC = () => {
     currentUser,
     driveAccounts,
     createDriveAccount,
+    updateDriveAccount,
     deleteDriveAccount,
     toast,
   } = useApp();
@@ -98,6 +100,7 @@ export const WebAdminDashboard: React.FC = () => {
   // MODAL 2: CONNECT GOOGLE DRIVE ACCOUNT
   // ==========================================
   const [showDriveModal, setShowDriveModal] = useState(false);
+  const [editingDriveAccount, setEditingDriveAccount] = useState<DriveAccount | null>(null);
   const [driveName, setDriveName] = useState('Bóveda Corporativa CineFlow');
   const [driveEmail, setDriveEmail] = useState('drive@cineflow.studio');
   const [driveType, setDriveType] = useState<'corporate_workspace' | 'personal_vault'>('corporate_workspace');
@@ -326,35 +329,66 @@ export const WebAdminDashboard: React.FC = () => {
   };
 
   // CONNECT DRIVE ACCOUNT
+  
+  const extractDriveFolderId = (input: string): string => {
+    if (!input) return 'root';
+    const trimmed = input.trim();
+    if (trimmed.includes('drive.google.com/drive/folders/')) {
+      const match = trimmed.match(/folders\/([a-zA-Z0-9_-]+)/);
+      return match ? match[1] : trimmed;
+    }
+    if (trimmed.includes('id=')) {
+      const match = trimmed.match(/id=([a-zA-Z0-9_-]+)/);
+      return match ? match[1] : trimmed;
+    }
+    return trimmed;
+  };
+
+  const handleStartEditDrive = (acc: DriveAccount) => {
+    setEditingDriveAccount(acc);
+    setDriveName(acc.name);
+    setDriveEmail(acc.email);
+    setDriveType(acc.type);
+    setDriveQuotaGB(acc.quotaTotalGB || 200);
+    setDriveRootFolder(acc.rootFolderId || 'root');
+    setShowDriveModal(true);
+  };
+
   const handleSaveDriveAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSavingDrive(true);
+    const parsedRootId = extractDriveFolderId(driveRootFolder);
+
     try {
-      await createDriveAccount({
-        name: driveName,
-        email: driveEmail,
-        type: driveType,
-        quotaTotalGB: Number(driveQuotaGB),
-        quotaUsedGB: 0,
-        rootFolderId: driveRootFolder,
-        isConnected: true,
-        status: 'active',
-      });
-
-      addAuditLog(
-        'BOVEDA_DRIVE_CONECTADA',
-        `Nueva bóveda conectada: ${driveName} (${driveEmail})`,
-        currentUser.id,
-        'drive',
-        driveRootFolder,
-        currentUser.name,
-        currentUser.role
-      );
-
-      toast.success('Bóveda de Google Drive conectada y registrada en Supabase.');
+      if (editingDriveAccount) {
+        updateDriveAccount(editingDriveAccount.id, {
+          name: driveName,
+          email: driveEmail,
+          type: driveType,
+          quotaTotalGB: Number(driveQuotaGB) || 200,
+          rootFolderId: parsedRootId,
+        });
+        toast.success(`Bóveda "${driveName}" actualizada correctamente.`);
+      } else {
+        await createDriveAccount({
+          name: driveName,
+          email: driveEmail,
+          type: driveType,
+          quotaTotalGB: Number(driveQuotaGB) || 200,
+          quotaUsedGB: 0,
+          rootFolderId: parsedRootId,
+          isConnected: true,
+          status: 'active',
+        });
+        toast.success(`Bóveda "${driveName}" conectada exitosamente.`);
+      }
       setShowDriveModal(false);
-    } catch (err: any) {
-      toast.error('Error al registrar cuenta de Drive: ' + err.message);
+      setEditingDriveAccount(null);
+      setDriveName('');
+      setDriveEmail('');
+      setDriveRootFolder('root');
+    } catch {
+      toast.error('Error al guardar la bóveda en Supabase.');
     } finally {
       setIsSavingDrive(false);
     }
@@ -998,6 +1032,22 @@ export const WebAdminDashboard: React.FC = () => {
                 <div className="flex items-center justify-between text-[10.5px] text-slate-500 pt-1.5 border-t border-slate-200 font-mono">
                   <span>Último sync: {account.lastSyncedAt}</span>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleStartEditDrive(account)}
+                      className="p-1 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+                      title="Editar Bóveda y Carpeta Raíz"
+                    >
+                      <PenLine className="w-3.5 h-3.5" />
+                    </button>
+                    <a
+                      href={account.rootFolderId && account.rootFolderId !== 'root' ? `https://drive.google.com/drive/folders/${account.rootFolderId}` : 'https://drive.google.com'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 rounded-lg text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
+                      title="Abrir en Google Drive"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
                     <span className="text-emerald-700 font-bold flex items-center gap-1">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Sincronizado</span>
@@ -1477,7 +1527,7 @@ export const WebAdminDashboard: React.FC = () => {
                   disabled={isSavingDrive}
                   className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-600/20 disabled:opacity-50"
                 >
-                  {isSavingDrive ? 'Guardando en Supabase...' : 'Conectar Bóveda'}
+                  {isSavingDrive ? 'Guardando...' : (editingDriveAccount ? 'Guardar Cambios' : 'Conectar Bóveda')}
                 </button>
               </div>
             </form>
