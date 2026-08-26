@@ -58,6 +58,7 @@ export const DriveVaultManager: React.FC = () => {
   const [fileSearchQuery, setFileSearchQuery] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [isGasModalOpen, setIsGasModalOpen] = useState(false);
 
   // Modals for creation
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -280,6 +281,15 @@ export const DriveVaultManager: React.FC = () => {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsGasModalOpen(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-98"
+              title="Generar carpetas reales en drive.google.com con Google Apps Script"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />
+              <span>⚡ Sincronizar en Google Drive Real</span>
+            </button>
+
             <button
               onClick={handleGenerateFullVault}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-98"
@@ -919,6 +929,162 @@ export const DriveVaultManager: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Google Apps Script Real Drive Generator Modal */}
+      {isGasModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-xl w-full overflow-hidden flex flex-col space-y-4 p-6 max-h-[90vh]">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200">
+                  <ExternalLink className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900">
+                    Sincronizar en Google Drive Real (drive.google.com)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Crea físicamente las carpetas en tu cuenta <strong>cria10810@gmail.com</strong> dentro de <strong>NStudiosOS</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsGasModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs text-slate-700 overflow-y-auto">
+              <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 space-y-1">
+                <p className="font-bold flex items-center gap-1.5 text-amber-800">
+                  <span>⚡ Instrucciones de 30 Segundos:</span>
+                </p>
+                <ol className="list-decimal list-inside space-y-1 text-[11px] text-amber-950">
+                  <li>
+                    Abre el editor oficial de Google Apps Script:{' '}
+                    <a
+                      href="https://script.google.com/home/start"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold text-indigo-600 hover:underline"
+                    >
+                      script.google.com ↗
+                    </a>
+                  </li>
+                  <li>Haz clic en <strong>"+ Nuevo proyecto"</strong>.</li>
+                  <li>Borra el código que aparece y pega el script de abajo.</li>
+                  <li>Haz clic en el botón <strong>"▶️ Ejecutar" (Run)</strong> y autoriza el acceso a tu Drive.</li>
+                  <li>¡Listo! En 5 segundos todas las carpetas y hojas aparecerán en tu carpeta <strong>NStudiosOS</strong>.</li>
+                </ol>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 text-xs">Script de Auto-Generación:</span>
+                  <button
+                    onClick={() => {
+                      const code = `function crearEstructuraNStudiosOS() {
+  const NOMBRE_CARPETA_RAIZ = 'NStudiosOS';
+  let carpetaRaiz;
+  const carpetasExistentes = DriveApp.getFoldersByName(NOMBRE_CARPETA_RAIZ);
+  if (carpetasExistentes.hasNext()) {
+    carpetaRaiz = carpetasExistentes.next();
+  } else {
+    carpetaRaiz = DriveApp.createFolder(NOMBRE_CARPETA_RAIZ);
+  }
+  const holdings = [
+    {
+      nombre: '🏢 Grupo Empresarial Gonzales',
+      marcas: [
+        { nombre: '🌿 Gloss Salon' },
+        { nombre: '🌿 Gonzales RD' },
+        { nombre: '🌿 Gonzales AM' },
+        { nombre: '🌿 Luxury Salon' }
+      ]
+    }
+  ];
+  const subcarpetasEstandar = [
+    '01_Estrategia_y_Territorios',
+    '02_PreProduccion_Cronogramas',
+    '03_Rodajes_Master_Raw',
+    '04_PostProduccion_Masters',
+    '05_Proxies_Revision_Cliente',
+    '06_Entregables_Finales_Publicados'
+  ];
+  holdings.forEach(function(holding) {
+    let carpetaHolding = obtenerOCrearSubcarpeta(carpetaRaiz, holding.nombre);
+    holding.marcas.forEach(function(marca) {
+      let carpetaMarca = obtenerOCrearSubcarpeta(carpetaHolding, marca.nombre);
+      subcarpetasEstandar.forEach(function(subNombre) {
+        let subCarpeta = obtenerOCrearSubcarpeta(carpetaMarca, subNombre);
+        if (subNombre === '02_PreProduccion_Cronogramas') {
+          const nombreHoja = '01_Cronograma_PreCalendario_' + marca.nombre.replace(/[^a-zA-Z0-9]/g, '_');
+          if (!subCarpeta.getFilesByName(nombreHoja).hasNext()) {
+            const hoja = SpreadsheetApp.create(nombreHoja);
+            const sheet = hoja.getActiveSheet();
+            sheet.setName('Pre-Calendario');
+            sheet.appendRow(['Titulo', 'Territorio', 'Formato', 'Fecha_Rodaje_Inicio', 'Fecha_Rodaje_Fin', 'Fecha_Publicacion', 'Notas']);
+            sheet.getRange(1, 1, 1, 7).setBackground('#4f46e5').setFontColor('#ffffff').setFontWeight('bold');
+            sheet.appendRow(['Reel Apertura - ADN ' + marca.nombre, 'Pilar 1 - Identidad', '9:16 Vertical Reel (45s)', '2026-09-05', '2026-09-07', '2026-09-10', 'Gancho 0-3s']);
+            const archivoHoja = DriveApp.getFileById(hoja.getId());
+            subCarpeta.addFile(archivoHoja);
+            DriveApp.getRootFolder().removeFile(archivoHoja);
+          }
+        }
+      });
+    });
+  });
+}
+function obtenerOCrearSubcarpeta(carpetaPadre, nombreSubcarpeta) {
+  const iterator = carpetaPadre.getFoldersByName(nombreSubcarpeta);
+  if (iterator.hasNext()) return iterator.next();
+  return carpetaPadre.createFolder(nombreSubcarpeta);
+}`;
+                      navigator.clipboard.writeText(code);
+                      toast.success('¡Código copiado al portapapeles!');
+                    }}
+                    className="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs cursor-pointer shadow-xs"
+                  >
+                    📋 Copiar Código del Script
+                  </button>
+                </div>
+
+                <div className="p-3 bg-slate-900 text-slate-100 rounded-2xl font-mono text-[10px] max-h-36 overflow-y-auto leading-relaxed">
+                  <pre>
+{`function crearEstructuraNStudiosOS() {
+  // Crea Grupo Empresarial Gonzales
+  // Crea Gloss Salon, Gonzales RD, Gonzales AM, Luxury Salon
+  // Crea las 6 subcarpetas operativas en cada marca
+}`}
+                  </pre>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+              <a
+                href="https://script.google.com/home/start"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs"
+              >
+                <span>🚀 Abrir Google Apps Script</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
+
+              <button
+                type="button"
+                onClick={() => setIsGasModalOpen(false)}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}
