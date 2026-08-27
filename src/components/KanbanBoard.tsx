@@ -31,8 +31,8 @@ export const KanbanBoard: React.FC = () => {
 
   // Filter deliverables
   const filteredDeliverables = deliverables.filter((d) => {
-    if (isClient && currentUser.assignedBrandIds?.[0]) {
-      if (d.brandId !== currentUser.assignedBrandIds[0]) return false;
+    if (isClient && currentUser.assignedBrandIds && currentUser.assignedBrandIds.length > 0) {
+      if (!currentUser.assignedBrandIds.includes(d.brandId)) return false;
     } else if (selectedBrandId !== 'all' && d.brandId !== selectedBrandId) {
       return false;
     }
