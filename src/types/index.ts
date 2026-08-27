@@ -272,6 +272,7 @@ export interface Deliverable {
   driveFolderId?: string;
   driveFilesCount?: number;
   firstDeliveryDriveUrl?: string; // Direct link to preview/folder in Drive Vault
+  preproductionSpec?: PreproductionSpec;
   
   createdAt: string;
   updatedAt: string;
@@ -406,4 +407,88 @@ export interface ClientIdeaSandboxItem {
   };
   createdAt: string;
   updatedAt: string;
+}
+
+/* ========================================================
+   PRE-PRODUCTION & AUDIOVISUAL PLANNING FORMATS
+   ======================================================== */
+
+export interface DynamicField {
+  id: string;
+  name: string;
+  value: string;
+  type: 'text' | 'select' | 'checkbox' | 'image_url' | 'number';
+  options?: string[];
+  isClientVisible: boolean;
+  category: 'narrative' | 'visual' | 'shooting';
+}
+
+export interface LiteraryScriptScene {
+  id: string;
+  sceneNumber: number;
+  slugline: string; // e.g. "INT. SALON DE BELLEZA - DIA"
+  action: string;
+  dialogues: Array<{ character: string; line: string; parenthetical?: string }>;
+}
+
+export interface TechnicalShot {
+  id: string;
+  shotNumber: string; // e.g. "1A", "1B"
+  framing: string; // e.g. "Plano Detalle (Close-up)", "Plano Medio"
+  cameraMovement: string; // e.g. "Gimbal Push-in", "Trípode Fijo", "Handheld"
+  opticsLens?: string; // e.g. "50mm f/1.2", "Anamórfico 35mm"
+  lightingAudio: string; // e.g. "Luz natural suave + Mic Lavalier inalámbrico"
+  description: string;
+  status?: 'pending' | 'filmed' | 'approved';
+}
+
+export interface VisualReferenceItem {
+  id: string;
+  title: string;
+  imageUrl: string;
+  colorHex?: string;
+  notes?: string;
+  category: 'lighting' | 'wardrobe' | 'framing' | 'color_palette' | 'general';
+}
+
+export interface ShootingScheduleDay {
+  id: string;
+  date: string;
+  callTime: string; // e.g. "08:00 AM"
+  location: string;
+  scenesToFilm: string[];
+  castEquipment: string[];
+  notes?: string;
+}
+
+export interface ScriptBreakdownCategory {
+  id: string;
+  category: 'wardrobe' | 'props' | 'cast_models' | 'locations' | 'makeup_hair' | 'special_gear';
+  items: string[];
+}
+
+export interface PreproductionSpec {
+  deliverableId: string;
+  brandId: string;
+  version: number;
+  lastUpdatedBy: string;
+  lastUpdatedAt: string;
+
+  // 1. Guion & Narrativa
+  logline?: string;
+  targetMessage?: string; // Client-friendly core message
+  literaryScript: LiteraryScriptScene[];
+  technicalShots: TechnicalShot[];
+
+  // 2. Planificación Visual
+  moodboard: VisualReferenceItem[];
+  lookbookNotes?: string;
+  colorPalette: string[];
+
+  // 3. Rodaje & Desglose
+  shootingSchedule: ShootingScheduleDay[];
+  scriptBreakdown: ScriptBreakdownCategory[];
+
+  // Dynamic Director Fields
+  customFields: DynamicField[];
 }

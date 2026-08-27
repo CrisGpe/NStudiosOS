@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { DeliverablePhase } from '../types';
 import { X, Calendar, Clock, Sparkles, ChevronRight, ShieldAlert, Video } from 'lucide-react';
 import { TechnicalGuideViewer } from './TechnicalGuideViewer';
+import { PreproductionSpecViewer } from './preproduction/PreproductionSpecViewer';
 
 const PHASE_STEPS: { id: DeliverablePhase; label: string; tag: string }[] = [
   { id: 'ideacion', label: 'Ideación', tag: 'D1-15' },
@@ -235,7 +236,7 @@ export const DeliverableDetailModal: React.FC = () => {
                 : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
-            Guía Técnica & Shotlist
+            Pre-Producción & Formatos
           </button>
 
           <button
@@ -574,9 +575,22 @@ export const DeliverableDetailModal: React.FC = () => {
             </div>
           )}
 
-          {/* TAB 3: TECHNICAL GUIDE */}
+          {/* TAB 3: PRE-PRODUCTION SPEC & FORMATS */}
           {activeTab === 'guide' && (
-            <TechnicalGuideViewer deliverable={selectedDeliverable} />
+            <div className="space-y-4">
+              <PreproductionSpecViewer
+                deliverable={selectedDeliverable}
+                onUpdateSpec={(updatedSpec) => {
+                  setSelectedDeliverable({
+                    ...selectedDeliverable,
+                    preproductionSpec: updatedSpec,
+                  });
+                }}
+              />
+              <div className="pt-3 border-t border-slate-100">
+                <TechnicalGuideViewer deliverable={selectedDeliverable} />
+              </div>
+            </div>
           )}
 
           {/* TAB 4: EQUIPMENT RESERVED */}

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { useDriveVaultContext } from '../context/DriveVaultContext';
 import { useBrandsContext } from '../context/BrandsContext';
-import { Sparkles, Lightbulb, Plus, ArrowRight, ExternalLink, Trash2, FileText, Target, HardDrive, Compass, Link, Building2, Send, Folder, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Sparkles, Lightbulb, Plus, ArrowRight, ExternalLink, Trash2, FileText, Target, HardDrive, Compass, Link, Building2, Send, Folder, ChevronRight, ArrowLeft, Film, Eye, Camera, Calendar, Palette, Layers } from 'lucide-react';
+import { PreproductionSpecViewer } from './preproduction/PreproductionSpecViewer';
 import { ClientOrganizationTeamManager } from './client/ClientOrganizationTeamManager';
 import { CreateSandboxIdeaModal } from './client/CreateSandboxIdeaModal';
 import { RequestTerritoryReviewModal } from './client/RequestTerritoryReviewModal';
@@ -87,7 +88,8 @@ export const ClientBrandHub: React.FC = () => {
   const brandDocs = (driveFiles || []).filter((f) => f.brandId === brand?.id && f.type === 'document');
   const brandAssets = (digitalAssets || []).filter((a) => a.brandId === brand?.id);
 
-  const [activeSubTab, setActiveSubTab] = useState<'sandbox' | 'identity' | 'drive' | 'organization'>('sandbox');
+  const [activeSubTab, setActiveSubTab] = useState<'sandbox' | 'identity' | 'preproduction' | 'drive' | 'organization'>('sandbox');
+  const [selectedPreproductionDeliverable, setSelectedPreproductionDeliverable] = useState<any | null>(null);
   const [showCreateIdeaModal, setShowCreateIdeaModal] = useState(false);
   const [showTerritoryReviewModal, setShowTerritoryReviewModal] = useState(false);
   const [isGeneratingAi, setIsGeneratingAi] = useState<string | null>(null);
@@ -603,6 +605,18 @@ export const ClientBrandHub: React.FC = () => {
                 </button>
 
                 <button
+                  onClick={() => setActiveSubTab('preproduction')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                    activeSubTab === 'preproduction'
+                      ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <Film className="w-3.5 h-3.5" />
+                  <span>Pre-Producción & Formatos ({brandDeliverables.length})</span>
+                </button>
+
+                <button
                   onClick={() => setActiveSubTab('drive')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                     activeSubTab === 'drive'
@@ -823,6 +837,79 @@ export const ClientBrandHub: React.FC = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* SubTab: Pre-Producción & Formatos */}
+          {activeSubTab === 'preproduction' && (
+            <div className="space-y-4">
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+                    <Film className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-sm text-slate-900">
+                      Herramientas de Pre-Producción & Planificación Audiovisual
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Guiones literarios y técnicos, moodboard, lookbook, shot list y plan de rodaje para {brand?.name}.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {brandDeliverables.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center space-y-2 shadow-2xs">
+                  <Film className="w-8 h-8 text-slate-300 mx-auto" />
+                  <h3 className="font-bold text-slate-800 text-sm">No hay piezas en producción para {brand?.name}</h3>
+                  <p className="text-xs text-slate-500">
+                    Crea una nueva idea en el Sandbox o solicita una pieza audiovisual para generar su ficha de preproducción.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                  {brandDeliverables.map((del) => (
+                    <div
+                      key={del.id}
+                      className="bg-white border border-slate-200 hover:border-indigo-400 rounded-2xl p-4 shadow-2xs hover:shadow-md transition-all space-y-3 flex flex-col justify-between"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono font-bold text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            {del.code}
+                          </span>
+                          <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                            {del.phase.replace('_', ' ')}
+                          </span>
+                        </div>
+
+                        <h4 className="font-bold text-xs text-slate-900 leading-snug">
+                          {del.title}
+                        </h4>
+
+                        <p className="text-xs text-slate-600 line-clamp-2">
+                          {del.description || 'Ficha técnica de rodaje, guiones y lookbook preparados para producción.'}
+                        </p>
+                      </div>
+
+                      <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          📅 {del.productionStartDate || del.publishDate}
+                        </span>
+
+                        <button
+                          onClick={() => setSelectedPreproductionDeliverable(del)}
+                          className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer active:scale-95"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Ver Formatos</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
