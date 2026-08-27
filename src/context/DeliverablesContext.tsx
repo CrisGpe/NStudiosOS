@@ -122,58 +122,65 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const moveDeliverablePhase = (id: string, directionOrPhase: 'advance' | 'retreat' | DeliverablePhase) => {
-    const currentItem = deliverables.find((d) => d.id === id);
-    if (!currentItem) return;
+    setDeliverables((prev) => {
+      const currentItem = prev.find((d) => d.id === id);
+      if (!currentItem) return prev;
 
-    let nextPhase: DeliverablePhase = currentItem.phase;
-    if (directionOrPhase === 'advance' || directionOrPhase === 'retreat') {
-      const currentIndex = PHASE_ORDER.indexOf(currentItem.phase);
-      if (currentIndex !== -1) {
-        const newIndex = directionOrPhase === 'advance' ? currentIndex + 1 : currentIndex - 1;
-        if (newIndex >= 0 && newIndex < PHASE_ORDER.length) {
-          nextPhase = PHASE_ORDER[newIndex];
+      let nextPhase: DeliverablePhase = currentItem.phase;
+      if (directionOrPhase === 'advance' || directionOrPhase === 'retreat') {
+        const currentIndex = PHASE_ORDER.indexOf(currentItem.phase);
+        if (currentIndex !== -1) {
+          const newIndex = directionOrPhase === 'advance' ? currentIndex + 1 : currentIndex - 1;
+          if (newIndex >= 0 && newIndex < PHASE_ORDER.length) {
+            nextPhase = PHASE_ORDER[newIndex];
+          }
         }
+      } else {
+        nextPhase = directionOrPhase;
       }
-    } else {
-      nextPhase = directionOrPhase;
-    }
 
-    const updatedItem: Deliverable = {
-      ...currentItem,
-      phase: nextPhase,
-      updatedAt: new Date().toISOString().split('T')[0],
-    };
+      const updatedItem: Deliverable = {
+        ...currentItem,
+        phase: nextPhase,
+        updatedAt: new Date().toISOString().split('T')[0],
+      };
 
-    setDeliverables((prev) => prev.map((d) => (d.id === id ? updatedItem : d)));
-    setSelectedDeliverable((prev) => (prev && prev.id === id ? updatedItem : prev));
+      DeliverablesRepository.updateDeliverable(updatedItem).catch((err) =>
+        console.warn('Supabase updateDeliverable sync error:', err)
+      );
 
-    DeliverablesRepository.updateDeliverable(updatedItem).catch((err) =>
-      console.warn('Supabase updateDeliverable sync error:', err)
-    );
+      setSelectedDeliverable((currSelected) =>
+        currSelected && currSelected.id === id ? updatedItem : currSelected
+      );
+
+      return prev.map((d) => (d.id === id ? updatedItem : d));
+    });
   };
 
   const updateTechnicalGuide = (deliverableId: string, guide: TechnicalGuide) => {
-    const currentItem = deliverables.find((d) => d.id === deliverableId);
-    if (!currentItem) return;
+    setDeliverables((prev) => {
+      const currentItem = prev.find((d) => d.id === deliverableId);
+      if (!currentItem) return prev;
 
-    const updatedItem: Deliverable = {
-      ...currentItem,
-      technicalGuide: guide,
-      updatedAt: new Date().toISOString().split('T')[0],
-    };
+      const updatedItem: Deliverable = {
+        ...currentItem,
+        technicalGuide: guide,
+        updatedAt: new Date().toISOString().split('T')[0],
+      };
 
-    setDeliverables((prev) => prev.map((d) => (d.id === deliverableId ? updatedItem : d)));
-    setSelectedDeliverable((prev) => (prev && prev.id === deliverableId ? updatedItem : prev));
+      DeliverablesRepository.updateDeliverable(updatedItem).catch((err) =>
+        console.warn('Supabase updateTechnicalGuide sync error:', err)
+      );
 
-    DeliverablesRepository.updateDeliverable(updatedItem).catch((err) =>
-      console.warn('Supabase updateTechnicalGuide sync error:', err)
-    );
+      setSelectedDeliverable((currSelected) =>
+        currSelected && currSelected.id === deliverableId ? updatedItem : currSelected
+      );
+
+      return prev.map((d) => (d.id === deliverableId ? updatedItem : d));
+    });
   };
 
   const submitChangeRequest = (deliverableId: string, request: Omit<ChangeRequest, 'id' | 'requestedAt' | 'status'> & { reason?: string }) => {
-    const currentItem = deliverables.find((d) => d.id === deliverableId);
-    if (!currentItem) return;
-
     const newReq: ChangeRequest = {
       ...request,
       description: request.description || request.reason || '',
@@ -182,18 +189,26 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
       status: 'submitted',
     };
 
-    const updatedItem: Deliverable = {
-      ...currentItem,
-      changeRequests: [...(currentItem.changeRequests || []), newReq],
-      updatedAt: new Date().toISOString().split('T')[0],
-    };
+    setDeliverables((prev) => {
+      const currentItem = prev.find((d) => d.id === deliverableId);
+      if (!currentItem) return prev;
 
-    setDeliverables((prev) => prev.map((d) => (d.id === deliverableId ? updatedItem : d)));
-    setSelectedDeliverable((prev) => (prev && prev.id === deliverableId ? updatedItem : prev));
+      const updatedItem: Deliverable = {
+        ...currentItem,
+        changeRequests: [...(currentItem.changeRequests || []), newReq],
+        updatedAt: new Date().toISOString().split('T')[0],
+      };
 
-    DeliverablesRepository.updateDeliverable(updatedItem).catch((err) =>
-      console.warn('Supabase submitChangeRequest sync error:', err)
-    );
+      DeliverablesRepository.updateDeliverable(updatedItem).catch((err) =>
+        console.warn('Supabase submitChangeRequest sync error:', err)
+      );
+
+      setSelectedDeliverable((currSelected) =>
+        currSelected && currSelected.id === deliverableId ? updatedItem : currSelected
+      );
+
+      return prev.map((d) => (d.id === deliverableId ? updatedItem : d));
+    });
   };
 
   const respondToChangeRequest = (
@@ -202,23 +217,28 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
     status: 'approved' | 'rejected' | 'director_override',
     notes?: string
   ) => {
-    const currentItem = deliverables.find((d) => d.id === deliverableId);
-    if (!currentItem) return;
+    setDeliverables((prev) => {
+      const currentItem = prev.find((d) => d.id === deliverableId);
+      if (!currentItem) return prev;
 
-    const updatedItem: Deliverable = {
-      ...currentItem,
-      changeRequests: (currentItem.changeRequests || []).map((r) =>
-        r.id === requestId ? { ...r, status, directorNotes: notes || r.directorNotes } : r
-      ),
-      updatedAt: new Date().toISOString().split('T')[0],
-    };
+      const updatedItem: Deliverable = {
+        ...currentItem,
+        changeRequests: (currentItem.changeRequests || []).map((r) =>
+          r.id === requestId ? { ...r, status, directorNotes: notes || r.directorNotes } : r
+        ),
+        updatedAt: new Date().toISOString().split('T')[0],
+      };
 
-    setDeliverables((prev) => prev.map((d) => (d.id === deliverableId ? updatedItem : d)));
-    setSelectedDeliverable((prev) => (prev && prev.id === deliverableId ? updatedItem : prev));
+      DeliverablesRepository.updateDeliverable(updatedItem).catch((err) =>
+        console.warn('Supabase respondChangeRequest sync error:', err)
+      );
 
-    DeliverablesRepository.updateDeliverable(updatedItem).catch((err) =>
-      console.warn('Supabase respondChangeRequest sync error:', err)
-    );
+      setSelectedDeliverable((currSelected) =>
+        currSelected && currSelected.id === deliverableId ? updatedItem : currSelected
+      );
+
+      return prev.map((d) => (d.id === deliverableId ? updatedItem : d));
+    });
   };
 
   const createClientDeliverableProposal = (data: {
