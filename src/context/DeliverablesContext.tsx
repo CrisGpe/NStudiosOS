@@ -122,33 +122,43 @@ export const DeliverablesProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const moveDeliverablePhase = (id: string, directionOrPhase: 'advance' | 'retreat' | DeliverablePhase) => {
+    let targetUpdated: Deliverable | undefined;
+
     setDeliverables((prev) => {
       const next = prev.map((d) => {
         if (d.id !== id) return d;
-        if (directionOrPhase !== 'advance' && directionOrPhase !== 'retreat') {
-          return {
-            ...d,
-            phase: directionOrPhase,
-            updatedAt: new Date().toISOString().split('T')[0],
-          };
+
+        let nextPhase: DeliverablePhase = d.phase;
+        if (directionOrPhase === 'advance' || directionOrPhase === 'retreat') {
+          const currentIndex = PHASE_ORDER.indexOf(d.phase);
+          if (currentIndex !== -1) {
+            const newIndex = directionOrPhase === 'advance' ? currentIndex + 1 : currentIndex - 1;
+            if (newIndex >= 0 && newIndex < PHASE_ORDER.length) {
+              nextPhase = PHASE_ORDER[newIndex];
+            }
+          }
+        } else {
+          nextPhase = directionOrPhase;
         }
-        const currentIndex = PHASE_ORDER.indexOf(d.phase);
-        if (currentIndex === -1) return d;
-        const newIndex = directionOrPhase === 'advance' ? currentIndex + 1 : currentIndex - 1;
-        if (newIndex < 0 || newIndex >= PHASE_ORDER.length) return d;
-        return {
+
+        const updatedItem: Deliverable = {
           ...d,
-          phase: PHASE_ORDER[newIndex],
+          phase: nextPhase,
           updatedAt: new Date().toISOString().split('T')[0],
         };
+        targetUpdated = updatedItem;
+        return updatedItem;
       });
 
-      const updated = next.find((d) => d.id === id);
-      if (updated) {
-        DeliverablesRepository.updateDeliverable(updated).catch((err) => console.warn('Supabase updateDeliverable sync error:', err));
-      }
       return next;
     });
+
+    if (targetUpdated) {
+      setSelectedDeliverable((prev) => (prev && prev.id === id ? targetUpdated! : prev));
+      DeliverablesRepository.updateDeliverable(targetUpdated).catch((err) =>
+        console.warn('Supabase updateDeliverable sync error:', err)
+      );
+    }
   };
 
   const updateTechnicalGuide = (deliverableId: string, guide: TechnicalGuide) => {

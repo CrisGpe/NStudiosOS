@@ -163,37 +163,38 @@ export const DeliverablesRepository = {
   async updateDeliverable(deliverable: Deliverable): Promise<Deliverable> {
     if (!isSupabaseConfigured) return deliverable;
 
-    const { error } = await supabase
-      .from('deliverables')
-      .update({
-        code: deliverable.code,
-        title: deliverable.title,
-        brand_id: deliverable.brandId,
-        territory_id: deliverable.territoryId,
-        campaign_id: deliverable.campaignId,
-        assignee_id: deliverable.assigneeId,
-        phase: mapPhaseToDB(deliverable.phase),
-        deliverable_type: deliverable.deliverableType,
-        priority: mapPriorityToDB(deliverable.priority),
-        format: deliverable.format,
-        concept_hook: deliverable.conceptHook,
-        description: deliverable.description,
-        production_start_date: deliverable.productionStartDate,
-        production_end_date: deliverable.productionEndDate,
-        publish_date: deliverable.publishDate,
-        equipment_reserved_ids: deliverable.equipmentReservedIds,
-        technical_guide: deliverable.technicalGuide,
-        assets_linked: deliverable.assetsLinked,
-        change_requests: deliverable.changeRequests,
-        client_approved: deliverable.clientApproved,
-        director_approved: deliverable.directorApproved,
-        drive_folder_id: deliverable.driveFolderId,
-        drive_files_count: deliverable.driveFilesCount,
-        first_delivery_drive_url: deliverable.firstDeliveryDriveUrl,
-        updated_at: new Date().toISOString().split('T')[0],
-      })
-      .eq('id', deliverable.id);
-    if (error) console.error('Error updating deliverable in Supabase:', error);
+    const payload: any = {
+      code: deliverable.code,
+      title: deliverable.title,
+      brand_id: deliverable.brandId,
+      territory_id: deliverable.territoryId || null,
+      campaign_id: deliverable.campaignId || null,
+      assignee_id: deliverable.assigneeId || null,
+      phase: mapPhaseToDB(deliverable.phase),
+      process_type: deliverable.deliverableType === 'graphic' ? 'graphic' : 'audiovisual',
+      priority: mapPriorityToDB(deliverable.priority),
+      format: deliverable.format || '9:16 UHD',
+      brief: deliverable.description || '',
+      shooting_date: deliverable.productionStartDate || null,
+      publish_date: deliverable.publishDate || null,
+      tech_guide: deliverable.technicalGuide || {},
+      change_requests: deliverable.changeRequests || [],
+      updated_at: new Date().toISOString(),
+    };
+
+    try {
+      const { error } = await supabase
+        .from('deliverables')
+        .update(payload)
+        .eq('id', deliverable.id);
+      if (error) {
+        console.error('Error updating deliverable in Supabase:', error.message);
+      } else {
+        console.log(`✅ Supabase updated deliverable ${deliverable.code} phase to ${payload.phase}`);
+      }
+    } catch (err) {
+      console.warn('Catch updating deliverable:', err);
+    }
     return deliverable;
   },
 
