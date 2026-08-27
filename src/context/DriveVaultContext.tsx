@@ -187,7 +187,9 @@ export const DriveVaultProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     try {
       const saved = localStorage.getItem('nataraja_drive_files');
       const parsed = saved ? JSON.parse(saved) : [];
-      if (parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((f: any) => f?.url && !f.url.includes('demo_') && !f?.id?.startsWith('file_gloss_') && !f?.id?.startsWith('file_grd_') && !f?.id?.startsWith('file_gam_') && !f?.id?.startsWith('file_lux_'));
+      }
     } catch {
       // fallback
     }
