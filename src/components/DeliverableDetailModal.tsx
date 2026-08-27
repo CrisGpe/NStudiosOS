@@ -174,12 +174,21 @@ export const DeliverableDetailModal: React.FC = () => {
               {PHASE_STEPS.map((step, sIdx) => {
                 const isCurrent = sIdx === currentPhaseIndex;
                 const isPassed = sIdx < currentPhaseIndex;
+                const isClientUser = currentUser.role === 'cliente';
 
                 return (
                   <button
                     key={step.id}
-                    onClick={() => moveDeliverablePhase(selectedDeliverable.id, step.id)}
-                    className={`p-2 rounded-xl transition-all text-left flex flex-col justify-between cursor-pointer active:scale-95 ${
+                    disabled={isClientUser}
+                    onClick={() => {
+                      if (!isClientUser) {
+                        moveDeliverablePhase(selectedDeliverable.id, step.id);
+                      }
+                    }}
+                    title={isClientUser ? `Fase: ${step.label}` : `Cambiar a fase ${step.label}`}
+                    className={`p-2 rounded-xl transition-all text-left flex flex-col justify-between ${
+                      isClientUser ? 'cursor-default' : 'cursor-pointer active:scale-95'
+                    } ${
                       isCurrent
                         ? 'bg-indigo-600 text-white font-bold shadow-md shadow-indigo-600/20 border border-indigo-600'
                         : isPassed
@@ -256,6 +265,44 @@ export const DeliverableDetailModal: React.FC = () => {
           {/* TAB 1: OVERVIEW */}
           {activeTab === 'overview' && (
             <div className="space-y-4">
+              {/* Client Official Approval Action Banner in Phase 6 */}
+              {selectedDeliverable.phase === 'aprobacion_cliente' && (
+                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 shadow-2xs space-y-3 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-emerald-900 font-extrabold text-sm">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <span>Fase 6: Ventana de Revisión & Aprobación Oficial</span>
+                    </div>
+                    <span className="text-[10px] uppercase font-mono font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                      Acción del Cliente
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-emerald-950 leading-relaxed">
+                    Esta pieza audiovisual se encuentra en su corte final para revisión. Como representante de marca, puedes aprobar el entregable para su publicación definitiva o solicitar ajustes dentro de la política T-3.
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                    <button
+                      onClick={() => {
+                        moveDeliverablePhase(selectedDeliverable.id, 'publicado');
+                        toast.success('¡Entregable aprobado formalmente por el cliente y marcado como Publicado!');
+                      }}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer active:scale-95 transition-all"
+                    >
+                      <span>✓ Aprobar Entregable Final</span>
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab('changes')}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-100/50 font-bold text-xs cursor-pointer active:scale-95 transition-all"
+                    >
+                      <span>Solicitar Ajuste / Cambio T-3</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Key Timeline Milestone Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 shadow-2xs">

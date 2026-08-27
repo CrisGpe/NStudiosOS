@@ -71,7 +71,7 @@ export const SidebarNav: React.FC = () => {
     {
       id: 'specs',
       label: 'System Specs Hub',
-      roles: ['webadmin', 'director'],
+      roles: ['webadmin'],
     },
     {
       id: 'operations',

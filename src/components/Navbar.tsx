@@ -90,7 +90,7 @@ export const Navbar: React.FC = () => {
     {
       id: 'specs',
       label: 'System Specs & ERD',
-      roles: ['webadmin', 'director'],
+      roles: ['webadmin'],
     },
     {
       id: 'operations',

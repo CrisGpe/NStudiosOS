@@ -219,7 +219,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'client/hub',
-            element: <ProtectedRoute allowedRoles={['cliente', 'webadmin', 'director']} />,
+            element: <ProtectedRoute allowedRoles={['cliente', 'webadmin', 'director', 'colaborador']} />,
             children: [
               {
                 index: true,
@@ -233,7 +233,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'specs',
-            element: <ProtectedRoute allowedRoles={['webadmin', 'director']} />,
+            element: <ProtectedRoute allowedRoles={['webadmin']} />,
             children: [
               {
                 index: true,
